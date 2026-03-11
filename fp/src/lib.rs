@@ -1,14 +1,15 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+//! Finite field arithmetic for the `ecrust` library.
+//!
+//! # Module layout
+//!
+//! ```text
+//! fp
+//! ├── field_ops          – FieldOps trait (the algebraic contract)
+//! ├── fp_element         – Base prime field Fp element
+//! └── fp_extension_arithmetic
+//! ```
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub mod field_ops;
+pub mod fp_element;
+pub mod fp_extension_arithmetic;
+pub mod generic_field;
