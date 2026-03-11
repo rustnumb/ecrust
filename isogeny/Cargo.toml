@@ -1,13 +1,14 @@
 [package]
-name        = "fp"
+name        = "isogeny"
 version.workspace = true
 edition.workspace = true
-description = "Finite field arithmetic over Fp for the ecrust library"
+description = "Isogeny computations for the ecrust library"
 license.workspace = true
 
 [dependencies]
+fp            = { workspace = true }
+ec            = { workspace = true }
 crypto-bigint = { workspace = true }
 
 [dev-dependencies]
 # Add test-only dependencies here as needed
-
