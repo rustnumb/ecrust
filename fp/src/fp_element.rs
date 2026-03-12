@@ -9,10 +9,7 @@ use crypto_bigint::{
 
 use crate::field_ops::FieldOps;
 
-/// An element of the prime field Fp = Z/pZ.
-///
-/// Internally stored in Montgomery form via `ConstMontyForm`.
-/// This version assumes a compile-time modulus.
+/// An element of the prime field Fp = Z/pZ, stored in Montgomery form.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FpElement<MOD, const LIMBS: usize>
 where
@@ -29,21 +26,14 @@ impl<MOD, const LIMBS: usize> FpElement<MOD, LIMBS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
 {
-    /// Construct from a reduced or unreduced integer; reduction mod p is applied.
     pub fn from_uint(x: Uint<LIMBS>) -> Self {
-        Self {
-            value: ConstMontyForm::<MOD, LIMBS>::new(&x),
-        }
+        Self { value: ConstMontyForm::<MOD, LIMBS>::new(&x) }
     }
 
-    /// Construct from little-endian machine words.
-    ///
-    /// On 64-bit targets, these are `u64` words.
     pub fn from_words(words: [u64; LIMBS]) -> Self {
         Self::from_uint(Uint::<LIMBS>::from_words(words))
     }
 
-    /// Construct from a slice of little-endian words.
     pub fn from_limbs(limbs: &[u64]) -> Self {
         assert_eq!(limbs.len(), LIMBS, "wrong number of limbs");
         let mut words = [0u64; LIMBS];
@@ -51,31 +41,24 @@ where
         Self::from_words(words)
     }
 
-    /// Construct from a single `u64`.
     pub fn from_u64(val: u64) -> Self {
         Self::from_uint(Uint::<LIMBS>::from_u64(val))
     }
 
-    /// Return the canonical representative in `[0, p)`.
     pub fn as_uint(&self) -> Uint<LIMBS> {
         self.value.retrieve()
     }
 
-    /// Return canonical little-endian words.
     pub fn as_limbs(&self) -> [u64; LIMBS] {
         self.value.retrieve().to_words()
     }
 
-    /// Return the raw Montgomery representation.
     pub fn to_montgomery(&self) -> Uint<LIMBS> {
         self.value.to_montgomery()
     }
 
-    /// Build directly from a Montgomery-form integer.
     pub fn from_montgomery(mont: Uint<LIMBS>) -> Self {
-        Self {
-            value: ConstMontyForm::<MOD, LIMBS>::from_montgomery(mont),
-        }
+        Self { value: ConstMontyForm::<MOD, LIMBS>::from_montgomery(mont) }
     }
 }
 
@@ -84,158 +67,86 @@ where
 // ---------------------------------------------------------------------------
 
 impl<MOD, const LIMBS: usize> Add for FpElement<MOD, LIMBS>
-where
-    MOD: ConstPrimeMontyParams<LIMBS>,
+where MOD: ConstPrimeMontyParams<LIMBS>
 {
     type Output = Self;
-
-    fn add(self, rhs: Self) -> Self {
-        Self {
-            value: self.value + rhs.value,
-        }
-    }
+    fn add(self, rhs: Self) -> Self { Self { value: self.value + rhs.value } }
 }
 
 impl<MOD, const LIMBS: usize> Sub for FpElement<MOD, LIMBS>
-where
-    MOD: ConstPrimeMontyParams<LIMBS>,
+where MOD: ConstPrimeMontyParams<LIMBS>
 {
     type Output = Self;
-
-    fn sub(self, rhs: Self) -> Self {
-        Self {
-            value: self.value - rhs.value,
-        }
-    }
+    fn sub(self, rhs: Self) -> Self { Self { value: self.value - rhs.value } }
 }
 
 impl<MOD, const LIMBS: usize> Mul for FpElement<MOD, LIMBS>
-where
-    MOD: ConstPrimeMontyParams<LIMBS>,
+where MOD: ConstPrimeMontyParams<LIMBS>
 {
     type Output = Self;
-
-    fn mul(self, rhs: Self) -> Self {
-        Self {
-            value: self.value * rhs.value,
-        }
-    }
+    fn mul(self, rhs: Self) -> Self { Self { value: self.value * rhs.value } }
 }
 
 impl<MOD, const LIMBS: usize> Neg for FpElement<MOD, LIMBS>
-where
-    MOD: ConstPrimeMontyParams<LIMBS>,
+where MOD: ConstPrimeMontyParams<LIMBS>
 {
     type Output = Self;
-
-    fn neg(self) -> Self {
-        Self { value: -self.value }
-    }
+    fn neg(self) -> Self { Self { value: -self.value } }
 }
 
 // ---------------------------------------------------------------------------
-// FieldOps implementation
+// FieldOps
 // ---------------------------------------------------------------------------
 
 impl<MOD, const LIMBS: usize> FieldOps for FpElement<MOD, LIMBS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
 {
-    fn zero() -> Self {
-        Self {
-            value: ConstMontyForm::<MOD, LIMBS>::ZERO,
-        }
-    }
+    fn zero() -> Self { Self { value: ConstMontyForm::<MOD, LIMBS>::ZERO } }
+    fn one()  -> Self { Self { value: ConstMontyForm::<MOD, LIMBS>::ONE  } }
 
-    fn one() -> Self {
-        Self {
-            value: ConstMontyForm::<MOD, LIMBS>::ONE,
-        }
-    }
+    fn is_zero(&self) -> bool { self.value == ConstMontyForm::<MOD, LIMBS>::ZERO }
+    fn is_one (&self) -> bool { self.value == ConstMontyForm::<MOD, LIMBS>::ONE  }
 
-    fn is_zero(&self) -> bool {
-        self.value == ConstMontyForm::<MOD, LIMBS>::ZERO
-    }
-
-    fn is_one(&self) -> bool {
-        self.value == ConstMontyForm::<MOD, LIMBS>::ONE
-    }
-
-    fn negate(&self) -> Self {
-        Self { value: -self.value }
-    }
-
-    fn add(&self, rhs: &Self) -> Self {
-        Self {
-            value: self.value + rhs.value,
-        }
-    }
-
-    fn sub(&self, rhs: &Self) -> Self {
-        Self {
-            value: self.value - rhs.value,
-        }
-    }
-
-    fn mul(&self, rhs: &Self) -> Self {
-        Self {
-            value: self.value * rhs.value,
-        }
-    }
-
-    fn square(&self) -> Self {
-        Self {
-            value: self.value.square(),
-        }
-    }
-
-    fn double(&self) -> Self {
-        Self {
-            value: self.value.double(),
-        }
-    }
+    fn negate(&self) -> Self { Self { value: -self.value } }
+    fn add(&self, rhs: &Self) -> Self { Self { value: self.value + rhs.value } }
+    fn sub(&self, rhs: &Self) -> Self { Self { value: self.value - rhs.value } }
+    fn mul(&self, rhs: &Self) -> Self { Self { value: self.value * rhs.value } }
+    fn square(&self) -> Self { Self { value: self.value.square() } }
+    fn double(&self) -> Self { Self { value: self.value.double() } }
 
     fn invert(&self) -> Option<Self> {
-        self.value
-            .invert()
-            .into_option()
-            .map(|x| Self { value: x })
+        self.value.invert().into_option().map(|x| Self { value: x })
     }
 
-    fn frobenius(&self) -> Self {
-        *self
-    }
-
-    fn norm(&self) -> Self {
-        *self
-    }
-
-    fn trace(&self) -> Self {
-        *self
-    }
+    fn frobenius(&self) -> Self { *self }
+    fn norm(&self)      -> Self { *self }
+    fn trace(&self)     -> Self { *self }
 
     fn sqrt(&self) -> Option<Self> {
-        self.value
-            .sqrt()
-            .into_option()
-            .map(|x| Self { value: x })
+        self.value.sqrt().into_option().map(|x| Self { value: x })
     }
 
-    fn legendre(&self) -> i8 {
-        i8::from(self.value.jacobi_symbol())
-    }
+    fn legendre(&self) -> i8 { i8::from(self.value.jacobi_symbol()) }
 
     fn characteristic() -> Vec<u64> {
-        MOD::MODULUS.as_ref().as_words().to_vec()
+        // We avoid accessing MOD::MODULUS directly because its location in
+        // the crypto-bigint trait hierarchy varies across versions.
+        //
+        // Arithmetic trick: in any field, −1 ≡ p−1 (mod p).
+        // Retrieving the Montgomery form of −1 gives p−1 as a plain Uint,
+        // so p = (p−1) + 1.  This uses only stable ConstMontyForm constants.
+        let minus_one = ConstMontyForm::<MOD, LIMBS>::ZERO - ConstMontyForm::<MOD, LIMBS>::ONE;
+        let p_minus_1: Uint<LIMBS> = minus_one.retrieve();
+        let p = p_minus_1.wrapping_add(&Uint::<LIMBS>::ONE);
+        p.to_words().to_vec()
     }
 
-    fn degree() -> u32 {
-        1
-    }
+    fn degree() -> u32 { 1 }
 }
 
 // ---------------------------------------------------------------------------
-// Tests
+// Unit tests
 // ---------------------------------------------------------------------------
 
 #[cfg(test)]
@@ -243,43 +154,51 @@ mod tests {
     use super::*;
     use crypto_bigint::{const_prime_monty_params, Uint};
 
-    // p = 19
-    const_prime_monty_params!(Fp19Modulus, Uint<1>, "0000000000000013", 2, "Fp mod 19");
+    const_prime_monty_params!(Fp19Modulus, Uint<1>, "0000000000000013", 2);
     type F19 = FpElement<Fp19Modulus, 1>;
 
-    #[test]
-    fn zero_is_zero() {
-        assert!(F19::zero().is_zero());
+    #[test] fn zero_is_zero()            { assert!(F19::zero().is_zero()); }
+    #[test] fn one_is_one()              { assert!(F19::one().is_one()); }
+    #[test] fn degree_is_one()           { assert_eq!(F19::degree(), 1); }
+    #[test] fn characteristic_is_19()   { assert_eq!(F19::characteristic(), vec![19u64]); }
+
+    #[test] fn add_mod_p() {
+        // 17 + 5 = 22 ≡ 3 (mod 19)
+        assert_eq!((F19::from_u64(17) + F19::from_u64(5)).as_limbs()[0], 3);
     }
 
-    #[test]
-    fn one_is_one() {
-        assert!(F19::one().is_one());
+    #[test] fn sub_mod_p() {
+        // 3 − 7 = −4 ≡ 15 (mod 19)
+        assert_eq!((F19::from_u64(3) - F19::from_u64(7)).as_limbs()[0], 15);
     }
 
-    #[test]
-    fn degree_of_base_field_is_one() {
-        assert_eq!(F19::degree(), 1);
+    #[test] fn mul_mod_p() {
+        // 7 × 8 = 56 ≡ 18 (mod 19)
+        assert_eq!((F19::from_u64(7) * F19::from_u64(8)).as_limbs()[0], 18);
     }
 
-    #[test]
-    fn add_mod_p() {
-        let a = F19::from_u64(17);
-        let b = F19::from_u64(5);
-        assert_eq!((a + b).as_limbs()[0], 3);
+    #[test] fn neg_mod_p() {
+        // −3 ≡ 16 (mod 19)
+        assert_eq!((-F19::from_u64(3)).as_limbs()[0], 16);
     }
 
-    #[test]
-    fn mul_mod_p() {
+    #[test] fn inv_works() {
         let a = F19::from_u64(7);
-        let b = F19::from_u64(8);
-        assert_eq!((a * b).as_limbs()[0], 18);
+        assert_eq!((a * a.invert().unwrap()).as_limbs()[0], 1);
     }
 
-    #[test]
-    fn inv_works() {
-        let a = F19::from_u64(7);
-        let inv = a.invert().unwrap();
-        assert_eq!((a * inv).as_limbs()[0], 1);
+    #[test] fn inv_zero_is_none() { assert!(F19::zero().invert().is_none()); }
+
+    #[test] fn pow_works() {
+        // 2^10 = 1024 ≡ 17 (mod 19)
+        use crate::field_ops::FieldOps;
+        assert_eq!(F19::from_u64(2).pow(&[10]).as_limbs()[0], 17);
+    }
+
+    #[test] fn sqrt_of_qr() {
+        // √4 squared must give back 4
+        let four = F19::from_u64(4);
+        let root = four.sqrt().expect("4 is a QR mod 19");
+        assert_eq!((root * root).as_limbs()[0], 4);
     }
 }

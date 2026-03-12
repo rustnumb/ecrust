@@ -11,5 +11,3 @@
 
 pub mod field_ops;
 pub mod fp_element;
-pub mod fp_extension_arithmetic;
-pub mod generic_field;
