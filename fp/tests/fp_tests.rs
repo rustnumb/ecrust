@@ -41,7 +41,7 @@ fn degree_of_base_field_is_one() {
 
 #[test]
 fn add_mod_p() {
-    // 17 + 5 = 22 ≡ 3  (mod 19)
+    // 17 + 5 = 22 \equiv 3  (mod 19)
     let a = F19::from_u64(17);
     let b = F19::from_u64(5);
     assert_eq!((a + b).as_limbs()[0], 3);
@@ -49,7 +49,7 @@ fn add_mod_p() {
 
 #[test]
 fn sub_mod_p() {
-    // 3 − 7 = −4 ≡ 15  (mod 19)
+    // 3 − 7 = −4 \equiv 15  (mod 19)
     let a = F19::from_u64(3);
     let b = F19::from_u64(7);
     assert_eq!((a - b).as_limbs()[0], 15);
@@ -57,7 +57,7 @@ fn sub_mod_p() {
 
 #[test]
 fn mul_mod_p() {
-    // 7 × 8 = 56 ≡ 18  (mod 19)
+    // 7 x 8 = 56 \equiv 18  (mod 19)
     let a = F19::from_u64(7);
     let b = F19::from_u64(8);
     assert_eq!((a * b).as_limbs()[0], 18);
@@ -65,14 +65,14 @@ fn mul_mod_p() {
 
 #[test]
 fn neg_mod_p() {
-    // −3 ≡ 16  (mod 19)
+    // −3 \equiv 16  (mod 19)
     let a = F19::from_u64(3);
     assert_eq!((-a).as_limbs()[0], 16);
 }
 
 #[test]
 fn square() {
-    // 4² = 16  (mod 19)
+    // 4^2 \equiv 16  (mod 19)
     let a = F19::from_u64(4);
     assert_eq!(a.square().as_limbs()[0], 16);
 }
@@ -86,7 +86,7 @@ fn double() {
 
 #[test]
 fn inv_works() {
-    // 7 × 7⁻¹ ≡ 1  (mod 19)
+    // 7 × 7^-1 \equiv 1  (mod 19)
     let a   = F19::from_u64(7);
     let inv = a.invert().unwrap();
     assert_eq!((a * inv).as_limbs()[0], 1);
