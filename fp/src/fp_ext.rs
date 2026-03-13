@@ -33,9 +33,8 @@
 //! | Norm        | Product of M Galois conjugates   | O(M^3 log p)        |
 //! | Trace       | Sum of M Galois conjugates       | O(M^2 log p)        |
 
-
-use std::marker::PhantomData;
 use core::ops::{Add, Mul, Neg, Sub};
+use std::marker::PhantomData;
 
 use crypto_bigint::modular::ConstPrimeMontyParams;
 
@@ -98,7 +97,7 @@ where
     P: IrreduciblePoly<MOD, LIMBS, M>,
 {
     /// Coefficients in ascending degree: `coeffs[i]` = coefficient of `x^i`.
-   pub coeffs: [FpElement<MOD, LIMBS>; M],
+    pub coeffs: [FpElement<MOD, LIMBS>; M],
     _phantom: PhantomData<P>,
 }
 
@@ -113,7 +112,10 @@ where
 {
     /// Construct from a coefficient array `[a_0, ..., a_{M-1}]`.
     pub fn new(coeffs: [FpElement<MOD, LIMBS>; M]) -> Self {
-        Self { coeffs, _phantom: PhantomData }
+        Self {
+            coeffs,
+            _phantom: PhantomData,
+        }
     }
 
     /// Embed a base-field element as `a + 0x + ... + 0x^{M-1}`.
@@ -140,7 +142,10 @@ where
     P: IrreduciblePoly<MOD, LIMBS, M>,
 {
     fn clone(&self) -> Self {
-        Self { coeffs: self.coeffs.clone(), _phantom: PhantomData }
+        Self {
+            coeffs: self.coeffs.clone(),
+            _phantom: PhantomData,
+        }
     }
 }
 
@@ -150,7 +155,8 @@ where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
     [FpElement<MOD, LIMBS>; M]: Copy,
-{}
+{
+}
 
 impl<MOD, const LIMBS: usize, const M: usize, P> PartialEq for FpExt<MOD, LIMBS, M, P>
 where
@@ -158,7 +164,10 @@ where
     P: IrreduciblePoly<MOD, LIMBS, M>,
 {
     fn eq(&self, other: &Self) -> bool {
-        self.coeffs.iter().zip(other.coeffs.iter()).all(|(a, b)| a == b)
+        self.coeffs
+            .iter()
+            .zip(other.coeffs.iter())
+            .all(|(a, b)| a == b)
     }
 }
 
@@ -166,7 +175,8 @@ impl<MOD, const LIMBS: usize, const M: usize, P> Eq for FpExt<MOD, LIMBS, M, P>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-{}
+{
+}
 
 impl<MOD, const LIMBS: usize, const M: usize, P> std::fmt::Debug for FpExt<MOD, LIMBS, M, P>
 where
@@ -196,14 +206,17 @@ fn poly_add<MOD, const LIMBS: usize>(
     a: &[FpElement<MOD, LIMBS>],
     b: &[FpElement<MOD, LIMBS>],
 ) -> Poly<MOD, LIMBS>
-where MOD: ConstPrimeMontyParams<LIMBS>
+where
+    MOD: ConstPrimeMontyParams<LIMBS>,
 {
     let len = a.len().max(b.len());
-    (0..len).map(|i| {
-        let ai = a.get(i).cloned().unwrap_or_else(|| FpElement::zero());
-        let bi = b.get(i).cloned().unwrap_or_else(|| FpElement::zero());
-        FieldOps::add(&ai, &bi)
-    }).collect()
+    (0..len)
+        .map(|i| {
+            let ai = a.get(i).cloned().unwrap_or_else(|| FpElement::zero());
+            let bi = b.get(i).cloned().unwrap_or_else(|| FpElement::zero());
+            FieldOps::add(&ai, &bi)
+        })
+        .collect()
 }
 
 /// Coefficient-wise subtraction.
@@ -211,14 +224,17 @@ fn poly_sub<MOD, const LIMBS: usize>(
     a: &[FpElement<MOD, LIMBS>],
     b: &[FpElement<MOD, LIMBS>],
 ) -> Poly<MOD, LIMBS>
-where MOD: ConstPrimeMontyParams<LIMBS>
+where
+    MOD: ConstPrimeMontyParams<LIMBS>,
 {
     let len = a.len().max(b.len());
-    (0..len).map(|i| {
-        let ai = a.get(i).cloned().unwrap_or_else(|| FpElement::zero());
-        let bi = b.get(i).cloned().unwrap_or_else(|| FpElement::zero());
-        FieldOps::sub(&ai, &bi)
-    }).collect()
+    (0..len)
+        .map(|i| {
+            let ai = a.get(i).cloned().unwrap_or_else(|| FpElement::zero());
+            let bi = b.get(i).cloned().unwrap_or_else(|| FpElement::zero());
+            FieldOps::sub(&ai, &bi)
+        })
+        .collect()
 }
 
 /// Multiply every coefficient by a scalar.
@@ -226,7 +242,8 @@ fn poly_scale<MOD, const LIMBS: usize>(
     a: &[FpElement<MOD, LIMBS>],
     s: &FpElement<MOD, LIMBS>,
 ) -> Poly<MOD, LIMBS>
-where MOD: ConstPrimeMontyParams<LIMBS>
+where
+    MOD: ConstPrimeMontyParams<LIMBS>,
 {
     a.iter().map(|ai| FieldOps::mul(ai, s)).collect()
 }
@@ -236,9 +253,12 @@ fn poly_mul<MOD, const LIMBS: usize>(
     a: &[FpElement<MOD, LIMBS>],
     b: &[FpElement<MOD, LIMBS>],
 ) -> Poly<MOD, LIMBS>
-where MOD: ConstPrimeMontyParams<LIMBS>
+where
+    MOD: ConstPrimeMontyParams<LIMBS>,
 {
-    if a.is_empty() || b.is_empty() { return vec![]; }
+    if a.is_empty() || b.is_empty() {
+        return vec![];
+    }
     let mut out = vec![FpElement::zero(); a.len() + b.len() - 1];
     for (i, ai) in a.iter().enumerate() {
         for (j, bj) in b.iter().enumerate() {
@@ -252,9 +272,12 @@ where MOD: ConstPrimeMontyParams<LIMBS>
 /// Remove trailing zero coefficients (i.e. normalise to the canonical form
 /// where the leading coefficient is non-zero, or the empty Vec for the zero poly).
 fn poly_normalize<MOD, const LIMBS: usize>(mut a: Poly<MOD, LIMBS>) -> Poly<MOD, LIMBS>
-where MOD: ConstPrimeMontyParams<LIMBS>
+where
+    MOD: ConstPrimeMontyParams<LIMBS>,
 {
-    while a.last().map_or(false, |c| c.is_zero()) { a.pop(); }
+    while a.last().map_or(false, |c| c.is_zero()) {
+        a.pop();
+    }
     a
 }
 
@@ -266,7 +289,8 @@ fn poly_divmod<MOD, const LIMBS: usize>(
     a: &[FpElement<MOD, LIMBS>],
     b: &[FpElement<MOD, LIMBS>],
 ) -> (Poly<MOD, LIMBS>, Poly<MOD, LIMBS>)
-where MOD: ConstPrimeMontyParams<LIMBS>
+where
+    MOD: ConstPrimeMontyParams<LIMBS>,
 {
     let b = poly_normalize(b.to_vec());
     assert!(!b.is_empty(), "poly_divmod: divisor is zero");
@@ -277,7 +301,10 @@ where MOD: ConstPrimeMontyParams<LIMBS>
         return (vec![], rem);
     }
 
-    let b_lead_inv = b.last().unwrap().invert()
+    let b_lead_inv = b
+        .last()
+        .unwrap()
+        .invert()
         .expect("poly_divmod: leading coefficient of b is not invertible");
 
     let out_len = rem.len() - b.len() + 1;
@@ -288,7 +315,9 @@ where MOD: ConstPrimeMontyParams<LIMBS>
         // The current highest remaining degree is i + deg(b).
         let rem_deg = i + b.len() - 1;
         let coeff = FieldOps::mul(&rem[rem_deg], &b_lead_inv);
-        if coeff.is_zero() { continue; }
+        if coeff.is_zero() {
+            continue;
+        }
         quot[i] = coeff.clone();
         for (j, bj) in b.iter().enumerate() {
             let t = FieldOps::mul(&coeff, bj);
@@ -310,16 +339,21 @@ fn poly_reduce<MOD, const LIMBS: usize, const M: usize>(
     a: Vec<FpElement<MOD, LIMBS>>,
     modulus: &[FpElement<MOD, LIMBS>; M],
 ) -> [FpElement<MOD, LIMBS>; M]
-where MOD: ConstPrimeMontyParams<LIMBS>
+where
+    MOD: ConstPrimeMontyParams<LIMBS>,
 {
     let mut a = a;
     // Ensure we have at least M slots.
-    while a.len() < M { a.push(FpElement::zero()); }
+    while a.len() < M {
+        a.push(FpElement::zero());
+    }
 
     // Eliminate all terms of degree >= M, from the top down.
     for i in (M..a.len()).rev() {
         let lead = a[i].clone();
-        if lead.is_zero() { continue; }
+        if lead.is_zero() {
+            continue;
+        }
         // x^i = x^{i−M}  x^M  \equiv  −x^{i−M}  Σ_j modulus[j]x^j
         // → subtract leadmodulus[j] from position (i−M+j) for each j.
         for j in 0..M {
@@ -330,7 +364,13 @@ where MOD: ConstPrimeMontyParams<LIMBS>
     }
 
     // Copy the first M coefficients into a fixed-size array.
-    std::array::from_fn(|i| if i < a.len() { a[i].clone() } else { FpElement::zero() })
+    std::array::from_fn(|i| {
+        if i < a.len() {
+            a[i].clone()
+        } else {
+            FpElement::zero()
+        }
+    })
 }
 
 /// Polynomial extended GCD over Fp.
@@ -354,18 +394,20 @@ where MOD: ConstPrimeMontyParams<LIMBS>
 fn poly_ext_gcd<MOD, const LIMBS: usize>(
     a: Poly<MOD, LIMBS>,
     b: Poly<MOD, LIMBS>,
-) -> (Poly<MOD, LIMBS>, Poly<MOD, LIMBS>)   // (gcd, s)
-where MOD: ConstPrimeMontyParams<LIMBS>
+) -> (Poly<MOD, LIMBS>, Poly<MOD, LIMBS>)
+// (gcd, s)
+where
+    MOD: ConstPrimeMontyParams<LIMBS>,
 {
     let mut r0 = poly_normalize(a);
     let mut r1 = poly_normalize(b);
     let mut s0: Poly<MOD, LIMBS> = vec![FpElement::one()]; // 1
-    let mut s1: Poly<MOD, LIMBS> = vec![];                  // 0
+    let mut s1: Poly<MOD, LIMBS> = vec![]; // 0
 
     while !r1.is_empty() {
         let (q, r) = poly_divmod(&r0, &r1);
         // s_new = s0 − qs1
-        let q_s1  = poly_mul(&q, &s1);
+        let q_s1 = poly_mul(&q, &s1);
         let s_new = poly_normalize(poly_sub(&s0, &q_s1));
         s0 = s1;
         s1 = s_new;
@@ -386,7 +428,9 @@ where
     P: IrreduciblePoly<MOD, LIMBS, M>,
 {
     type Output = Self;
-    fn add(self, rhs: Self) -> Self { FieldOps::add(&self, &rhs) }
+    fn add(self, rhs: Self) -> Self {
+        FieldOps::add(&self, &rhs)
+    }
 }
 
 impl<MOD, const LIMBS: usize, const M: usize, P> Sub for FpExt<MOD, LIMBS, M, P>
@@ -395,7 +439,9 @@ where
     P: IrreduciblePoly<MOD, LIMBS, M>,
 {
     type Output = Self;
-    fn sub(self, rhs: Self) -> Self { FieldOps::sub(&self, &rhs) }
+    fn sub(self, rhs: Self) -> Self {
+        FieldOps::sub(&self, &rhs)
+    }
 }
 
 impl<MOD, const LIMBS: usize, const M: usize, P> Mul for FpExt<MOD, LIMBS, M, P>
@@ -404,7 +450,9 @@ where
     P: IrreduciblePoly<MOD, LIMBS, M>,
 {
     type Output = Self;
-    fn mul(self, rhs: Self) -> Self { FieldOps::mul(&self, &rhs) }
+    fn mul(self, rhs: Self) -> Self {
+        FieldOps::mul(&self, &rhs)
+    }
 }
 
 impl<MOD, const LIMBS: usize, const M: usize, P> Neg for FpExt<MOD, LIMBS, M, P>
@@ -413,7 +461,9 @@ where
     P: IrreduciblePoly<MOD, LIMBS, M>,
 {
     type Output = Self;
-    fn neg(self) -> Self { FieldOps::negate(&self) }
+    fn neg(self) -> Self {
+        FieldOps::negate(&self)
+    }
 }
 
 // ===========================================================================
@@ -492,7 +542,9 @@ where
     /// `gcd(self, f) = g` (a nonzero constant if self ≠ 0) and setting
     /// `self⁻¹ = sg⁻¹ mod f`.
     fn invert(&self) -> Option<Self> {
-        if self.is_zero() { return None; }
+        if self.is_zero() {
+            return None;
+        }
 
         // Build the full irreducible polynomial as a Vec:
         // f = [c_0, c_1, ..., c_{M-1}, 1]  (coefficients in ascending degree)
@@ -503,8 +555,8 @@ where
         let (gcd, s) = poly_ext_gcd(a, f);
 
         // gcd is a nonzero constant in Fp (since f is irreducible and a ≠ 0).
-        let g0 = gcd.into_iter().next()?;   // the constant term = gcd value
-        let g_inv = g0.invert()?;            // invert in Fp
+        let g0 = gcd.into_iter().next()?; // the constant term = gcd value
+        let g_inv = g0.invert()?; // invert in Fp
 
         // self⁻¹ = s(x)  g⁻¹  reduced mod f
         let s_scaled = poly_scale(&s, &g_inv);
@@ -530,10 +582,10 @@ where
     /// embedded in Fp^M for uniformity with the [`FieldOps`] signature.
     fn norm(&self) -> Self {
         let mut result = self.clone();
-        let mut conj   = self.frobenius();
+        let mut conj = self.frobenius();
         for _ in 1..M {
             result = <Self as FieldOps>::mul(&result, &conj);
-            conj   = conj.frobenius();
+            conj = conj.frobenius();
         }
         result
     }
@@ -543,10 +595,10 @@ where
     /// Like `norm`, the result lies in Fp but is returned embedded in Fp^M.
     fn trace(&self) -> Self {
         let mut result = self.clone();
-        let mut conj   = self.frobenius();
+        let mut conj = self.frobenius();
         for _ in 1..M {
             result = <Self as FieldOps>::add(&result, &conj);
-            conj   = conj.frobenius();
+            conj = conj.frobenius();
         }
         result
     }
