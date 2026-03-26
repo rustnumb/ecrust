@@ -42,10 +42,6 @@ pub trait FieldOps:
     ///
     /// `&self^exp` (type: Self)
     ///
-    /// # Todo
-    ///
-    /// Implement constant time version.
-    ///
     /// # Why `<Self as FieldOps>::mul` instead of `result.mul(&base)`
     ///
     /// `FieldOps` requires `Mul<Output = Self>` as a supertrait, so `Self`
