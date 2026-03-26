@@ -1,6 +1,7 @@
 //! Core trait that every field element in the tower must implement.
 
-use std::ops::{Add, Sub, Mul, Neg};
+use std::ops::{Add, Mul, Neg, Sub};
+// use subtle::ConditionallySelectable;
 
 pub trait FieldOps:
     Sized
@@ -11,6 +12,8 @@ pub trait FieldOps:
     + Sub<Output = Self>
     + Mul<Output = Self>
     + Neg<Output = Self>
+// const time impl will have the following trait too
+// + ConditionallySelectable
 {
     fn zero() -> Self;
     fn one() -> Self;
@@ -28,7 +31,16 @@ pub trait FieldOps:
         rhs.invert().map(|inv| self.mul(&inv))
     }
 
-    /// `self^exp` using square-and-multiply (little-endian bit order).
+    /// `self^exp` using square-and multiply (litte-endian bit order)
+    ///
+    /// # Arguments
+    ///
+    /// * `&self` - Finite field element (type: self)
+    /// * `exp` - Exponent (type: &[u64])
+    ///
+    /// # Returns
+    ///
+    /// `&self^exp` (type: Self)
     ///
     /// # Why `<Self as FieldOps>::mul` instead of `result.mul(&base)`
     ///
@@ -44,9 +56,9 @@ pub trait FieldOps:
     ///
     /// Fully-qualified syntax `<Self as FieldOps>::mul(...)` bypasses method
     /// resolution entirely and calls exactly the trait method we want.
-    fn pow(&self, exp: &[u64]) -> Self {
+    fn pow_vartime(&self, exp: &[u64]) -> Self {
         let mut result = Self::one();
-        let mut base   = self.clone();
+        let mut base = self.clone();
 
         for &limb in exp {
             let mut limb = limb;
@@ -55,6 +67,47 @@ pub trait FieldOps:
                     result = <Self as FieldOps>::mul(&result, &base);
                 }
                 base = <Self as FieldOps>::square(&base);
+                limb >>= 1;
+            }
+        }
+        result
+    }
+
+    /// `self^pow` in constant time using a Montgomery ladder
+    ///
+    /// Uses a Montgomery ladder to compute `self^exp`
+    ///
+    /// # Arguments
+    ///
+    /// * `&self` - Element of $\mathbb{F}_p$ (type: self)
+    /// * `exp` - Exponent (type: &[u64])
+    ///
+    /// # Returns
+    ///
+    /// The value `self^pow` (type: Self)
+    ///
+    /// # Todo
+    ///
+    /// Use `subtle` and `conditional_swap` to make true constant time
+    fn pow(&self, exp: &[u64]) -> Self {
+        let mut result = Self::one();
+        let mut base = self.clone();
+
+        for &limb in exp.iter().rev() {
+            let mut limb = limb.reverse_bits();
+            for _ in 0..64 {
+                let mybit = limb & 1;
+                // TODO: true constant time implementation will have the below
+                // conditional_swap(&base, &result, ((limb & 1) as u8).into());
+                if mybit == 1 {
+                    (result, base) = (base, result);
+                }
+                base = <Self as FieldOps>::mul(&result, &base);
+                result = <Self as FieldOps>::square(&result);
+                // conditional_swap(&base, &result, ((limb & 1) as u8).into());
+                if mybit == 1 {
+                    (result, base) = (base, result);
+                }
                 limb >>= 1;
             }
         }
