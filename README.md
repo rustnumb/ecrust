@@ -25,6 +25,7 @@ The core of the library. Provides constant-time, Montgomery-form field arithmeti
 - **`FpElement<MOD, LIMBS>`** — Elements of the prime field Fp = Z/pZ stored in Montgomery representation. Supports addition, subtraction, multiplication, squaring, inversion, square roots, Legendre symbol, and exponentiation via square-and-multiply.
 - **`FpExt<MOD, LIMBS, M, P>`** — Elements of the extension field Fp^M = Fp\[x\]/(f(x)) for any degree M and any user-supplied irreducible polynomial. Implements schoolbook polynomial multiplication with modular reduction, inversion via polynomial extended GCD, Frobenius endomorphism, field norm, and field trace.
 - **`FieldOps` trait** — A unified algebraic interface that both `FpElement` and `FpExt` implement, enabling generic code over any level of the field tower.
+- **`F2Element`** - Elements of the prime field F2 with two elements, stored as Uint<1>. Supports addition, subtraction, multiplication, squaring, inversion, square roots, Legendre symbol, and exponentiation.
 
 ### `ec` — Elliptic Curve Group Operations
 
