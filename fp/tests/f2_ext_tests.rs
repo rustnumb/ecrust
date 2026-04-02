@@ -217,5 +217,57 @@ fn frobenius_concrete_values() {
 // Norm and trace
 // -----------------------------------------------------------------------
 
+#[test]
+fn norm_concrete_values() {
+    let a = elt(0b1_1001);         // x^4 + x^3 + 1
+    assert_eq!(a.norm(), elt(0b1));
+    let b = elt(0b101_0011);       // x^6 + x^4 + x + 1
+    assert_eq!(b.norm(), elt(0b1));
+}
+
+#[test]
+fn trace_concrete_values() {
+    let a = elt(0b1_1001);         // x^4 + x^3 + 1
+    assert_eq!(a.trace(), elt(0b0));
+    let b = elt(0b101_0011);       // x^6 + x^4 + x + 1
+    assert_eq!(b.trace(), elt(0b0));
+    let e = elt(0b1101_0100);      // x^7 + x^6 + x^4 + x^2
+    assert_eq!(e.trace(), elt(0b1));
+}
+
+
+// -----------------------------------------------------------------------
+// pow
+// -----------------------------------------------------------------------
+
+#[test]
+fn pow_zero_is_one()  {
+    let a = elt(0b1_1001);         // x^4 + x^3 + 1
+    assert!(a.pow(&[0]).is_one());
+}
+
+#[test]
+fn pow_one_is_self()  {
+    let a = elt(0b1_1001);         // x^4 + x^3 + 1
+    assert_eq!(a.pow(&[1]), a);
+}
+
+#[test]
+fn pow_concrete_values() {
+    let a = elt(0b1_1001);                            // x^4 + x^3 + 1
+    assert_eq!(a.pow(&[39]), elt(0b110_0010));         // a^39 = x^6 + x^5 + x = 0b110_0010
+    let b = elt(0b101_0011);                          // x^6 + x^4 + x + 1
+    assert_eq!(b.pow(&[73]), elt(0b100_0011));         // b^73 = x^6 + x + 1 = 0b100_0011
+    let e = elt(0b1101_0100);                          // x^7 + x^6 + x^4 + x^2
+    assert_eq!(e.pow(&[111]), elt(0b1000));             // e^111 = x^3 = 0b1000
+}
+
+#[test]
+
+fn pow_group_order() {
+    let a = elt(0b1_1001);                            // x^4 + x^3 + 1
+    assert_eq!(a.pow(&[255]), elt(0b1));
+}
+
 
 
