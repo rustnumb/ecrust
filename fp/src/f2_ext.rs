@@ -143,23 +143,29 @@ where
     let m = P::degree();
     let modulus = P::modulus();
 
-    // lower = modulus without the x^m term
-    let lower = modulus ^ (Uint::<LIMBS>::ONE << m);
-
     let mut res = Uint::<LIMBS>::ZERO;
     let mut cur = a.clone();        // current term appearing in the sum
 
     for i in 0..m {
         let bit = b.bit(i as u32);
 
-        // if bit(b, i) then res += cur (sum here is just xor-ing)
+        // if bit(b, i) = 1 then res += cur (sum here is just xor-ing)
         let res_xor = res ^ cur;
         res = Uint::<LIMBS>::ct_select(&res, &res_xor, bit.into());
 
-        // multiply cur by x and reduce modulo P
+        // We now multiply cur by x and reduce modulo P
+
         let top = cur.bit((m-1) as u32);
+        // top represents the bit of cur at index (m-1), which is the highest coefficient of cur mod modulus
+
         let shifted = cur << 1;
-        let reduced = shifted ^ lower;      // cur = shifted + top*lower
+        // if top = 0 then the x^(m-1) term in cur was 0,
+        // so the term x^m does not appear in shifted and we don't need
+        // to simplify shifted using the equality x^m = lower.
+        let reduced = shifted ^ modulus;
+        // if top = 1 then the term x^(m-1) appears in cur,
+        // so x^m appears in shifted, and we need to simplify this using the equality x^m = lower.
+        // It suffices to add modulus, because this adds lower and kills the leading term.
         cur = Uint::<LIMBS>::ct_select(&shifted, &reduced, top.into());
     }
 
@@ -174,9 +180,6 @@ where
     let m = P::degree();
     let modulus = P::modulus();
 
-    // lower = modulus without the x^m term
-    let lower = modulus ^ (Uint::<LIMBS>::ONE << m);
-
     let mut res = Uint::<LIMBS>::ZERO;
     let mut cur = Uint::<LIMBS>::ONE;   // cur = x^(2i) mod P, initially i = 0
 
@@ -190,12 +193,12 @@ where
         // multiply cur by x^2 and reduce mod P (we do so in 2 steps)
         let top1 = cur.bit((m-1) as u32);
         let shifted1 = cur << 1;
-        let reduced1 = shifted1 ^ lower;
+        let reduced1 = shifted1 ^ modulus;
         cur = Uint::<LIMBS>::ct_select(&shifted1, &reduced1, top1.into());
 
         let top2 = cur.bit((m-1) as u32);
         let shifted2 = cur << 1;
-        let reduced2 = shifted2 ^ lower;
+        let reduced2 = shifted2 ^ modulus;
         cur = Uint::<LIMBS>::ct_select(&shifted2, &reduced2, top2.into());
     }
 
@@ -221,18 +224,19 @@ where
     let m = P::degree();
     assert!(m > 0);
 
-    let mut beta = *a;
+    let mut beta = a.clone();
     let mut r= 1usize;
 
-    let top = (m - 1).ilog2();
+    let top = (m - 1).ilog2();      // number of bits of m-1
 
     for i in (0..top).rev() {
-        let beta_frob = pow_2k_helper::<LIMBS, P>(&beta, &r);
-        beta = mul_helper::<LIMBS, P>(&beta, &beta_frob);
-        r <<= 1;
+        let beta_frob = pow_2k_helper::<LIMBS, P>(&beta, &r);       // computing beta_r^(2r)
+        beta = mul_helper::<LIMBS, P>(&beta, &beta_frob);                       // computing beta_(2r) = beta_r * beta_r^(2r)
+        r <<= 1;            // doubling r
 
         if (((m - 1) >> i) & 1) == 1 {
-            beta = mul_helper::<LIMBS, P>(&beta, a);
+            beta = mul_helper::<LIMBS, P>(&square_helper::<LIMBS, P>(&beta), a);
+            // the current bit being 1, we compute beta_(2r+1) = a * beta_(2r)^2
             r += 1;
         }
     }
@@ -294,7 +298,7 @@ where
     P: BinaryIrreducible<LIMBS>
 {
 
-    // to be done: invert, legendre, sqrt
+    // to be done: legendre, sqrt
     fn zero() -> Self {
         Self::from_uint( Uint::<LIMBS>::ZERO)
     }
