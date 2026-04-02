@@ -38,7 +38,7 @@ Provides structures for isogeny maps between elliptic curves and their kernel su
 
 ### Prerequisites
 
-- **Rust** (edition 2024) — install via [rustup](https://rustup.rs/)
+- **Rust** — install via [rustup](https://rustup.rs/)
 
 ### Build
 
@@ -132,14 +132,10 @@ ecrust/
         └── isogeny_tests.rs
 ```
 
-## Roadmap
-
-- [ ] Full elliptic curve group law (point addition, doubling, scalar multiplication)
-- [ ] Projective / Jacobian coordinates for constant-time point arithmetic
-- [ ] Vélu's formulas for isogeny evaluation
-- [ ] Optimized square root (Tonelli-Shanks) for extension fields
-- [ ] Binary field F₂ and F₂^m support (`f2.rs`, `f2m.rs`)
-- [ ] Benchmarks
+## Authors 
+- Gustavo Banegas 
+- Martin Azon
+- Sam Frengley
 
 ## License
 
