@@ -6,7 +6,7 @@ use crypto_bigint::{
     modular::{ConstMontyForm, ConstPrimeMontyParams},
     Uint,
 };
-
+use subtle::{CtOption, Choice, ConditionallySelectable, ConstantTimeEq};
 use crate::field_ops::FieldOps;
 
 /// An element of the prime field Fp = Z/pZ, stored in Montgomery form.
@@ -62,6 +62,50 @@ where
     }
 }
 
+
+
+// ---------------------------------------------------------------------------
+// CtOption functionalities
+// ---------------------------------------------------------------------------
+
+impl<MOD, const LIMBS: usize> Default for FpElement<MOD, LIMBS>
+where
+    MOD: ConstPrimeMontyParams<LIMBS>,
+{
+    fn default() -> Self { Self::zero() }
+}
+
+impl<MOD, const LIMBS: usize> ConditionallySelectable for FpElement<MOD, LIMBS>
+where
+    MOD: ConstPrimeMontyParams<LIMBS>,
+{
+    fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
+        Self{ value: ConstMontyForm::conditional_select(&a.value, &b.value, choice) }
+    }
+
+    fn conditional_swap(a: &mut Self, b: &mut Self, choice: Choice) {
+        ConstMontyForm::conditional_swap(&mut a.value, &mut b.value, choice)
+    }
+
+    fn conditional_assign(&mut self, other: &Self, choice: Choice) {
+        self.value.conditional_assign(&other.value, choice)
+    }
+}
+
+impl<MOD, const LIMBS: usize> ConstantTimeEq for FpElement<MOD, LIMBS>
+where
+    MOD: ConstPrimeMontyParams<LIMBS>
+{
+    fn ct_eq(&self, other: &Self) -> Choice {
+        Choice::from(ConstMontyForm::ct_eq(&self.value, &other.value))
+    }
+
+    fn ct_ne(&self, other: &Self) -> Choice {
+        Choice::from(ConstMontyForm::ct_ne(&self.value, &other.value))
+    }
+}
+
+
 // ---------------------------------------------------------------------------
 // Operator overloads
 // ---------------------------------------------------------------------------
@@ -105,8 +149,8 @@ where
     fn zero() -> Self { Self { value: ConstMontyForm::<MOD, LIMBS>::ZERO } }
     fn one()  -> Self { Self { value: ConstMontyForm::<MOD, LIMBS>::ONE  } }
 
-    fn is_zero(&self) -> bool { self.value == ConstMontyForm::<MOD, LIMBS>::ZERO }
-    fn is_one (&self) -> bool { self.value == ConstMontyForm::<MOD, LIMBS>::ONE  }
+    fn is_zero(&self) -> Choice { Self::ct_eq(self, &Self::zero()) }
+    fn is_one (&self) -> Choice { Self::ct_eq(self, &Self::one()) }
 
     fn negate(&self) -> Self { Self { value: -self.value } }
     fn add(&self, rhs: &Self) -> Self { Self { value: self.value + rhs.value } }
@@ -115,8 +159,11 @@ where
     fn square(&self) -> Self { Self { value: self.value.square() } }
     fn double(&self) -> Self { Self { value: self.value.double() } }
 
-    fn invert(&self) -> Option<Self> {
-        self.value.invert().into_option().map(|x| Self { value: x })
+    fn invert(&self) -> CtOption<Self> {
+        let ct_opt_inv = self.value.invert();
+        let inv = ct_opt_inv.unwrap();
+        let is_invertible = ct_opt_inv.is_some();
+        CtOption::new(Self{ value: inv}, is_invertible)
     }
 
     fn frobenius(&self) -> Self { *self }
@@ -158,7 +205,7 @@ mod tests {
     type F19 = FpElement<Fp19Modulus, 1>;
 
     #[test] fn zero_is_zero()            { assert!(F19::zero().is_zero()); }
-    #[test] fn one_is_one()              { assert!(F19::one().is_one()); }
+    #[test] fn one_is_one()              { assert!(F19::one().is_one().unwrap()); }
     #[test] fn degree_is_one()           { assert_eq!(F19::degree(), 1); }
     #[test] fn characteristic_is_19()   { assert_eq!(F19::characteristic(), vec![19u64]); }
 
