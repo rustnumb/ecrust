@@ -3,7 +3,7 @@
 use core::ops::{Add, Mul, Neg, Sub};
 use std::marker::PhantomData;
 use crypto_bigint::{Uint, CtSelect};
-use subtle::{ConstantTimeEq};
+use subtle::{Choice, CtOption, ConditionallySelectable, ConstantTimeEq};
 use crate::field_ops::FieldOps;
 
 
@@ -101,6 +101,51 @@ where
         write!(f, "F2Ext({:?})", self.value)
     }
 }
+
+
+// ---------------------------------------------------------------------------
+// CtOption functionalities
+// ---------------------------------------------------------------------------
+
+impl<const LIMBS: usize, P> Default for F2Ext<LIMBS, P>
+where
+    P: BinaryIrreducible<LIMBS>
+{
+    fn default() -> Self {
+        Self::zero()
+    }
+}
+
+impl<const LIMBS: usize, P> ConditionallySelectable for F2Ext<LIMBS, P>
+where
+    P: BinaryIrreducible<LIMBS>
+{
+    fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
+        Self::new(Uint::<LIMBS>::conditional_select(&a.value, &b.value, choice))
+    }
+
+    fn conditional_swap(a: &mut Self, b: &mut Self, choice: Choice) {
+        Uint::<LIMBS>::conditional_swap(&mut a.value, &mut b.value, choice)
+    }
+
+    fn conditional_assign(&mut self, other: &Self, choice: Choice) {
+        self.value.conditional_assign(&other.value, choice)
+    }
+}
+
+impl<const LIMBS: usize, P> ConstantTimeEq for F2Ext<LIMBS, P>
+where
+    P: BinaryIrreducible<LIMBS>
+{
+    fn ct_eq(&self, other: &Self) -> Choice {
+        Choice::from(Uint::<LIMBS>::ct_eq(&self.value, &other.value))
+    }
+
+    fn ct_ne(&self, other: &Self) -> Choice {
+        Choice::from(Uint::<LIMBS>::ct_ne(&self.value, &other.value))
+    }
+}
+
 
 
 // ---------------------------------------------------------------------------
@@ -222,7 +267,9 @@ where
 {
     // the degree m is public so its bits are public too!
     let m = P::degree();
-    assert!(m > 0);
+    if m == 1 {
+        return a.clone();
+    }
 
     let mut beta = a.clone();
     let mut r= 1usize;
@@ -307,13 +354,11 @@ where
         Self::from_uint(Uint::<LIMBS>::ONE)
     }
 
-    fn is_zero(&self) -> bool {
-        bool::from(self.value.ct_eq(&Uint::<LIMBS>::ZERO))
+    fn is_zero(&self) -> Choice {
+        Self::ct_eq(self, &Self::zero())
     }
 
-    fn is_one(&self) -> bool {
-        bool::from(self.value.ct_eq(&Uint::<LIMBS>::ONE))
-    }
+    fn is_one(&self) -> Choice { Self::ct_eq(self, &Self::one()) }
 
     fn negate(&self) -> Self {
         // we have x = -x for any element x of a binary field
@@ -341,18 +386,9 @@ where
         Self::zero()
     }
 
-    fn invert(&self) -> Option<Self> {
-        if self.is_zero() {
-            return None;
-        }
-
-        let m = P::degree();
-        if m == 1 {
-            return Some(*self);
-        }
-
-        let inv = Self::new( itoh_tsujii::<LIMBS, P>(&self.value) );
-        Some(inv)
+    fn invert(&self) -> CtOption<Self> {
+        let is_invertible = !self.is_zero();
+        CtOption::new(Self::new(itoh_tsujii::<LIMBS, P>(&self.value)), is_invertible)
     }
 
     fn frobenius(&self) -> Self {
