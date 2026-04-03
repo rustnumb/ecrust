@@ -16,7 +16,7 @@ use fp::fp_element::FpElement;      // the concrete type
 //
 // const_prime_monty_params!(TypeName, UintType, hex_modulus, label)
 // ---------------------------------------------------------------------------
-//0000000000000013 -> 19 in Hexdecimal
+//0000000000000013 -> 19 in Hexadecimal
 // 2 is a generator (primitive root) of Z/pZ 
 const_prime_monty_params!(Fp19Modulus, Uint<1>, "0000000000000013", 2);
 
@@ -28,12 +28,12 @@ type F19 = FpElement<Fp19Modulus, 1>;
 
 #[test]
 fn zero_is_zero() {
-    assert!(F19::zero().is_zero());
+    assert!(bool::from(F19::zero().is_zero()));
 }
 
 #[test]
 fn one_is_one() {
-    assert!(F19::one().is_one());
+    assert!(bool::from(F19::one().is_one()));
 }
 
 #[test]
@@ -96,7 +96,7 @@ fn inv_works() {
 
 #[test]
 fn inv_zero_is_none() {
-    assert!(F19::zero().invert().is_none());
+    assert!(bool::from(F19::zero().invert().is_none()));
 }
 
 #[test]

@@ -2,7 +2,7 @@
 
 use core::ops::{Add, Mul, Neg, Sub};
 use std::marker::PhantomData;
-use crypto_bigint::{Uint, CtSelect};
+use crypto_bigint::Uint;
 use subtle::{Choice, CtOption, ConditionallySelectable, ConstantTimeEq};
 use crate::field_ops::FieldOps;
 
@@ -124,12 +124,12 @@ where
         Self::new(Uint::<LIMBS>::conditional_select(&a.value, &b.value, choice))
     }
 
-    fn conditional_swap(a: &mut Self, b: &mut Self, choice: Choice) {
-        Uint::<LIMBS>::conditional_swap(&mut a.value, &mut b.value, choice)
-    }
-
     fn conditional_assign(&mut self, other: &Self, choice: Choice) {
         self.value.conditional_assign(&other.value, choice)
+    }
+
+    fn conditional_swap(a: &mut Self, b: &mut Self, choice: Choice) {
+        Uint::<LIMBS>::conditional_swap(&mut a.value, &mut b.value, choice)
     }
 }
 
@@ -138,11 +138,11 @@ where
     P: BinaryIrreducible<LIMBS>
 {
     fn ct_eq(&self, other: &Self) -> Choice {
-        Choice::from(Uint::<LIMBS>::ct_eq(&self.value, &other.value))
+        Uint::<LIMBS>::ct_eq(&self.value, &other.value)
     }
 
     fn ct_ne(&self, other: &Self) -> Choice {
-        Choice::from(Uint::<LIMBS>::ct_ne(&self.value, &other.value))
+        Uint::<LIMBS>::ct_ne(&self.value, &other.value)
     }
 }
 
@@ -171,7 +171,7 @@ where
         // Constant-time:
         // - keep `a` if bit == 0
         // - replace by `reduced` if bit == 1
-        a = Uint::<LIMBS>::ct_select(&a, &reduced, bit.into());
+        a = Uint::<LIMBS>::conditional_select(&a, &reduced, bit.into());
     }
     a
 }
@@ -196,7 +196,7 @@ where
 
         // if bit(b, i) = 1 then res += cur (sum here is just xor-ing)
         let res_xor = res ^ cur;
-        res = Uint::<LIMBS>::ct_select(&res, &res_xor, bit.into());
+        res = Uint::<LIMBS>::conditional_select(&res, &res_xor, bit.into());
 
         // We now multiply cur by x and reduce modulo P
 
@@ -211,7 +211,7 @@ where
         // if top = 1 then the term x^(m-1) appears in cur,
         // so x^m appears in shifted, and we need to simplify this using the equality x^m = lower.
         // It suffices to add modulus, because this adds lower and kills the leading term.
-        cur = Uint::<LIMBS>::ct_select(&shifted, &reduced, top.into());
+        cur = Uint::<LIMBS>::conditional_select(&shifted, &reduced, top.into());
     }
 
     res
@@ -233,18 +233,18 @@ where
 
         // if bit(a, i) = 1 then res += x^(2i) mod P
         let res_xor = res ^ cur;
-        res = Uint::<LIMBS>::ct_select(&res, &res_xor, bit.into());
+        res = Uint::<LIMBS>::conditional_select(&res, &res_xor, bit.into());
 
         // multiply cur by x^2 and reduce mod P (we do so in 2 steps)
         let top1 = cur.bit((m-1) as u32);
         let shifted1 = cur << 1;
         let reduced1 = shifted1 ^ modulus;
-        cur = Uint::<LIMBS>::ct_select(&shifted1, &reduced1, top1.into());
+        cur = Uint::<LIMBS>::conditional_select(&shifted1, &reduced1, top1.into());
 
         let top2 = cur.bit((m-1) as u32);
         let shifted2 = cur << 1;
         let reduced2 = shifted2 ^ modulus;
-        cur = Uint::<LIMBS>::ct_select(&shifted2, &reduced2, top2.into());
+        cur = Uint::<LIMBS>::conditional_select(&shifted2, &reduced2, top2.into());
     }
 
     res
@@ -417,7 +417,7 @@ where
         result
     }
 
-    fn sqrt(&self) -> Option<Self> {
+    fn sqrt(&self) -> CtOption<Self> {
         todo!()
     }
 

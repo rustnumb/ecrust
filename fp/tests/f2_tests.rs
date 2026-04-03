@@ -1,5 +1,3 @@
-use core::ops::{Add, Mul, Neg, Sub};
-use subtle::{ConditionallySelectable, ConstantTimeEq};
 use fp::field_ops::FieldOps;
 use fp::f2::F2Element;
 
@@ -7,8 +5,12 @@ use fp::f2::F2Element;
 mod tests {
     use super::*;
 
-    #[test] fn zero_is_zero() { assert!(F2Element::ZERO.is_zero()); }
-    #[test] fn one_is_one() { assert!(F2Element::ONE.is_one()); }
+    #[test] fn zero_is_zero() { assert!(bool::from(F2Element::ZERO.is_zero())); }
+    #[test] fn one_is_one() { assert!(bool::from(F2Element::ONE.is_one())); }
+    #[test]
+    fn inv_zero_is_none() {
+        assert!(bool::from(F2Element::zero().invert().is_none()));
+    }
     #[test] fn degree_is_one() { assert_eq!(F2Element::degree(), 1); }
     #[test] fn characteristic_is_2() { assert_eq!(F2Element::characteristic(), vec![2u64]); }
     #[test] fn add_mod_2() {

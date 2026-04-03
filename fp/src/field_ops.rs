@@ -1,7 +1,7 @@
 //! Core trait that every field element in the tower must implement.
 
 use std::ops::{Add, Mul, Neg, Sub};
-use subtle::{Choice, CtOption, ConstantTimeEq, ConditionallySelectable};
+use subtle::{Choice, CtOption, ConditionallySelectable};
 
 pub trait FieldOps:
     Sized
@@ -128,7 +128,7 @@ pub trait FieldOps:
 
     fn norm(&self) -> Self;
     fn trace(&self) -> Self;
-    fn sqrt(&self) -> Option<Self>;
+    fn sqrt(&self) -> CtOption<Self>;
     fn legendre(&self) -> i8;
     fn characteristic() -> Vec<u64>;
     fn degree() -> u32;

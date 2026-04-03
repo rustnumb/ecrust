@@ -52,22 +52,22 @@ impl ConditionallySelectable for F2Element {
         Self::new(Uint::<1>::conditional_select(&a.value, &b.value, choice))
     }
 
-    fn conditional_swap(a: &mut Self, b: &mut Self, choice: Choice) {
-        Uint::<1>::conditional_swap(&mut a.value, &mut b.value, choice)
-    }
-
     fn conditional_assign(&mut self, other: &Self, choice: Choice) {
         self.value.conditional_assign(&other.value, choice)
+    }
+
+    fn conditional_swap(a: &mut Self, b: &mut Self, choice: Choice) {
+        Uint::<1>::conditional_swap(&mut a.value, &mut b.value, choice)
     }
 }
 
 impl ConstantTimeEq for F2Element {
     fn ct_eq(&self, other: &Self) -> Choice {
-        Choice::from(Uint::<1>::ct_eq(&self.value, &other.value))
+        Uint::<1>::ct_eq(&self.value, &other.value)
     }
 
     fn ct_ne(&self, other: &Self) -> Choice {
-        Choice::from(Uint::<1>::ct_ne(&self.value, &other.value))
+        Uint::<1>::ct_ne(&self.value, &other.value)
     }
 }
 
@@ -139,7 +139,10 @@ impl FieldOps for F2Element {
     fn norm(&self)      -> Self { *self }
     fn trace(&self)     -> Self { *self }
 
-    fn sqrt(&self) -> Option<Self> { Some(*self)}
+    fn sqrt(&self) -> CtOption<Self> {
+        let is_non_zero = !self.is_zero();
+        CtOption::new(*self, is_non_zero)
+    }
 
     fn legendre(&self) -> i8 {
         self.as_u8() as i8

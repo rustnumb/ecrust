@@ -40,20 +40,26 @@ fn characteristic_equals_() {
 
 #[test]
 fn zero_is_zero() {
-    assert!(F256::zero().is_zero());
+    assert!(bool::from(F256::zero().is_zero()));
 }
 
 #[test]
 fn one_is_one() {
-    assert!(F256::one().is_one());
+    assert!(bool::from(F256::one().is_one()));
 }
 
 #[test]
 fn nonzero_is_not_zero() {
-    assert!(!elt(0b000000001).is_zero());
-    assert!(!elt(0b1000110).is_zero());
-    assert!(!elt(0b1101111010111101).is_zero());
+    assert!(bool::from(!elt(0b000000001).is_zero()));
+    assert!(bool::from(!elt(0b1000110).is_zero()));
+    assert!(bool::from(!elt(0b1101111010111101).is_zero()));
 }
+
+#[test]
+fn inv_zero_is_none() {
+    assert!(bool::from(F256::zero().invert().is_none()));
+}
+
 
 
 // -----------------------------------------------------------------------
@@ -76,7 +82,7 @@ fn add_coefficient_wise() {
 #[test]
 fn negate_then_add_is_zero() {
     let a = elt(0b1_1111);     // 1 + x + x^2 + x^3 + x^4
-    assert!(FieldOps::add(&a, &a.negate()).is_zero());
+    assert!(bool::from(FieldOps::add(&a, &a.negate()).is_zero()));
 }
 
 #[test]
@@ -88,7 +94,7 @@ fn add_zero_is_identity() {
 #[test]
 fn double_equals_zero() {
     let a = elt(0b1_1111);     // x^4 + x^3 + x^2 + x + 1
-    assert!(a.double().is_zero());
+    assert!(bool::from(a.double().is_zero()));
 }
 
 
@@ -196,7 +202,7 @@ fn invert_concrete_value() {
 
 #[test]
 fn invert_zero_is_none() {
-    assert!(F256::zero().invert().is_none());
+    assert!(bool::from(F256::zero().invert().is_none()));
 }
 
 
@@ -243,7 +249,7 @@ fn trace_concrete_values() {
 #[test]
 fn pow_zero_is_one()  {
     let a = elt(0b1_1001);         // x^4 + x^3 + 1
-    assert!(a.pow(&[0]).is_one());
+    assert!(bool::from(a.pow(&[0]).is_one()));
 }
 
 #[test]
