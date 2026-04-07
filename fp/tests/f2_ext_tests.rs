@@ -40,20 +40,26 @@ fn characteristic_equals_() {
 
 #[test]
 fn zero_is_zero() {
-    assert!(F256::zero().is_zero());
+    assert!(bool::from(F256::zero().is_zero()));
 }
 
 #[test]
 fn one_is_one() {
-    assert!(F256::one().is_one());
+    assert!(bool::from(F256::one().is_one()));
 }
 
 #[test]
 fn nonzero_is_not_zero() {
-    assert!(!elt(0b000000001).is_zero());
-    assert!(!elt(0b1000110).is_zero());
-    assert!(!elt(0b1101111010111101).is_zero());
+    assert!(bool::from(!elt(0b000000001).is_zero()));
+    assert!(bool::from(!elt(0b1000110).is_zero()));
+    assert!(bool::from(!elt(0b1101111010111101).is_zero()));
 }
+
+#[test]
+fn inv_zero_is_none() {
+    assert!(bool::from(F256::zero().invert().is_none()));
+}
+
 
 
 // -----------------------------------------------------------------------
@@ -76,7 +82,7 @@ fn add_coefficient_wise() {
 #[test]
 fn negate_then_add_is_zero() {
     let a = elt(0b1_1111);     // 1 + x + x^2 + x^3 + x^4
-    assert!(FieldOps::add(&a, &a.negate()).is_zero());
+    assert!(bool::from(FieldOps::add(&a, &a.negate()).is_zero()));
 }
 
 #[test]
@@ -88,7 +94,7 @@ fn add_zero_is_identity() {
 #[test]
 fn double_equals_zero() {
     let a = elt(0b1_1111);     // x^4 + x^3 + x^2 + x + 1
-    assert!(a.double().is_zero());
+    assert!(bool::from(a.double().is_zero()));
 }
 
 
@@ -196,7 +202,7 @@ fn invert_concrete_value() {
 
 #[test]
 fn invert_zero_is_none() {
-    assert!(F256::zero().invert().is_none());
+    assert!(bool::from(F256::zero().invert().is_none()));
 }
 
 
@@ -243,7 +249,7 @@ fn trace_concrete_values() {
 #[test]
 fn pow_zero_is_one()  {
     let a = elt(0b1_1001);         // x^4 + x^3 + 1
-    assert!(a.pow(&[0]).is_one());
+    assert!(bool::from(a.pow(&[0]).is_one()));
 }
 
 #[test]
@@ -271,3 +277,58 @@ fn pow_group_order() {
 
 
 
+// -----------------------------------------------------------------------
+// sqrt
+// -----------------------------------------------------------------------
+
+
+#[test]
+fn sqrt_of_zero_is_zero()  {
+    let a = F256::zero();         // 0
+    assert_eq!(a.sqrt().expect("zero is a square!"), F256::zero());
+}
+
+#[test]
+fn sqrt_of_one_is_one()  {
+    let a = F256::one();         // 1
+    assert_eq!(a.sqrt().expect("one is a square!"), F256::one());
+}
+
+#[test]
+fn sqrt_concrete_values() {
+    // a = x^4 + x^3 + 1,  sqrt_a = x^7 + x^6 + x^5 + x^3 + x = 0b1110_1010
+    let a = elt(0b1_1001);
+    let sqrt_a = a.sqrt().expect("(x^4 + x^3 + 1) is a square in F_{256}");
+    assert_eq!(sqrt_a, elt(0b1110_1010));
+
+    // b = x^6 + x^4 + x + 1,  sqrt_b = x^7 + x^6 + x^5 + x^4 + x^2 + x + 1 = 0b1111_0111
+    let b = elt(0b101_0011);
+    let sqrt_b = b.sqrt().expect("(x^6 + x^4 + x + 1) is a square in F_{256}");
+    assert_eq!(sqrt_b, elt(0b1111_0111));
+
+    // d = x^5 + x^3 + x, sqrt_d = x^7 + x^6 + x^4 = 0b1101_0000
+    let d = elt(0b10_1010);
+    let sqrt_d = d.sqrt().expect("(x^5 + x^3 + x) is a square in F_{256}");
+    assert_eq!(sqrt_d, elt(0b1101_0000));
+
+    // e = x^7 + x^6 + x^4 + x^2, sqrt_e = x^7 + x^4 + x^3 + x^2 + x + 1 = 0b1001_1111
+    let e = elt(0b1101_0100);
+    let sqrt_e = e.sqrt().expect("(x^7 + x^6 + x^4 + x^2) is a square in F_{256}");
+    assert_eq!(sqrt_e, elt(0b1001_1111));
+}
+
+#[test]
+fn sqrt_of_product() {
+    // a = x^4 + x^3 + 1,  sqrt_a = x^5 + x^4 + x^3 + x^2 + x + 1 = 0b11_1111
+    let a = elt(0b1_1001);
+    let sqrt_a = a.sqrt().expect("(x^4 + x^3 + 1) is a square in F_{256}");
+
+    // b = x^6 + x^4 + x + 1,  sqrt_b = x^7 + x^6 + x^3 + x = 0b1100_1010
+    let b = elt(0b101_0011);
+    let sqrt_b = b.sqrt().expect("(x^6 + x^4 + x + 1) is a square in F_{256}");
+
+    // c = x^7 + x^5 + x^4 + x^3 + x,  sqrt_c = x^6 + x^5 + x^4 + x^2 + x = 0b111_0110
+    let c = FieldOps::mul(&a, &b);
+    let sqrt_c = c.sqrt().expect("(x^7 + x^5 + x^4 + x^3 + x) is a square in F_{256}");
+    assert_eq!(sqrt_c, FieldOps::mul(&sqrt_a, &sqrt_b));
+}

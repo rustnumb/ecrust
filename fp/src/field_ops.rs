@@ -1,7 +1,7 @@
 //! Core trait that every field element in the tower must implement.
 
 use std::ops::{Add, Mul, Neg, Sub};
-// use subtle::ConditionallySelectable;
+use subtle::{Choice, CtOption, ConditionallySelectable};
 
 pub trait FieldOps:
     Sized
@@ -12,22 +12,24 @@ pub trait FieldOps:
     + Sub<Output = Self>
     + Mul<Output = Self>
     + Neg<Output = Self>
+    + Default
+    + ConditionallySelectable
 // const time impl will have the following trait too
 // + ConditionallySelectable
 {
     fn zero() -> Self;
     fn one() -> Self;
-    fn is_zero(&self) -> bool;
-    fn is_one(&self) -> bool;
+    fn is_zero(&self) -> Choice;
+    fn is_one(&self) -> Choice;
     fn negate(&self) -> Self;
     fn add(&self, rhs: &Self) -> Self;
     fn sub(&self, rhs: &Self) -> Self;
     fn mul(&self, rhs: &Self) -> Self;
     fn square(&self) -> Self;
     fn double(&self) -> Self;
-    fn invert(&self) -> Option<Self>;
+    fn invert(&self) -> CtOption<Self>;
 
-    fn div(&self, rhs: &Self) -> Option<Self> {
+    fn div(&self, rhs: &Self) -> CtOption<Self> {
         rhs.invert().map(|inv| self.mul(&inv))
     }
 
@@ -126,7 +128,7 @@ pub trait FieldOps:
 
     fn norm(&self) -> Self;
     fn trace(&self) -> Self;
-    fn sqrt(&self) -> Option<Self>;
+    fn sqrt(&self) -> CtOption<Self>;
     fn legendre(&self) -> i8;
     fn characteristic() -> Vec<u64>;
     fn degree() -> u32;

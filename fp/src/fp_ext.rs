@@ -28,7 +28,8 @@
 //! | Double      | Coefficient-wise                 | M  doubles         |
 //! | Multiply    | Schoolbook + reduction mod f     | M^2 muls + M^2 adds  |
 //! | Square      | Same as multiply (self * self)   | M^2 muls + M^2 adds  |
-//! | Invert      | Polynomial extended GCD          | O(M^2)              |
+//! |
+//!      | Polynomial extended GCD          | O(M^2)              |
 //! | Frobenius   | self^p  via square-and-multiply  | O(M^2 log p)        |
 //! | Norm        | Product of M Galois conjugates   | O(M^3 log p)        |
 //! | Trace       | Sum of M Galois conjugates       | O(M^2 log p)        |
@@ -37,7 +38,7 @@ use core::ops::{Add, Mul, Neg, Sub};
 use std::marker::PhantomData;
 
 use crypto_bigint::modular::ConstPrimeMontyParams;
-
+use subtle::{Choice, CtOption, ConditionallySelectable, ConstantTimeEq};
 use crate::field_ops::FieldOps;
 use crate::fp_element::FpElement;
 
@@ -189,6 +190,65 @@ where
     }
 }
 
+
+
+// ---------------------------------------------------------------------------
+// CtOption functionalities
+// ---------------------------------------------------------------------------
+
+impl<MOD, const LIMBS: usize, const M: usize, P> Default for FpExt<MOD, LIMBS, M, P>
+where
+    MOD: ConstPrimeMontyParams<LIMBS>,
+    P: IrreduciblePoly<MOD, LIMBS, M>
+{
+    fn default() -> Self { Self::zero() }
+}
+
+impl<MOD, const LIMBS: usize, const M: usize, P> ConditionallySelectable for FpExt<MOD, LIMBS, M, P>
+where
+    MOD: ConstPrimeMontyParams<LIMBS>,
+    P: IrreduciblePoly<MOD, LIMBS, M>
+{
+    fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
+        let mut res_coeffs = [FpElement::zero(); M];
+        for i in 0..M {
+            res_coeffs[i] = FpElement::conditional_select(&a.coeffs[i], &b.coeffs[i], choice);
+        }
+        Self::new(res_coeffs)
+    }
+
+    fn conditional_assign(&mut self, other: &Self, choice: Choice) {
+        for i in 0..M {
+            self.coeffs[i].conditional_assign(&other.coeffs[i], choice);
+        }
+    }
+
+    fn conditional_swap(a: &mut Self, b: &mut Self, choice: Choice) {
+        for i in 0..M {
+            FpElement::conditional_swap(&mut a.coeffs[i], &mut b.coeffs[i], choice);
+        }
+    }
+}
+
+impl<MOD, const LIMBS: usize, const M: usize, P> ConstantTimeEq for FpExt<MOD, LIMBS, M, P>
+where
+    MOD: ConstPrimeMontyParams<LIMBS>,
+    P: IrreduciblePoly<MOD, LIMBS, M>
+{
+    fn ct_eq(&self, other: &Self) -> Choice {
+        let mut acc = Choice::from(1u8);
+        for i in 0..M {
+            acc &= self.coeffs[i].ct_eq(&other.coeffs[i]);
+        }
+        acc
+    }
+
+    fn ct_ne(&self, other: &Self) -> Choice {
+        !self.ct_eq(other)
+    }
+}
+
+
 // ===========================================================================
 // Private polynomial helpers
 //
@@ -275,7 +335,7 @@ fn poly_normalize<MOD, const LIMBS: usize>(mut a: Poly<MOD, LIMBS>) -> Poly<MOD,
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
 {
-    while a.last().map_or(false, |c| c.is_zero()) {
+    while a.last().map_or(false, |c| bool::from(c.is_zero())) {
         a.pop();
     }
     a
@@ -315,7 +375,7 @@ where
         // The current highest remaining degree is i + deg(b).
         let rem_deg = i + b.len() - 1;
         let coeff = FieldOps::mul(&rem[rem_deg], &b_lead_inv);
-        if coeff.is_zero() {
+        if bool::from(coeff.is_zero()) {
             continue;
         }
         quot[i] = coeff.clone();
@@ -351,7 +411,7 @@ where
     // Eliminate all terms of degree >= M, from the top down.
     for i in (M..a.len()).rev() {
         let lead = a[i].clone();
-        if lead.is_zero() {
+        if bool::from(lead.is_zero()) {
             continue;
         }
         // x^i = x^{i−M}  x^M  \equiv  −x^{i−M}  Σ_j modulus[j]x^j
@@ -489,13 +549,9 @@ where
 
     // --- Predicates ---------------------------------------------------------
 
-    fn is_zero(&self) -> bool {
-        self.coeffs.iter().all(|c| c.is_zero())
-    }
+    fn is_zero(&self) -> Choice { self.ct_eq(&Self::zero()) }
 
-    fn is_one(&self) -> bool {
-        self.coeffs[0].is_one() && self.coeffs[1..].iter().all(|c| c.is_zero())
-    }
+    fn is_one(&self) -> Choice { Self::ct_eq(self, &Self::one()) }
 
     // --- Core arithmetic ----------------------------------------------------
 
@@ -541,10 +597,8 @@ where
     /// Finds `s(x)` such that `self(x)s(x) \equiv 1  (mod f(x))` by computing
     /// `gcd(self, f) = g` (a nonzero constant if self ≠ 0) and setting
     /// `self⁻¹ = sg⁻¹ mod f`.
-    fn invert(&self) -> Option<Self> {
-        if self.is_zero() {
-            return None;
-        }
+    fn invert(&self) -> CtOption<Self> {
+        let is_invertible = !self.is_zero();
 
         // Build the full irreducible polynomial as a Vec:
         // f = [c_0, c_1, ..., c_{M-1}, 1]  (coefficients in ascending degree)
@@ -555,12 +609,12 @@ where
         let (gcd, s) = poly_ext_gcd(a, f);
 
         // gcd is a nonzero constant in Fp (since f is irreducible and a ≠ 0).
-        let g0 = gcd.into_iter().next()?; // the constant term = gcd value
-        let g_inv = g0.invert()?; // invert in Fp
+        let g0 = gcd.into_iter().next().unwrap_or(FpElement::zero()); // the constant term = gcd value
+        let g_inv = g0.invert().unwrap_or(FpElement::zero()); // invert in Fp
 
         // self⁻¹ = s(x)  g⁻¹  reduced mod f
         let s_scaled = poly_scale(&s, &g_inv);
-        Some(Self::new(poly_reduce(s_scaled, &P::modulus())))
+        CtOption::new(Self::new(poly_reduce(s_scaled, &P::modulus())), is_invertible)
     }
 
     // --- Frobenius ----------------------------------------------------------
@@ -605,7 +659,7 @@ where
 
     // --- Square root --------------------------------------------------------
 
-    fn sqrt(&self) -> Option<Self> {
+    fn sqrt(&self) -> CtOption<Self> {
         // A complete Tonelli-Shanks generalisation to Fp^M requires knowing
         // the factored order |Fp^M*| = p^M − 1, which depends on p and M.
         // Placeholder: implement per-field when needed.
