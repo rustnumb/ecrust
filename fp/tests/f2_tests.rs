@@ -1,5 +1,5 @@
 use fp::field_ops::FieldOps;
-use fp::f2::F2Element;
+use fp::f2_element::F2Element;
 
 #[cfg(test)]
 mod tests {
