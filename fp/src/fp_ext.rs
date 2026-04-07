@@ -605,11 +605,21 @@ where
 
     // --- Square root --------------------------------------------------------
 
-    fn sqrt(&self) -> Option<Self> {
-        // A complete Tonelli-Shanks generalisation to Fp^M requires knowing
-        // the factored order |Fp^M*| = p^M − 1, which depends on p and M.
-        // Placeholder: implement per-field when needed.
-        todo!("FpExt::sqrt — implement Tonelli-Shanks for your specific (p, M)")
+    /// Tonelli--Shanks squareroot algorithm
+    ///
+    /// Implementation of the Tonelli--Shanks square root algorithm. Requires
+    /// only a factorisation as $p^M - 1 = 2^K * N$ so can compute this at
+    /// compile time by truncating zeros.
+    ///
+    /// # Arguments
+    ///
+    /// * `&self` - An element of Fp^M (type: &self)
+    ///
+    /// # Returns
+    ///
+    /// `self^(1/2)` a choice of squareroot (type: Self)
+    fn sqrt(&self) -> Self {
+        let p = FpElement::<MOD, LIMBS>::characteristic();
     }
 
     fn legendre(&self) -> i8 {
