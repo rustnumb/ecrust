@@ -13,3 +13,4 @@ pub mod field_ops;
 pub mod fp_element;
 pub mod fp_ext;
 pub mod f2;
+pub mod f2_ext;

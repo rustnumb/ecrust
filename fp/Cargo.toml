@@ -6,7 +6,8 @@ description = "Finite field arithmetic over Fp for the ecrust library"
 license.workspace = true
 
 [dependencies]
-crypto-bigint = { workspace = true }
+crypto-bigint = { workspace = true, features = ["subtle"] }
+subtle = "2.6"
 
 [dev-dependencies]
 # Add test-only dependencies here as needed

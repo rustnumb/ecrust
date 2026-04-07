@@ -1,4 +1,4 @@
-//! Base binart field element F2 = Z / 2Z
+//! Base binary field element F2 = Z / 2Z
 
 use core::ops::{Add, Mul, Neg, Sub};
 use crypto_bigint::Uint;
