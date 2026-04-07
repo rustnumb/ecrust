@@ -84,6 +84,31 @@ where
 }
 
 // ===========================================================================
+// MultiplicativeGroupOrder - The only other thing users ahve to
+// implement, sorry
+// ===========================================================================
+
+/// Supplies the group order of the multiplicative group
+///
+/// # Example: F_(19^3)
+/// ```ignore
+/// impl MultiplicativeGroupOrder<Fp19Mod, 1, 3> for FpExt<Fp19Mod, 1, 3, CubicPoly> {
+///     // Still only need 1 limb for 19^3
+///     type Order = Uint<1>;
+///     fn order() -> Self::Order {
+///         const ORDER: Uint<1> = Uint::<1>::from_u64(6858);
+///         ORDER
+///     }
+/// }
+/// ```
+pub trait MultiplicativeGroupOrder<MOD, const LIMBS: usize, const M: usize>: 'static {
+    type Order;
+
+    /// Multiplicative group order `p^M - 1`
+    fn order() -> Self::Order;
+}
+
+// ===========================================================================
 // FpExt — element of Fp^M
 // ===========================================================================
 
@@ -618,10 +643,11 @@ where
     /// # Returns
     ///
     /// `self^(1/2)` a choice of squareroot (type: Self)
-    fn sqrt(&self) -> Self {
-        let p = FpElement::<MOD, LIMBS>::characteristic();
-        let q = (&p, M);
-        assert!();
+    fn sqrt(&self) -> Option<Self> {
+        // let p = FpElement::<MOD, LIMBS>::characteristic();
+        // let q = (&p, M);
+        // assert!();
+        todo!("Todo this fun thing")
     }
 
     fn legendre(&self) -> i8 {

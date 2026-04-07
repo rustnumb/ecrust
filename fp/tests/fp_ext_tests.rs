@@ -1,7 +1,7 @@
-use crypto_bigint::{Uint, const_prime_monty_params};
+use crypto_bigint::{const_prime_monty_params, Uint};
 use fp::field_ops::FieldOps;
 use fp::fp_element::FpElement;
-use fp::fp_ext::{FpExt, IrreduciblePoly};  // ← was missing IrreduciblePoly
+use fp::fp_ext::{FpExt, IrreduciblePoly, MultiplicativeGroupOrder}; // ← was missing IrreduciblePoly
 
 const_prime_monty_params!(Fp19Mod, Uint<1>, "0000000000000013", 2);
 
@@ -17,8 +17,22 @@ impl IrreduciblePoly<Fp19Mod, 1, 2> for QuadPoly {
 
 type F19_2 = FpExt<Fp19Mod, 1, 2, QuadPoly>;
 
-fn fp(n: u64) -> Fp19        { Fp19::from_u64(n) }
-fn el(a: u64, b: u64) -> F19_2 { F19_2::new([fp(a), fp(b)]) }
+impl MultiplicativeGroupOrder<Fp19Mod, 1, 2> for F19_2 {
+    // Still only need 1 limb for 19^2
+    type Order = Uint<1>;
+
+    fn order() -> Self::Order {
+        const ORDER: Uint<1> = Uint::<1>::from_u64(360);
+        ORDER
+    }
+}
+
+fn fp(n: u64) -> Fp19 {
+    Fp19::from_u64(n)
+}
+fn el(a: u64, b: u64) -> F19_2 {
+    F19_2::new([fp(a), fp(b)])
+}
 
 // -----------------------------------------------------------------------
 // Structural
@@ -165,7 +179,7 @@ fn square_equals_mul_self() {
 
 #[test]
 fn invert_concrete_value() {
-    let a   = el(3, 2);
+    let a = el(3, 2);
     let inv = a.invert().expect("(3+2x) is invertible in F₁₉²");
     assert_eq!(inv.coeffs[0].as_limbs()[0], 9);
     assert_eq!(inv.coeffs[1].as_limbs()[0], 13);
@@ -173,10 +187,17 @@ fn invert_concrete_value() {
 
 #[test]
 fn invert_correctness() {
-    for (a0, a1) in [(1u64,0u64),(0,1),(3,2),(7,5),(13,18),(1,18)] {
-        let a   = el(a0, a1);
-        let inv = a.invert().unwrap_or_else(|| panic!("({},{}) not invertible", a0, a1));
-        assert!(FieldOps::mul(&a, &inv).is_one(), "inv failed for ({},{})", a0, a1);
+    for (a0, a1) in [(1u64, 0u64), (0, 1), (3, 2), (7, 5), (13, 18), (1, 18)] {
+        let a = el(a0, a1);
+        let inv = a
+            .invert()
+            .unwrap_or_else(|| panic!("({},{}) not invertible", a0, a1));
+        assert!(
+            FieldOps::mul(&a, &inv).is_one(),
+            "inv failed for ({},{})",
+            a0,
+            a1
+        );
     }
 }
 
@@ -215,21 +236,21 @@ fn frobenius_squared_is_identity() {
 #[test]
 fn norm_lies_in_base_field() {
     let n = el(3, 4).norm();
-    assert_eq!(n.coeffs[0].as_limbs()[0], 6);   // 9+16=25≡6 mod 19
+    assert_eq!(n.coeffs[0].as_limbs()[0], 6); // 9+16=25≡6 mod 19
     assert!(n.coeffs[1].is_zero());
 }
 
 #[test]
 fn trace_lies_in_base_field() {
     let t = el(7, 5).trace();
-    assert_eq!(t.coeffs[0].as_limbs()[0], 14);  // 2·7=14
+    assert_eq!(t.coeffs[0].as_limbs()[0], 14); // 2·7=14
     assert!(t.coeffs[1].is_zero());
 }
 
 #[test]
 fn norm_of_base_element_is_square() {
     let n = F19_2::from_base(fp(4)).norm();
-    assert_eq!(n.coeffs[0].as_limbs()[0], 16);  // 4²=16
+    assert_eq!(n.coeffs[0].as_limbs()[0], 16); // 4²=16
 }
 
 // -----------------------------------------------------------------------
@@ -237,9 +258,14 @@ fn norm_of_base_element_is_square() {
 // -----------------------------------------------------------------------
 
 #[test]
-fn pow_zero_is_one()  { assert!(el(3, 7).pow(&[0]).is_one()); }
+fn pow_zero_is_one() {
+    assert!(el(3, 7).pow(&[0]).is_one());
+}
 #[test]
-fn pow_one_is_self()  { let a = el(3, 7); assert_eq!(a.pow(&[1]), a); }
+fn pow_one_is_self() {
+    let a = el(3, 7);
+    assert_eq!(a.pow(&[1]), a);
+}
 
 #[test]
 fn pow_group_order() {
@@ -255,21 +281,39 @@ struct CubicPoly;
 
 impl IrreduciblePoly<Fp19Mod, 1, 3> for CubicPoly {
     fn modulus() -> [Fp19; 3] {
-        [fp(17), fp(0), fp(0)]  // [c₀=17, c₁=0, c₂=0]  →  x³ + 17
+        [fp(17), fp(0), fp(0)] // [c₀=17, c₁=0, c₂=0]  →  x³ + 17
     }
 }
 
 type F19_3 = FpExt<Fp19Mod, 1, 3, CubicPoly>;
 
-fn el3(a: u64, b: u64, c: u64) -> F19_3 { F19_3::new([fp(a), fp(b), fp(c)]) }
+impl MultiplicativeGroupOrder<Fp19Mod, 1, 2> for F19_3 {
+    // Still only need 1 limb for 19^3
+    type Order = Uint<1>;
+    fn order() -> Self::Order {
+        const ORDER: Uint<1> = Uint::<1>::from_u64(6858);
+        ORDER
+    }
+}
 
-#[test] fn cubic_degree_is_3() { assert_eq!(F19_3::degree(), 3); }
-#[test] fn cubic_zero_one()    { assert!(F19_3::zero().is_zero()); assert!(F19_3::one().is_one()); }
+fn el3(a: u64, b: u64, c: u64) -> F19_3 {
+    F19_3::new([fp(a), fp(b), fp(c)])
+}
+
+#[test]
+fn cubic_degree_is_3() {
+    assert_eq!(F19_3::degree(), 3);
+}
+#[test]
+fn cubic_zero_one() {
+    assert!(F19_3::zero().is_zero());
+    assert!(F19_3::one().is_one());
+}
 
 #[test]
 fn cubic_x_cubed_reduces() {
     // x³ ≡ 2 mod (x³−2)
-    let x  = el3(0, 1, 0);
+    let x = el3(0, 1, 0);
     let x3 = FieldOps::mul(&FieldOps::mul(&x, &x), &x);
     assert_eq!(x3.coeffs[0].as_limbs()[0], 2);
     assert!(x3.coeffs[1].is_zero());

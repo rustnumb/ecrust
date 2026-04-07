@@ -33,6 +33,8 @@ pub trait FieldOps:
 
     /// `self^exp` using square-and multiply (litte-endian bit order)
     ///
+    /// It is constant time for fixed `exp`
+    ///
     /// # Arguments
     ///
     /// * `&self` - Finite field element (type: self)
