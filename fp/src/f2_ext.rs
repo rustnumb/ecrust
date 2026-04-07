@@ -290,6 +290,16 @@ where
     square_helper::<LIMBS, P>(&beta)
 }
 
+fn sqrt_helper<const LIMBS: usize, P>(a: &Uint<LIMBS>) -> Uint<LIMBS>
+where
+    P: BinaryIrreducible<LIMBS>
+{
+    // In the binary field F_{2^m}, we have sqrt(a) = a^(2^(m-1)) for any a (even a = 0)
+
+    let m = P::degree();
+    pow_2k_helper::<LIMBS, P>(&a, &(m-1))
+}
+
 
 // ===========================================================================
 // Operator overloads (delegate to the FieldOps methods below)
@@ -418,11 +428,14 @@ where
     }
 
     fn sqrt(&self) -> CtOption<Self> {
-        todo!()
+        // In binary fields, everything is a square, so the Choice object always wraps 1u8
+        let sqrt = Self::new(sqrt_helper::<LIMBS, P>(&self.value));
+        CtOption::new(sqrt, Choice::from(1u8))
     }
 
     fn legendre(&self) -> i8 {
-        todo!()
+        let is_zero = self.is_zero();
+        i8::conditional_select(&0i8, &1i8, is_zero)
     }
 
     fn characteristic() -> Vec<u64> {
