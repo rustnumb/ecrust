@@ -15,7 +15,16 @@
 //! | Add  (P ≠ ±Q)    | Chord-and-tangent (general Weierstrass)   | 1 inv + 6 mul  |
 //! | Double            | Tangent (general Weierstrass)            | 1 inv + 7 mul  |
 //! | Scalar multiply   | Double-and-add (MSB, variable time)      | O(n) doubles   |
-use subtle::{Choice, ConditionallySelectable};
+
+
+// WARNING: SOME OF THE FUNCTIONS BELOW USE BRANCHES DEPENDING
+// ON WHETHER A POINT IS AT INFINITY OR NOT!!!!
+
+
+
+//use std::os::unix::raw::ino_t;
+//use crypto_bigint::modular::ConstMontyForm;
+use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 use crate::curve_weierstrass::WeierstrassCurve;
 use crate::point_ops::PointOps;
 use fp::field_ops::FieldOps;
@@ -74,6 +83,16 @@ impl<F: FieldOps> AffinePoint<F> {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Constant-time functionalities
+// ---------------------------------------------------------------------------
+
+impl<F> Default for AffinePoint<F>
+where
+    F: FieldOps + Copy,
+{
+    fn default() -> Self {Self::identity()}
+}
 
 impl<F> ConditionallySelectable for AffinePoint<F>
 where
@@ -89,6 +108,47 @@ where
             y: F::conditional_select(&a.y, &b.y, choice),
             infinity,
         }
+    }
+
+    fn conditional_assign(&mut self, other: &Self, choice: Choice) {
+        F::conditional_assign(&mut self.x, &other.x, choice);
+        F::conditional_assign(&mut self.y, &other.y, choice);
+
+        let mut inf = self.infinity as u8;
+        let other_inf = other.infinity as u8;
+        inf.conditional_assign(&other_inf, choice);
+        self.infinity = inf != 0;
+    }
+
+    fn conditional_swap(a: &mut Self, b: &mut Self, choice: Choice) {
+        F::conditional_swap(&mut a.x, &mut b.x, choice);
+        F::conditional_swap(&mut a.y, &mut b.y, choice);
+
+        let mut ai = a.infinity as u8;
+        let mut bi = b.infinity as u8;
+        u8::conditional_swap(&mut ai, &mut bi, choice);
+        a.infinity = ai != 0;
+        b.infinity = bi != 0;
+    }
+}
+
+impl<F> ConstantTimeEq for AffinePoint<F>
+where
+    F: FieldOps + Copy + ConstantTimeEq,
+{
+    fn ct_eq(&self, other: &Self) -> Choice {
+        let self_inf = Choice::from(self.infinity as u8);
+        let other_inf = Choice::from(other.infinity as u8);
+
+        let both_inf = self_inf & other_inf;
+        let both_finite = !self_inf & !other_inf;
+        let coords_eq = self.x.ct_eq(&other.x) & self.y.ct_eq(&other.y);
+
+        both_inf | (both_finite & coords_eq)
+    }
+
+    fn ct_ne(&self, other: &Self) -> Choice {
+        !self.ct_eq(other)
     }
 }
 
@@ -300,9 +360,7 @@ where
         AffinePoint::<F>::identity()
     }
 
-    fn is_identity(&self) -> bool {
-        self.infinity
-    }
+    fn is_identity(&self) -> bool { self.infinity }
 
     fn negate(&self, curve: &Self::Curve) -> Self {
         AffinePoint::<F>::negate(self, curve)

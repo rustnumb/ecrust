@@ -28,8 +28,10 @@ checksum = "9fde2467e74147f492aebb834985186b2c74761927b8b9b3bd303bcb2e72199d"
 dependencies = [
  "cpubits",
  "ctutils",
+ "hybrid-array",
  "num-traits",
  "rand_core",
+ "subtle",
 ]
 
 [[package]]
@@ -39,6 +41,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1005a6d4446f5120ef475ad3d2af2b30c49c2c9c6904258e3bb30219bebed5e4"
 dependencies = [
  "cmov",
+ "subtle",
 ]
 
 [[package]]
@@ -47,6 +50,7 @@ version = "0.1.0"
 dependencies = [
  "crypto-bigint",
  "fp",
+ "subtle",
 ]
 
 [[package]]
@@ -54,6 +58,17 @@ name = "fp"
 version = "0.1.0"
 dependencies = [
  "crypto-bigint",
+ "subtle",
+]
+
+[[package]]
+name = "hybrid-array"
+version = "0.4.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3944cf8cf766b40e2a1a333ee5e9b563f854d5fa49d6a8ca2764e97c6eddb214"
+dependencies = [
+ "subtle",
+ "typenum",
 ]
 
 [[package]]
@@ -79,3 +94,15 @@ name = "rand_core"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c8d0fd677905edcbeedbf2edb6494d676f0e98d54d5cf9bda0b061cb8fb8aba"
+
+[[package]]
+name = "subtle"
+version = "2.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
+
+[[package]]
+name = "typenum"
+version = "1.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "562d481066bde0658276a35467c4af00bdc6ee726305698a55b86e61d7ad82bb"
