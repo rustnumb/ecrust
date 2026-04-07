@@ -1,6 +1,6 @@
 use crypto_bigint::Uint;
 use fp::field_ops::FieldOps;
-use fp::f2::F2Element;
+use fp::f2_element::F2Element;
 use fp::f2_ext::{F2Ext, BinaryIrreducible};  // ← was missing IrreduciblePoly
 
 struct Deg8Poly;
