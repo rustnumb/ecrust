@@ -7,7 +7,7 @@
 //!
 //! ```text
 //! ec
-//! ├── curve_ops   – General Curve 
+//! ├── curve_ops   – General Curve
 //! └── point_ops   – Point and group law (add, double, scalar mul)
 //! ```
 //!
@@ -19,3 +19,6 @@
 
 pub mod curve_ops;
 pub mod point_ops;
+
+pub mod curve_weierstrass;
+pub mod point_weierstrass;

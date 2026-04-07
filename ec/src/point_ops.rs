@@ -5,6 +5,7 @@
 //! Montgomery, Edwards, etc., while keeping model-specific formulas inside
 //! each implementation.
 use fp::field_ops::FieldOps;
+use subtle::ConditionallySelectable;
 
 /// Generic group interface for curve points.
 ///
@@ -27,6 +28,22 @@ pub trait PointOps: Clone {
     /// Provided as a default so every `PointOps` implementor gets it
     /// automatically.  For constant-time scalar multiplication, see
     /// [`CtPointOps::scalar_mul_ct`].
-    fn scalar_mul_ct(&self, k: &[u64], curve: &Self::Curve) -> Self;
-}
+    fn scalar_mul(&self, k: &[u64], curve: &Self::Curve) -> Self {
+        let mut result = Self::identity(curve);
+        let mut found_one = false;
 
+        for &limb in k.iter().rev() {
+            for bit in (0..64).rev() {
+                if found_one {
+                    result = result.double(curve);
+                }
+                if (limb >> bit) & 1 == 1 {
+                    found_one = true;
+                    result = result.add(self, curve);
+                }
+            }
+        }
+
+        result
+    }
+}
