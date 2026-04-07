@@ -76,6 +76,8 @@ pub trait FieldOps:
     /// `self^pow` in constant time using a Montgomery ladder
     ///
     /// Uses a Montgomery ladder to compute `self^exp`
+    /// WARNING: Only constant time if the number of limbs of exp is
+    /// constant
     ///
     /// # Arguments
     ///

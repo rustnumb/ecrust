@@ -620,6 +620,8 @@ where
     /// `self^(1/2)` a choice of squareroot (type: Self)
     fn sqrt(&self) -> Self {
         let p = FpElement::<MOD, LIMBS>::characteristic();
+        let q = (&p, M);
+        assert!();
     }
 
     fn legendre(&self) -> i8 {
