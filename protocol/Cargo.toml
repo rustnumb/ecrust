@@ -1,0 +1,14 @@
+[package]
+name        = "protocol"
+version.workspace = true
+edition.workspace = true
+description = "Cryptographic protocols built on top of the ecrust field and elliptic-curve layers"
+license.workspace = true
+
+[dependencies]
+ec = { workspace = true }
+subtle = "2.6"
+
+[dev-dependencies]
+crypto-bigint = { workspace = true }
+fp = { workspace = true }
