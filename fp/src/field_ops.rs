@@ -58,7 +58,7 @@ pub trait FieldOps:
     ///
     /// Fully-qualified syntax `<Self as FieldOps>::mul(...)` bypasses method
     /// resolution entirely and calls exactly the trait method we want.
-    fn pow_vartime(&self, exp: &[u64]) -> Self {
+    unsafe fn pow_vartime(&self, exp: &[u64]) -> Self {
         let mut result = Self::one();
         let mut base = self.clone();
 

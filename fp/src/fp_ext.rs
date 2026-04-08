@@ -36,7 +36,7 @@
 use core::ops::{Add, Mul, Neg, Sub};
 use std::marker::PhantomData;
 
-use crypto_bigint::modular::ConstPrimeMontyParams;
+use crypto_bigint::{modular::ConstPrimeMontyParams, Uint};
 
 use crate::field_ops::FieldOps;
 use crate::fp_element::FpElement;
@@ -92,27 +92,26 @@ where
 ///
 /// # Example: F_(19^3)
 /// ```ignore
-/// impl MultiplicativeGroupOrder<Fp19Mod, 1, 3> for FpExt<Fp19Mod, 1, 3, CubicPoly> {
+/// impl MultiplicativeGroupOrder<3> for MyOrder {
 ///     // Still only need 1 limb for 19^3
-///     type Order = Uint<1>;
-///     fn order() -> Self::Order {
+///     fn order() -> Unit<1> {
 ///         const ORDER: Uint<1> = Uint::<1>::from_u64(6858);
 ///         ORDER
 ///     }
-///     fn half_order() -> Self::Order {
-///         const ORDER: Uint<1> = Uint::<1>::from_u64(6858) >> 1;
+///     fn half_order() -> Unit<1> {
+///         const ORDER: Uint<1> = Uint::<1>::from_u64(3429);
 ///         ORDER
 ///     }
 /// }
 /// ```
-pub trait MultiplicativeGroupOrder<MOD, const LIMBS: usize, const M: usize, const N: usize>:
-    'static
-{
-    type Order = Uint<N>;
-
-    /// Multiplicative group order `p^M - 1`
-    fn order() -> Self::Order;
-    fn half_order() -> Self::Order;
+pub trait MultiplicativeGroupOrder<const N: usize>: 'static {
+    // Multiplicative group order `p^M - 1`
+    // p^M - 1
+    fn order() -> Uint<N>;
+    // (p^M - 1) / 2
+    fn half_order() -> Uint<N>;
+    // Projenator of the TS algorithm
+    fn ts_proj() -> Uint<N>;
 }
 
 // ===========================================================================
@@ -123,11 +122,12 @@ pub trait MultiplicativeGroupOrder<MOD, const LIMBS: usize, const M: usize, cons
 ///
 /// `P` is a zero-size marker type implementing [`IrreduciblePoly`].
 /// `M` is the extension degree (number of base-field coefficients stored).
-pub struct FpExt<MOD, const LIMBS: usize, const M: usize, P, ORDER>
+/// `N` is the number limbs needed to store p^M
+pub struct FpExt<MOD, const LIMBS: usize, const M: usize, const N: usize, P, ORDER>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    ORDER: MultiplicativeGroupOrder<MOD, LIMBS, M>,
+    ORDER: MultiplicativeGroupOrder<N>,
 {
     /// Coefficients in ascending degree: `coeffs[i]` = coefficient of `x^i`.
     pub coeffs: [FpElement<MOD, LIMBS>; M],
@@ -139,11 +139,12 @@ where
 // Constructors
 // ---------------------------------------------------------------------------
 
-impl<MOD, const LIMBS: usize, const M: usize, P, ORDER> FpExt<MOD, LIMBS, M, P, ORDER>
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, ORDER>
+    FpExt<MOD, LIMBS, M, N, P, ORDER>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    ORDER: MultiplicativeGroupOrder<MOD, LIMBS, M>,
+    ORDER: MultiplicativeGroupOrder<N>,
 {
     /// Construct from a coefficient array `[a_0, ..., a_{M-1}]`.
     pub fn new(coeffs: [FpElement<MOD, LIMBS>; M]) -> Self {
@@ -172,11 +173,12 @@ where
 // (manual impls so we don't over-constrain the bounds the way #[derive] would)
 // ---------------------------------------------------------------------------
 
-impl<MOD, const LIMBS: usize, const M: usize, P, ORDER> Clone for FpExt<MOD, LIMBS, M, P, ORDER>
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, ORDER> Clone
+    for FpExt<MOD, LIMBS, M, N, P, ORDER>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    ORDER: MultiplicativeGroupOrder<MOD, LIMBS, M>,
+    ORDER: MultiplicativeGroupOrder<N>,
 {
     fn clone(&self) -> Self {
         Self {
@@ -188,20 +190,22 @@ where
 }
 
 // FpElement is Copy (derives it), so [FpElement; M] is Copy too.
-impl<MOD, const LIMBS: usize, const M: usize, P, ORDER> Copy for FpExt<MOD, LIMBS, M, P, ORDER>
+impl<MOD, const LIMBS: usize, const M: usize, P, const N: usize, ORDER> Copy
+    for FpExt<MOD, LIMBS, M, N, P, ORDER>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    ORDER: MultiplicativeGroupOrder<MOD, LIMBS, M>,
+    ORDER: MultiplicativeGroupOrder<N>,
     [FpElement<MOD, LIMBS>; M]: Copy,
 {
 }
 
-impl<MOD, const LIMBS: usize, const M: usize, P, ORDER> PartialEq for FpExt<MOD, LIMBS, M, P, ORDER>
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, ORDER> PartialEq
+    for FpExt<MOD, LIMBS, M, N, P, ORDER>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    ORDER: MultiplicativeGroupOrder<MOD, LIMBS, M>,
+    ORDER: MultiplicativeGroupOrder<N>,
 {
     fn eq(&self, other: &Self) -> bool {
         self.coeffs
@@ -211,20 +215,21 @@ where
     }
 }
 
-impl<MOD, const LIMBS: usize, const M: usize, P, ORDER> Eq for FpExt<MOD, LIMBS, M, P, ORDER>
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, ORDER> Eq
+    for FpExt<MOD, LIMBS, M, N, P, ORDER>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    ORDER: MultiplicativeGroupOrder<MOD, LIMBS, M>,
+    ORDER: MultiplicativeGroupOrder<N>,
 {
 }
 
-impl<MOD, const LIMBS: usize, const M: usize, P, ORDER> std::fmt::Debug
-    for FpExt<MOD, LIMBS, M, P, ORDER>
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, ORDER> std::fmt::Debug
+    for FpExt<MOD, LIMBS, M, N, P, ORDER>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    ORDER: MultiplicativeGroupOrder<MOD, LIMBS, M>,
+    ORDER: MultiplicativeGroupOrder<N>,
     FpElement<MOD, LIMBS>: std::fmt::Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -465,11 +470,12 @@ where
 // Operator overloads (delegate to the FieldOps methods below)
 // ===========================================================================
 
-impl<MOD, const LIMBS: usize, const M: usize, P, ORDER> Add for FpExt<MOD, LIMBS, M, P, ORDER>
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, ORDER> Add
+    for FpExt<MOD, LIMBS, M, N, P, ORDER>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    ORDER: MultiplicativeGroupOrder<MOD, LIMBS, M>,
+    ORDER: MultiplicativeGroupOrder<N>,
 {
     type Output = Self;
     fn add(self, rhs: Self) -> Self {
@@ -477,11 +483,12 @@ where
     }
 }
 
-impl<MOD, const LIMBS: usize, const M: usize, P, ORDER> Sub for FpExt<MOD, LIMBS, M, P, ORDER>
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, ORDER> Sub
+    for FpExt<MOD, LIMBS, M, N, P, ORDER>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    ORDER: MultiplicativeGroupOrder<MOD, LIMBS, M>,
+    ORDER: MultiplicativeGroupOrder<N>,
 {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self {
@@ -489,11 +496,12 @@ where
     }
 }
 
-impl<MOD, const LIMBS: usize, const M: usize, P, ORDER> Mul for FpExt<MOD, LIMBS, M, P, ORDER>
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, ORDER> Mul
+    for FpExt<MOD, LIMBS, M, N, P, ORDER>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    ORDER: MultiplicativeGroupOrder<MOD, LIMBS, M>,
+    ORDER: MultiplicativeGroupOrder<N>,
 {
     type Output = Self;
     fn mul(self, rhs: Self) -> Self {
@@ -501,11 +509,12 @@ where
     }
 }
 
-impl<MOD, const LIMBS: usize, const M: usize, P, ORDER> Neg for FpExt<MOD, LIMBS, M, P, ORDER>
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, ORDER> Neg
+    for FpExt<MOD, LIMBS, M, N, P, ORDER>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    ORDER: MultiplicativeGroupOrder<MOD, LIMBS, M>,
+    ORDER: MultiplicativeGroupOrder<N>,
 {
     type Output = Self;
     fn neg(self) -> Self {
@@ -517,11 +526,12 @@ where
 // FieldOps implementation
 // ===========================================================================
 
-impl<MOD, const LIMBS: usize, const M: usize, P, ORDER> FieldOps for FpExt<MOD, LIMBS, M, P, ORDER>
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, ORDER> FieldOps
+    for FpExt<MOD, LIMBS, M, N, P, ORDER>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    ORDER: MultiplicativeGroupOrder<MOD, LIMBS, M>,
+    ORDER: MultiplicativeGroupOrder<N>,
 {
     // --- Identity elements --------------------------------------------------
 
@@ -589,7 +599,10 @@ where
     /// Finds `s(x)` such that `self(x)s(x) \equiv 1  (mod f(x))` by computing
     /// `gcd(self, f) = g` (a nonzero constant if self ≠ 0) and setting
     /// `self⁻¹ = sg⁻¹ mod f`.
+    ///
+    /// UNSAFE: this is not constant time because of the if at the start
     fn invert(&self) -> Option<Self> {
+        // UNSAFE: this leaks timing data if self is zero
         if self.is_zero() {
             return None;
         }
@@ -670,15 +683,44 @@ where
         // let p = FpElement::<MOD, LIMBS>::characteristic();
         // let q = (&p, M);
         // assert!();
-        todo!("Todo this fun thing")
+        let half = ORDER::half_order();
+        if (half.as_limbs()[0].0 & 0b11 == 1) {
+            // 1 mod 4
+            todo!("Todo this fun thing")
+        } else {
+            // 3 mod 4
+            let exp = ORDER::ts_proj();
+            let exp_limbs = exp.as_limbs().map(|limb| limb.0);
+            Some(self.pow(&exp_limbs))
+        }
     }
 
+    /// a is a QR in Fp^M iff a^{(p^M-1)/2} = 1.
+    ///
+    /// Implements the "Legendre symbol" which is 1 if and only if we
+    /// have a quadratic residue in FpM
+    ///
+    /// # Arguments
+    ///
+    /// * `&self` - Element of FpM (type: self)
+    ///
+    /// # Returns
+    ///
+    /// Either `0` if `&self` is `0`, `1` if `&self` is a QR or `-1` if
+    /// `&self` is not a QR. (type: i8)
     fn legendre(&self) -> i8 {
-        // a is a QR in Fp^M iff a^{(p^M-1)/2} = 1.
-        // Placeholder: implement per-field when needed.
         let exp = ORDER::half_order();
-        let ret = self.pow_vartime(exp.limbs());
-        0
+        let exp_limbs = exp.as_limbs().map(|limb| limb.0);
+        let symb = self.pow(&exp_limbs); // note, this is constant time since exp is constant
+
+        // UNSAFE: Is this constant time ??
+        if symb.is_zero() {
+            0
+        } else if symb.is_one() {
+            1
+        } else {
+            -1
+        }
     }
 
     // --- Utilities ----------------------------------------------------------

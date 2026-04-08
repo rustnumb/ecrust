@@ -2,6 +2,7 @@ use crypto_bigint::{const_prime_monty_params, Uint};
 use fp::field_ops::FieldOps;
 use fp::fp_element::FpElement;
 use fp::fp_ext::{FpExt, IrreduciblePoly, MultiplicativeGroupOrder}; // ← was missing IrreduciblePoly
+use rand::RngExt;
 
 const_prime_monty_params!(Fp19Mod, Uint<1>, "0000000000000013", 2);
 
@@ -16,22 +17,22 @@ impl IrreduciblePoly<Fp19Mod, 1, 2> for QuadPoly {
     }
 }
 
-impl MultiplicativeGroupOrder<Fp19Mod, 1, 2, 1> for OrderQuad {
+impl MultiplicativeGroupOrder<1> for OrderQuad {
     // Still only need 1 limb for 19^2
-    type Order = Uint<1>;
-
-    fn order() -> Self::Order {
+    fn order() -> Uint<1> {
         const ORDER: Uint<1> = Uint::<1>::from_u64(360);
         ORDER
     }
-
-    fn half_order() -> Self::Order {
-        const ORDER: Uint<1> = Uint::<1>::from_u64(360) >> 1;
-        ORDER
+    fn half_order() -> Uint<1> {
+        const HALFORDER: Uint<1> = Uint::<1>::from_u64(180);
+        HALFORDER
+    }
+    fn ts_proj() -> Uint<1> {
+        0
     }
 }
 
-type F19_2 = FpExt<Fp19Mod, 1, 2, QuadPoly, OrderQuad>;
+type F19_2 = FpExt<Fp19Mod, 1, 2, 1, QuadPoly, OrderQuad>;
 
 fn fp(n: u64) -> Fp19 {
     Fp19::from_u64(n)
@@ -280,6 +281,19 @@ fn pow_group_order() {
 }
 
 // -----------------------------------------------------------------------
+// Legendre and squareroot
+// -----------------------------------------------------------------------
+#[test]
+fn quadratic_legendre_of_qr() {
+    let mut rng = rand::rng();
+    let x: u64 = rng.random();
+    let y: u64 = rng.random();
+    let mut a = el(x, y);
+    a = a.pow(&[2]);
+    assert_eq!(a.legendre(), 1);
+}
+
+// -----------------------------------------------------------------------
 // Cubic extension  F₁₉³  with  f(x) = x³ − 2  (≡ x³ + 17 mod 19)
 // -----------------------------------------------------------------------
 
@@ -292,20 +306,22 @@ impl IrreduciblePoly<Fp19Mod, 1, 3> for CubicPoly {
     }
 }
 
-impl MultiplicativeGroupOrder<Fp19Mod, 1, 2, 1> for OrderCubic {
+impl MultiplicativeGroupOrder<1> for OrderCubic {
     // Still only need 1 limb for 19^3
-    type Order = Uint<1>;
-    fn order() -> Self::Order {
+    fn order() -> Uint<1> {
         const ORDER: Uint<1> = Uint::<1>::from_u64(6858);
         ORDER
     }
-    fn half_order() -> Self::Order {
-        const ORDER: Uint<1> = Uint::<1>::from_u64(6858) >> 1;
-        ORDER
+    fn half_order() -> Uint<1> {
+        const HALFORDER: Uint<1> = Uint::<1>::from_u64(3429);
+        HALFORDER
+    }
+    fn ts_proj() -> Uint<1> {
+        0
     }
 }
 
-type F19_3 = FpExt<Fp19Mod, 1, 3, CubicPoly, OrderCubic>;
+type F19_3 = FpExt<Fp19Mod, 1, 3, 1, CubicPoly, OrderCubic>;
 
 fn el3(a: u64, b: u64, c: u64) -> F19_3 {
     F19_3::new([fp(a), fp(b), fp(c)])
