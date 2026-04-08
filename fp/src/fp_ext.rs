@@ -99,13 +99,20 @@ where
 ///         const ORDER: Uint<1> = Uint::<1>::from_u64(6858);
 ///         ORDER
 ///     }
+///     fn half_order() -> Self::Order {
+///         const ORDER: Uint<1> = Uint::<1>::from_u64(6858) >> 1;
+///         ORDER
+///     }
 /// }
 /// ```
-pub trait MultiplicativeGroupOrder<MOD, const LIMBS: usize, const M: usize>: 'static {
-    type Order;
+pub trait MultiplicativeGroupOrder<MOD, const LIMBS: usize, const M: usize, const N: usize>:
+    'static
+{
+    type Order = Uint<N>;
 
     /// Multiplicative group order `p^M - 1`
     fn order() -> Self::Order;
+    fn half_order() -> Self::Order;
 }
 
 // ===========================================================================
@@ -116,30 +123,34 @@ pub trait MultiplicativeGroupOrder<MOD, const LIMBS: usize, const M: usize>: 'st
 ///
 /// `P` is a zero-size marker type implementing [`IrreduciblePoly`].
 /// `M` is the extension degree (number of base-field coefficients stored).
-pub struct FpExt<MOD, const LIMBS: usize, const M: usize, P>
+pub struct FpExt<MOD, const LIMBS: usize, const M: usize, P, ORDER>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
+    ORDER: MultiplicativeGroupOrder<MOD, LIMBS, M>,
 {
     /// Coefficients in ascending degree: `coeffs[i]` = coefficient of `x^i`.
     pub coeffs: [FpElement<MOD, LIMBS>; M],
     _phantom: PhantomData<P>,
+    _order: PhantomData<ORDER>,
 }
 
 // ---------------------------------------------------------------------------
 // Constructors
 // ---------------------------------------------------------------------------
 
-impl<MOD, const LIMBS: usize, const M: usize, P> FpExt<MOD, LIMBS, M, P>
+impl<MOD, const LIMBS: usize, const M: usize, P, ORDER> FpExt<MOD, LIMBS, M, P, ORDER>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
+    ORDER: MultiplicativeGroupOrder<MOD, LIMBS, M>,
 {
     /// Construct from a coefficient array `[a_0, ..., a_{M-1}]`.
     pub fn new(coeffs: [FpElement<MOD, LIMBS>; M]) -> Self {
         Self {
             coeffs,
             _phantom: PhantomData,
+            _order: PhantomData,
         }
     }
 
@@ -161,32 +172,36 @@ where
 // (manual impls so we don't over-constrain the bounds the way #[derive] would)
 // ---------------------------------------------------------------------------
 
-impl<MOD, const LIMBS: usize, const M: usize, P> Clone for FpExt<MOD, LIMBS, M, P>
+impl<MOD, const LIMBS: usize, const M: usize, P, ORDER> Clone for FpExt<MOD, LIMBS, M, P, ORDER>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
+    ORDER: MultiplicativeGroupOrder<MOD, LIMBS, M>,
 {
     fn clone(&self) -> Self {
         Self {
             coeffs: self.coeffs.clone(),
             _phantom: PhantomData,
+            _order: PhantomData,
         }
     }
 }
 
 // FpElement is Copy (derives it), so [FpElement; M] is Copy too.
-impl<MOD, const LIMBS: usize, const M: usize, P> Copy for FpExt<MOD, LIMBS, M, P>
+impl<MOD, const LIMBS: usize, const M: usize, P, ORDER> Copy for FpExt<MOD, LIMBS, M, P, ORDER>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
+    ORDER: MultiplicativeGroupOrder<MOD, LIMBS, M>,
     [FpElement<MOD, LIMBS>; M]: Copy,
 {
 }
 
-impl<MOD, const LIMBS: usize, const M: usize, P> PartialEq for FpExt<MOD, LIMBS, M, P>
+impl<MOD, const LIMBS: usize, const M: usize, P, ORDER> PartialEq for FpExt<MOD, LIMBS, M, P, ORDER>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
+    ORDER: MultiplicativeGroupOrder<MOD, LIMBS, M>,
 {
     fn eq(&self, other: &Self) -> bool {
         self.coeffs
@@ -196,17 +211,20 @@ where
     }
 }
 
-impl<MOD, const LIMBS: usize, const M: usize, P> Eq for FpExt<MOD, LIMBS, M, P>
+impl<MOD, const LIMBS: usize, const M: usize, P, ORDER> Eq for FpExt<MOD, LIMBS, M, P, ORDER>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
+    ORDER: MultiplicativeGroupOrder<MOD, LIMBS, M>,
 {
 }
 
-impl<MOD, const LIMBS: usize, const M: usize, P> std::fmt::Debug for FpExt<MOD, LIMBS, M, P>
+impl<MOD, const LIMBS: usize, const M: usize, P, ORDER> std::fmt::Debug
+    for FpExt<MOD, LIMBS, M, P, ORDER>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
+    ORDER: MultiplicativeGroupOrder<MOD, LIMBS, M>,
     FpElement<MOD, LIMBS>: std::fmt::Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -447,10 +465,11 @@ where
 // Operator overloads (delegate to the FieldOps methods below)
 // ===========================================================================
 
-impl<MOD, const LIMBS: usize, const M: usize, P> Add for FpExt<MOD, LIMBS, M, P>
+impl<MOD, const LIMBS: usize, const M: usize, P, ORDER> Add for FpExt<MOD, LIMBS, M, P, ORDER>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
+    ORDER: MultiplicativeGroupOrder<MOD, LIMBS, M>,
 {
     type Output = Self;
     fn add(self, rhs: Self) -> Self {
@@ -458,10 +477,11 @@ where
     }
 }
 
-impl<MOD, const LIMBS: usize, const M: usize, P> Sub for FpExt<MOD, LIMBS, M, P>
+impl<MOD, const LIMBS: usize, const M: usize, P, ORDER> Sub for FpExt<MOD, LIMBS, M, P, ORDER>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
+    ORDER: MultiplicativeGroupOrder<MOD, LIMBS, M>,
 {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self {
@@ -469,10 +489,11 @@ where
     }
 }
 
-impl<MOD, const LIMBS: usize, const M: usize, P> Mul for FpExt<MOD, LIMBS, M, P>
+impl<MOD, const LIMBS: usize, const M: usize, P, ORDER> Mul for FpExt<MOD, LIMBS, M, P, ORDER>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
+    ORDER: MultiplicativeGroupOrder<MOD, LIMBS, M>,
 {
     type Output = Self;
     fn mul(self, rhs: Self) -> Self {
@@ -480,10 +501,11 @@ where
     }
 }
 
-impl<MOD, const LIMBS: usize, const M: usize, P> Neg for FpExt<MOD, LIMBS, M, P>
+impl<MOD, const LIMBS: usize, const M: usize, P, ORDER> Neg for FpExt<MOD, LIMBS, M, P, ORDER>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
+    ORDER: MultiplicativeGroupOrder<MOD, LIMBS, M>,
 {
     type Output = Self;
     fn neg(self) -> Self {
@@ -495,10 +517,11 @@ where
 // FieldOps implementation
 // ===========================================================================
 
-impl<MOD, const LIMBS: usize, const M: usize, P> FieldOps for FpExt<MOD, LIMBS, M, P>
+impl<MOD, const LIMBS: usize, const M: usize, P, ORDER> FieldOps for FpExt<MOD, LIMBS, M, P, ORDER>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
+    ORDER: MultiplicativeGroupOrder<MOD, LIMBS, M>,
 {
     // --- Identity elements --------------------------------------------------
 
@@ -653,7 +676,9 @@ where
     fn legendre(&self) -> i8 {
         // a is a QR in Fp^M iff a^{(p^M-1)/2} = 1.
         // Placeholder: implement per-field when needed.
-        todo!("FpExt::legendre — implement for your specific (p, M)")
+        let exp = ORDER::half_order();
+        let ret = self.pow_vartime(exp.limbs());
+        0
     }
 
     // --- Utilities ----------------------------------------------------------

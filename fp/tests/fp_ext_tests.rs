@@ -8,6 +8,7 @@ const_prime_monty_params!(Fp19Mod, Uint<1>, "0000000000000013", 2);
 type Fp19 = FpElement<Fp19Mod, 1>;
 
 struct QuadPoly;
+struct OrderQuad;
 
 impl IrreduciblePoly<Fp19Mod, 1, 2> for QuadPoly {
     fn modulus() -> [Fp19; 2] {
@@ -15,9 +16,7 @@ impl IrreduciblePoly<Fp19Mod, 1, 2> for QuadPoly {
     }
 }
 
-type F19_2 = FpExt<Fp19Mod, 1, 2, QuadPoly>;
-
-impl MultiplicativeGroupOrder<Fp19Mod, 1, 2> for F19_2 {
+impl MultiplicativeGroupOrder<Fp19Mod, 1, 2, 1> for OrderQuad {
     // Still only need 1 limb for 19^2
     type Order = Uint<1>;
 
@@ -25,7 +24,14 @@ impl MultiplicativeGroupOrder<Fp19Mod, 1, 2> for F19_2 {
         const ORDER: Uint<1> = Uint::<1>::from_u64(360);
         ORDER
     }
+
+    fn half_order() -> Self::Order {
+        const ORDER: Uint<1> = Uint::<1>::from_u64(360) >> 1;
+        ORDER
+    }
 }
+
+type F19_2 = FpExt<Fp19Mod, 1, 2, QuadPoly, OrderQuad>;
 
 fn fp(n: u64) -> Fp19 {
     Fp19::from_u64(n)
@@ -278,6 +284,7 @@ fn pow_group_order() {
 // -----------------------------------------------------------------------
 
 struct CubicPoly;
+struct OrderCubic;
 
 impl IrreduciblePoly<Fp19Mod, 1, 3> for CubicPoly {
     fn modulus() -> [Fp19; 3] {
@@ -285,16 +292,20 @@ impl IrreduciblePoly<Fp19Mod, 1, 3> for CubicPoly {
     }
 }
 
-type F19_3 = FpExt<Fp19Mod, 1, 3, CubicPoly>;
-
-impl MultiplicativeGroupOrder<Fp19Mod, 1, 2> for F19_3 {
+impl MultiplicativeGroupOrder<Fp19Mod, 1, 2, 1> for OrderCubic {
     // Still only need 1 limb for 19^3
     type Order = Uint<1>;
     fn order() -> Self::Order {
         const ORDER: Uint<1> = Uint::<1>::from_u64(6858);
         ORDER
     }
+    fn half_order() -> Self::Order {
+        const ORDER: Uint<1> = Uint::<1>::from_u64(6858) >> 1;
+        ORDER
+    }
 }
+
+type F19_3 = FpExt<Fp19Mod, 1, 3, CubicPoly, OrderCubic>;
 
 fn el3(a: u64, b: u64, c: u64) -> F19_3 {
     F19_3::new([fp(a), fp(b), fp(c)])
