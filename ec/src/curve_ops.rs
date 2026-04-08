@@ -34,7 +34,7 @@ pub trait Curve: Sized + Clone + PartialEq + Eq {
     fn random_point(&self) -> Self::Point;
 
     /// Return the j_invariant of the curve;
-    fn j_invariant(&self) -> u64;
+    fn j_invariant(&self) -> Self::BaseField;
 
     // Return the a-invariants of the curve.
     ///

@@ -162,11 +162,9 @@ impl<F: FieldOps> AffinePoint<F> {
         if self.infinity {
             return Self::identity();
         }
-        let neg_y = {
-            let a1x = <F as FieldOps>::mul(&curve.a1, &self.x);
-            let sum = <F as FieldOps>::add(&self.y, &<F as FieldOps>::add(&a1x, &curve.a3));
-            <F as FieldOps>::negate(&sum)
-        };
+
+        let neg_y = - self.y - curve.a1 * self.x - curve.a3;
+
         Self::new(self.x.clone(), neg_y)
     }
 
@@ -187,11 +185,7 @@ impl<F: FieldOps> AffinePoint<F> {
         }
 
         // denominator = 2y₁ + a₁x₁ + a₃
-        let denom = {
-            let two_y = <F as FieldOps>::double(&self.y);
-            let a1x   = <F as FieldOps>::mul(&curve.a1, &self.x);
-            <F as FieldOps>::add(&<F as FieldOps>::add(&two_y, &a1x), &curve.a3)
-        };
+        let denom = <F as FieldOps>::double(&self.y) + curve.a1 * self.x + curve.a3;
 
         // If denominator is zero the tangent is vertical → result is O.
         let denom_inv = match denom.invert().into_option() {
@@ -202,51 +196,29 @@ impl<F: FieldOps> AffinePoint<F> {
         // numerator = 3x₁² + 2a₂x₁ + a₄ − a₁y₁
         let numer = {
             let x1_sq  = <F as FieldOps>::square(&self.x);
-            let three_x1_sq = <F as FieldOps>::add(
-                &<F as FieldOps>::double(&x1_sq),
-                &x1_sq,
-            );
-            let two_a2_x1 = <F as FieldOps>::double(
-                &<F as FieldOps>::mul(&curve.a2, &self.x),
-            );
-            let a1y1 = <F as FieldOps>::mul(&curve.a1, &self.y);
-            <F as FieldOps>::sub(
-                &<F as FieldOps>::add(
-                    &<F as FieldOps>::add(&three_x1_sq, &two_a2_x1),
-                    &curve.a4,
-                ),
-                &a1y1,
-            )
+            let three_x1_sq = x1_sq + <F as FieldOps>::double(&x1_sq);
+            let two_a2_x1 = <F as FieldOps>::double(&(curve.a2 * self.x));
+            let a1y1 = curve.a1 * self.y;
+            three_x1_sq + two_a2_x1 + curve.a4 - a1y1
         };
 
-        let lambda = <F as FieldOps>::mul(&numer, &denom_inv);
+        let lambda = numer * denom_inv;
 
         // x₃ = λ² + a₁λ − a₂ − 2x₁
         let x3 = {
             let lam_sq = <F as FieldOps>::square(&lambda);
-            let a1_lam = <F as FieldOps>::mul(&curve.a1, &lambda);
+            let a1_lam = curve.a1 * lambda;
             let two_x1 = <F as FieldOps>::double(&self.x);
-            <F as FieldOps>::sub(
-                &<F as FieldOps>::sub(
-                    &<F as FieldOps>::add(&lam_sq, &a1_lam),
-                    &curve.a2,
-                ),
-                &two_x1,
-            )
+            lam_sq + a1_lam - curve.a2 - two_x1
         };
 
         // y₃ = λ(x₁ − x₃) − y₁ − a₁x₃ − a₃
         let y3 = {
-            let dx      = <F as FieldOps>::sub(&self.x, &x3);
-            let lam_dx  = <F as FieldOps>::mul(&lambda, &dx);
-            let a1x3    = <F as FieldOps>::mul(&curve.a1, &x3);
-            <F as FieldOps>::sub(
-                &<F as FieldOps>::sub(
-                    &<F as FieldOps>::sub(&lam_dx, &self.y),
-                    &a1x3,
-                ),
-                &curve.a3,
-            )
+            let dx= self.x - x3;
+            let lam_dx = lambda * dx;
+            let a1x3 = curve.a1 *x3;
+
+            lam_dx - self.y - a1x3 - curve.a3
         };
 
         Self::new(x3, y3)
@@ -287,38 +259,26 @@ impl<F: FieldOps> AffinePoint<F> {
         }
 
         // General chord
-        let dx = <F as FieldOps>::sub(&other.x, &self.x);
-        let dy = <F as FieldOps>::sub(&other.y, &self.y);
+        let dx = other.x - self.x;
+        let dy = other.y - self.y;
 
         // dx ≠ 0 guaranteed by the x₁ ≠ x₂ check above
         let dx_inv = dx.invert().into_option().expect("dx must be invertible (x₁ ≠ x₂)");
-        let lambda = <F as FieldOps>::mul(&dy, &dx_inv);
+        let lambda = dy * dx_inv;
 
         // x₃ = λ² + a₁λ − a₂ − x₁ − x₂
         let x3 = {
             let lam_sq = <F as FieldOps>::square(&lambda);
-            let a1_lam = <F as FieldOps>::mul(&curve.a1, &lambda);
-            <F as FieldOps>::sub(
-                &<F as FieldOps>::sub(
-                    &<F as FieldOps>::add(&lam_sq, &a1_lam),
-                    &curve.a2,
-                ),
-                &<F as FieldOps>::add(&self.x, &other.x),
-            )
+            let a1_lam = curve.a1 * lambda;
+            lam_sq + a1_lam - curve.a2 - self.x - other.x
         };
 
         // y₃ = λ(x₁ − x₃) − y₁ − a₁x₃ − a₃
         let y3 = {
-            let dx3     = <F as FieldOps>::sub(&self.x, &x3);
-            let lam_dx3 = <F as FieldOps>::mul(&lambda, &dx3);
-            let a1x3    = <F as FieldOps>::mul(&curve.a1, &x3);
-            <F as FieldOps>::sub(
-                &<F as FieldOps>::sub(
-                    &<F as FieldOps>::sub(&lam_dx3, &self.y),
-                    &a1x3,
-                ),
-                &curve.a3,
-            )
+            let dx3 = self.x - x3;
+            let lam_dx3 = lambda * dx3;
+            let a1x3 = curve.a1 * x3;
+            lam_dx3 - self.y - a1x3 - curve.a3
         };
 
         Self::new(x3, y3)
@@ -366,6 +326,7 @@ where
         AffinePoint::<F>::negate(self, curve)
     }
 
+    /*
     fn add(&self, rhs: &Self, curve: &Self::Curve) -> Self {
         AffinePoint::<F>::add(self, rhs, curve)
     }
@@ -373,7 +334,11 @@ where
     fn double(&self, curve: &Self::Curve) -> Self {
         AffinePoint::<F>::double(self, curve)
     }
-}
+    */
 
+    fn scalar_mul(&self, k: &[u64], curve: &Self::Curve) -> Self {
+        AffinePoint::<F>::scalar_mul(self, k, curve)
+    }
+}
 
 

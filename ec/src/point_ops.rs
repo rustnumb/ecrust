@@ -21,32 +21,7 @@ pub trait PointOps: Clone {
     fn identity(curve: &Self::Curve) -> Self;
     fn is_identity(&self) -> bool;
     fn negate(&self, curve: &Self::Curve) -> Self;
-    fn add(&self, rhs: &Self, curve: &Self::Curve) -> Self;
-    fn double(&self, curve: &Self::Curve) -> Self;
-
-    /// Scalar multiplication  `[k]P`  (variable-time double-and-add).
-    ///
-    /// Provided as a default so every `PointOps` implementor gets it
-    /// automatically.  For constant-time scalar multiplication, see
-    /// [`CtPointOps::scalar_mul_ct`].
-    fn scalar_mul(&self, k: &[u64], curve: &Self::Curve) -> Self {
-        let mut result = Self::identity(curve);
-        let mut found_one = false;
-
-        for &limb in k.iter().rev() {
-            for bit in (0..64).rev() {
-                if found_one {
-                    result = result.double(curve);
-                }
-                if (limb >> bit) & 1 == 1 {
-                    found_one = true;
-                    result = result.add(self, curve);
-                }
-            }
-        }
-
-        result
-    }
+    fn scalar_mul(&self, k: &[u64], curve: &Self::Curve) -> Self;
 }
 
 
