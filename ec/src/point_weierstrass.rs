@@ -44,7 +44,11 @@ pub struct AffinePoint<F: FieldOps> {
 // Manual trait impls  (avoid over-constraining with #[derive])
 // ---------------------------------------------------------------------------
 
-impl<F: FieldOps> PartialEq for AffinePoint<F> {
+impl<F: FieldOps> PartialEq for AffinePoint<F>
+where
+    F: FieldOps + ConstantTimeEq,
+
+{
     fn eq(&self, other: &Self) -> bool {
         match (self.infinity, other.infinity) {
             (true, true)   => true,
@@ -57,7 +61,10 @@ impl<F: FieldOps> PartialEq for AffinePoint<F> {
 
 
 
-impl<F: FieldOps> Eq for AffinePoint<F> {}
+impl<F: FieldOps> Eq for AffinePoint<F>
+where
+F: FieldOps + ConstantTimeEq
+{ }
 
 // ---------------------------------------------------------------------------
 // Constructors
@@ -86,13 +93,6 @@ impl<F: FieldOps> AffinePoint<F> {
 // ---------------------------------------------------------------------------
 // Constant-time functionalities
 // ---------------------------------------------------------------------------
-
-impl<F> Default for AffinePoint<F>
-where
-    F: FieldOps + Copy,
-{
-    fn default() -> Self {Self::identity()}
-}
 
 impl<F> ConditionallySelectable for AffinePoint<F>
 where

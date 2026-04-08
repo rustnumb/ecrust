@@ -49,7 +49,15 @@ impl<F: FieldOps> WeierstrassCurve<F> {
 
     /// Construct a curve from all five general Weierstrass coefficients.
     pub fn new(a1: F, a2: F, a3: F, a4: F, a6: F) -> Self {
-        Self { a1, a2, a3, a4, a6 }
+        assert!(discriminant_from_coeffs::<F>(&a1, &a2, &a3, &a4, &a6) != F::zero());
+        
+        Self {
+            a1,
+            a2,
+            a3,
+            a4,
+            a6
+        }
     }
 
     /// Construct the **short Weierstrass** curve  `y² = x³ + ax + b`.
@@ -57,6 +65,9 @@ impl<F: FieldOps> WeierstrassCurve<F> {
     /// Sets `a₁ = a₂ = a₃ = 0`,  `a₄ = a`,  `a₆ = b`.
     /// Only valid when `char(F) ≠ 2, 3`.
     pub fn new_short(a: F, b: F) -> Self {
+        assert!(F::characteristic()[0] > 3);
+        assert!(discriminant_from_coeffs::<F>(&F::zero(), &F::zero(), &F::zero(), &a, &b) != F::zero());
+
         Self {
             a1: F::zero(),
             a2: F::zero(),
@@ -116,91 +127,115 @@ impl<F: FieldOps> WeierstrassCurve<F> {
 
         lhs == rhs
     }
+}
 
-    // -------------------------------------------------------------------
-    // Discriminant helpers  (Silverman, §III.1)
-    // -------------------------------------------------------------------
+// -------------------------------------------------------------------
+// Discriminant private helpers  (Silverman, §III.1)
+// -------------------------------------------------------------------
 
-    /// `b₂ = a₁² + 4a₂`.
+/// `b₂ = a₁² + 4a₂`.
+fn b2_from_coeffs<F: FieldOps>(a1: &F, a2: &F) -> F {
+    let a1_sq = <F as FieldOps>::square(&a1);
+    let four_a2 = <F as FieldOps>::double(&<F as FieldOps>::double(&a2));
+    <F as FieldOps>::add(&a1_sq, &four_a2)
+}
+
+/// `b₄ = a₁a₃ + 2a₄`.
+fn b4_from_coeffs<F: FieldOps>(a1: &F, a3: &F, a4: &F) -> F {
+    let a1a3 = <F as FieldOps>::mul(&a1, &a3);
+    let two_a4 = <F as FieldOps>::double(&a4);
+    <F as FieldOps>::add(&a1a3, &two_a4)
+}
+
+/// `b₆ = a₃² + 4a₆`.
+fn b6_from_coeffs<F: FieldOps>(a3: &F, a6: &F) -> F {
+    let a3_sq = <F as FieldOps>::square(&a3);
+    let four_a6 = <F as FieldOps>::double(&<F as FieldOps>::double(&a6));
+    <F as FieldOps>::add(&a3_sq, &four_a6)
+}
+
+
+/// `b₈ = a₁²a₆ + 4a₂a₆ − a₁a₃a₄ + a₂a₃² − a₄²`.
+fn b8_from_coeffs<F: FieldOps>(a1: &F, a2: &F, a3: &F, a4: &F, a6: &F) -> F {
+    let a1sq_a6 = <F as FieldOps>::mul(&<F as FieldOps>::square(&a1), &a6);
+    let four_a2_a6 = <F as FieldOps>::double(&<F as FieldOps>::double(&<F as FieldOps>::mul(
+        &a2, &a6,
+    )));
+    let a1_a3_a4 = <F as FieldOps>::mul(&<F as FieldOps>::mul(&a1, &a3), &a4);
+    let a2_a3sq = <F as FieldOps>::mul(&a2, &<F as FieldOps>::square(&a3));
+    let a4sq = <F as FieldOps>::square(&a4);
+
+    let sum = <F as FieldOps>::add(&a1sq_a6, &four_a2_a6);
+    let sum = <F as FieldOps>::sub(&sum, &a1_a3_a4);
+    let sum = <F as FieldOps>::add(&sum, &a2_a3sq);
+    <F as FieldOps>::sub(&sum, &a4sq)
+}
+
+/// The discriminant  `Δ = −b₂²b₈ − 8b₄³ − 27b₆² + 9b₂b₄b₆`.
+///
+/// The curve is non-singular if and only if `Δ ≠ 0`.
+/// (Only meaningful when `char(F) ≠ 2, 3`.)
+fn discriminant_from_coeffs<F: FieldOps>(a1: &F, a2: &F, a3: &F, a4: &F, a6: &F) -> F {
+    let b2 = b2_from_coeffs::<F>(&a1, &a2);
+    let b4 = b4_from_coeffs::<F>(&a1, &a3, &a4);
+    let b6 = b6_from_coeffs::<F>(&a3, &a6);
+    let b8 = b8_from_coeffs::<F>(&a1, &a2, &a3, &a4, &a6);
+
+    // Helper: build small integer constants from repeated doubling / adding
+    let two = <F as FieldOps>::double(&F::one());
+    let three = <F as FieldOps>::add(&two, &F::one());
+    let eight = <F as FieldOps>::double(&<F as FieldOps>::double(&two));
+    let nine = <F as FieldOps>::square(&three);
+    let twentyseven = <F as FieldOps>::mul(&nine, &three);
+
+    // −b₂²b₈
+    let term1 =
+        <F as FieldOps>::negate(&<F as FieldOps>::mul(&<F as FieldOps>::square(&b2), &b8));
+
+    // −8b₄³
+    let b4_cubed = <F as FieldOps>::mul(&<F as FieldOps>::square(&b4), &b4);
+    let term2 = <F as FieldOps>::negate(&<F as FieldOps>::mul(&eight, &b4_cubed));
+
+    // −27b₆²
+    let term3 = <F as FieldOps>::negate(&<F as FieldOps>::mul(
+        &twentyseven,
+        &<F as FieldOps>::square(&b6),
+    ));
+
+    // 9b₂b₄b₆
+    let term4 = <F as FieldOps>::mul(
+        &nine,
+        &<F as FieldOps>::mul(&b2, &<F as FieldOps>::mul(&b4, &b6)),
+    );
+
+    <F as FieldOps>::add(
+        &<F as FieldOps>::add(&term1, &term2),
+        &<F as FieldOps>::add(&term3, &term4),
+    )
+}
+
+impl<F: FieldOps> WeierstrassCurve<F> {
     pub fn b2(&self) -> F {
-        let a1_sq = <F as FieldOps>::square(&self.a1);
-        let four_a2 = <F as FieldOps>::double(&<F as FieldOps>::double(&self.a2));
-        <F as FieldOps>::add(&a1_sq, &four_a2)
+        b2_from_coeffs::<F>(&self.a1, &self.a2)
     }
-
-    /// `b₄ = a₁a₃ + 2a₄`.
     pub fn b4(&self) -> F {
-        let a1a3 = <F as FieldOps>::mul(&self.a1, &self.a3);
-        let two_a4 = <F as FieldOps>::double(&self.a4);
-        <F as FieldOps>::add(&a1a3, &two_a4)
+        b4_from_coeffs::<F>(&self.a1, &self.a3, &self.a4)
     }
-
-    /// `b₆ = a₃² + 4a₆`.
     pub fn b6(&self) -> F {
-        let a3_sq = <F as FieldOps>::square(&self.a3);
-        let four_a6 = <F as FieldOps>::double(&<F as FieldOps>::double(&self.a6));
-        <F as FieldOps>::add(&a3_sq, &four_a6)
+        b6_from_coeffs::<F>(&self.a3, &self.a6)
     }
-
-    /// `b₈ = a₁²a₆ + 4a₂a₆ − a₁a₃a₄ + a₂a₃² − a₄²`.
     pub fn b8(&self) -> F {
-        let a1sq_a6 = <F as FieldOps>::mul(&<F as FieldOps>::square(&self.a1), &self.a6);
-        let four_a2_a6 = <F as FieldOps>::double(&<F as FieldOps>::double(&<F as FieldOps>::mul(
-            &self.a2, &self.a6,
-        )));
-        let a1_a3_a4 = <F as FieldOps>::mul(&<F as FieldOps>::mul(&self.a1, &self.a3), &self.a4);
-        let a2_a3sq = <F as FieldOps>::mul(&self.a2, &<F as FieldOps>::square(&self.a3));
-        let a4sq = <F as FieldOps>::square(&self.a4);
-
-        let sum = <F as FieldOps>::add(&a1sq_a6, &four_a2_a6);
-        let sum = <F as FieldOps>::sub(&sum, &a1_a3_a4);
-        let sum = <F as FieldOps>::add(&sum, &a2_a3sq);
-        <F as FieldOps>::sub(&sum, &a4sq)
+        b8_from_coeffs::<F>(&self.a1, &self.a2, &self.a3, &self.a4, &self.a6)    
     }
-
-    /// The discriminant  `Δ = −b₂²b₈ − 8b₄³ − 27b₆² + 9b₂b₄b₆`.
-    ///
-    /// The curve is non-singular if and only if `Δ ≠ 0`.
-    /// (Only meaningful when `char(F) ≠ 2, 3`.)
     pub fn discriminant(&self) -> F {
-        let b2 = self.b2();
-        let b4 = self.b4();
-        let b6 = self.b6();
-        let b8 = self.b8();
-
-        // Helper: build small integer constants from repeated doubling / adding
-        let two = <F as FieldOps>::double(&F::one());
-        let three = <F as FieldOps>::add(&two, &F::one());
-        let eight = <F as FieldOps>::double(&<F as FieldOps>::double(&two));
-        let nine = <F as FieldOps>::square(&three);
-        let twentyseven = <F as FieldOps>::mul(&nine, &three);
-
-        // −b₂²b₈
-        let term1 =
-            <F as FieldOps>::negate(&<F as FieldOps>::mul(&<F as FieldOps>::square(&b2), &b8));
-
-        // −8b₄³
-        let b4_cubed = <F as FieldOps>::mul(&<F as FieldOps>::square(&b4), &b4);
-        let term2 = <F as FieldOps>::negate(&<F as FieldOps>::mul(&eight, &b4_cubed));
-
-        // −27b₆²
-        let term3 = <F as FieldOps>::negate(&<F as FieldOps>::mul(
-            &twentyseven,
-            &<F as FieldOps>::square(&b6),
-        ));
-
-        // 9b₂b₄b₆
-        let term4 = <F as FieldOps>::mul(
-            &nine,
-            &<F as FieldOps>::mul(&b2, &<F as FieldOps>::mul(&b4, &b6)),
-        );
-
-        <F as FieldOps>::add(
-            &<F as FieldOps>::add(&term1, &term2),
-            &<F as FieldOps>::add(&term3, &term4),
-        )
+        discriminant_from_coeffs::<F>(&self.a1, &self.a2, &self.a3, &self.a4, &self.a6)
     }
 }
+
+
+// -------------------------------------------------------------------
+// Curve predicates
+// -------------------------------------------------------------------
 
 impl<F: FieldOps> Curve for WeierstrassCurve<F> {
     type BaseField = F;

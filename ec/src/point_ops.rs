@@ -6,6 +6,7 @@
 //! each implementation.
 use fp::field_ops::FieldOps;
 use subtle::ConditionallySelectable;
+use crate::point_weierstrass::AffinePoint;
 
 /// Generic group interface for curve points.
 ///
@@ -46,4 +47,12 @@ pub trait PointOps: Clone {
 
         result
     }
+}
+
+
+impl<F> Default for AffinePoint<F>
+where
+    F: FieldOps + Copy,
+{
+    fn default() -> Self {Self::identity()}
 }
