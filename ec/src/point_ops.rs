@@ -5,7 +5,7 @@
 //! Montgomery, Edwards, etc., while keeping model-specific formulas inside
 //! each implementation.
 use fp::field_ops::FieldOps;
-use subtle::ConditionallySelectable;
+use subtle::{ConditionallySelectable};
 
 /// Generic group interface for curve points.
 ///
@@ -13,7 +13,7 @@ use subtle::ConditionallySelectable;
 /// (`Add`, `Sub`, `Mul`, `Neg`) because point addition and negation usually
 /// need access to the curve parameters. The clean abstraction boundary is a
 /// method-based API taking `&Self::Curve` explicitly.
-pub trait PointOps: Clone {
+pub trait PointOps: Clone  + ConditionallySelectable{
     type BaseField: FieldOps;
     type Curve;
 
@@ -26,24 +26,9 @@ pub trait PointOps: Clone {
     /// Scalar multiplication  `[k]P`  (variable-time double-and-add).
     ///
     /// Provided as a default so every `PointOps` implementor gets it
-    /// automatically.  For constant-time scalar multiplication, see
-    /// [`CtPointOps::scalar_mul_ct`].
-    fn scalar_mul(&self, k: &[u64], curve: &Self::Curve) -> Self {
-        let mut result = Self::identity(curve);
-        let mut found_one = false;
+    /// automatically. For a ladder-based scalar path with constant-time scalar
+    /// handling, see [`CtPointOps::scalar_mul_ct`].
+    fn scalar_mul(&self, k: &[u64], curve: &Self::Curve) -> Self;
 
-        for &limb in k.iter().rev() {
-            for bit in (0..64).rev() {
-                if found_one {
-                    result = result.double(curve);
-                }
-                if (limb >> bit) & 1 == 1 {
-                    found_one = true;
-                    result = result.add(self, curve);
-                }
-            }
-        }
-
-        result
-    }
 }
+
