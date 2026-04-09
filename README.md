@@ -37,10 +37,8 @@ Main building blocks:
 Elliptic-curve abstractions and affine Weierstrass arithmetic.
 
 Main building blocks:
-- `Curve`: generic curve-model trait.
+- `CurveOps`: generic curve-model trait.
 - `PointOps`: generic point/group API.
-- `WeierstrassCurve<F>`: general or short Weierstrass curves.
-- `AffinePoint<F>`: affine points with the point at infinity.
 
 ### `isogeny`
 Kernel and isogeny structs.
@@ -174,6 +172,9 @@ ecrust/
     │   └── elgamal.rs
     └── tests/
 ```
+
+## Disclaimer
+Disclaimer. This software is *currently in an alpha stage*. We are actively working toward constant-time implementations across the project, but achieving this systematically remains an ongoing effort. At this stage, the code should be *treated as experimental*, and it must not be assumed to provide full side-channel resistance or production-grade security guarantees.
 
 ## Authors
 
