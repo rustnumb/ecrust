@@ -1,143 +1,182 @@
 # ecrust
 
-A Rust library for elliptic curve arithmetic and isogeny computations over finite fields, built on top of [`crypto-bigint`](https://crates.io/crates/crypto-bigint).
+A Rust library for finite-field arithmetic, elliptic-curve operations, isogeny scaffolding, and higher-level elliptic-curve protocols.
 
-> **Status:** Early development (v0.1.0). The finite field layer (`fp`) is functional and tested; the elliptic curve (`ec`) and isogeny (`isogeny`) crates contain scaffolding and are under active development.
+The project is organized as a layered set of crates:
 
-## Overview
-
-ecrust is organized as a Cargo workspace with three crates that form a layered architecture:
-
-```
-isogeny        ← isogeny maps (Vélu's formulas, kernel subgroups)
+```text
+protocol       ← ECDH / EC-ElGamal helpers built on curve points
   ↓
-ec             ← elliptic curve point arithmetic (short Weierstrass)
+isogeny        ← isogeny and kernel abstractions (work in progress)
   ↓
-fp             ← finite field arithmetic (Fp, Fp^M extensions)
+ec             ← elliptic-curve models and point arithmetic
   ↓
-crypto-bigint  ← multi-precision integers in Montgomery form
+fp             ← finite fields: Fp, Fp^m, F2, F2^m
+  ↓
+crypto-bigint  ← multi-precision integers / Montgomery arithmetic
 ```
 
-### `fp` — Finite Field Arithmetic
+## Workspace crates
 
-The core of the library. Provides constant-time, Montgomery-form field arithmetic for arbitrary primes and their algebraic extensions.
+### `fp`
+Finite-field arithmetic.
 
-- **`FpElement<MOD, LIMBS>`** — Elements of the prime field Fp = Z/pZ stored in Montgomery representation. Supports addition, subtraction, multiplication, squaring, inversion, square roots, Legendre symbol, and exponentiation via square-and-multiply.
-- **`FpExt<MOD, LIMBS, M, P>`** — Elements of the extension field Fp^M = Fp\[x\]/(f(x)) for any degree M and any user-supplied irreducible polynomial. Implements schoolbook polynomial multiplication with modular reduction, inversion via polynomial extended GCD, Frobenius endomorphism, field norm, and field trace.
-- **`FieldOps` trait** — A unified algebraic interface that both `FpElement` and `FpExt` implement, enabling generic code over any level of the field tower.
-- **`F2Element`** - Elements of the prime field F2 with two elements, stored as Uint<1>. Supports addition, subtraction, multiplication, squaring, inversion, square roots, Legendre symbol, and exponentiation.
+Main building blocks:
+- `FieldOps`: common trait implemented by field elements.
+- `FpElement<MOD, LIMBS>`: prime-field elements over `Fp`.
+- `FpExt<MOD, LIMBS, M, P>`: extension-field elements over `Fp^M`.
+- `F2Element`: the prime field `F2`.
+- `F2Ext<LIMBS, P>`: binary extension fields `F2^m`.
+- `IrreduciblePoly` / `BinaryIrreducible`: marker traits used to define extension fields.
 
-### `ec` — Elliptic Curve Group Operations
+### `ec`
+Elliptic-curve abstractions and affine Weierstrass arithmetic.
 
-Defines short Weierstrass curves (y² = x³ + ax + b) and affine point representation. Currently contains type definitions and the point-at-infinity constructor; the full group law is planned.
+Main building blocks:
+- `Curve`: generic curve-model trait.
+- `PointOps`: generic point/group API.
+- `WeierstrassCurve<F>`: general or short Weierstrass curves.
+- `AffinePoint<F>`: affine points with the point at infinity.
 
-### `isogeny` — Isogeny Computations
+### `isogeny`
+Kernel and isogeny structs.
 
-Provides structures for isogeny maps between elliptic curves and their kernel subgroups. Vélu's formulas for isogeny evaluation are planned.
+Current status:
+- `KernelSubgroup<C>` exists.
+- `Isogeny<C>` exists as the main abstraction.
+- evaluation formulas are still TODO.
 
-## Getting Started
+### `protocol`
+Small protocol layer on top of `ec`.
 
-### Prerequisites
+Current modules:
+- `SecretScalar<LIMBS>`
+- `Ecdh`
+- `EcElGamal`
 
-- **Rust** — install via [rustup](https://rustup.rs/)
+## Current status
 
-### Build
+This workspace is usable for experiments and API exploration, with the following caveats:
+- `fp` is the most complete and best-tested layer.
+- `ec` supports affine Weierstrass arithmetic and scalar multiplication, but some methods still contain exceptional-case branching and should not yet be treated as hardened production code.
+- `isogeny` is currently scaffolding.
+- protocol examples are functional API examples, not production-ready constructions.
+
+## Build and test
 
 ```bash
-git clone <repo-url>
-cd ecrust
-cargo build
-```
-
-### Test
-
-```bash
+cargo build --workspace
 cargo test --workspace
 ```
 
-The `fp` crate includes comprehensive tests covering modular arithmetic over F₁₉, quadratic extension F₁₉² (using x² + 1), and cubic extension F₁₉³ (using x³ − 2).
+## Quick start
 
-## Usage
-
-### Defining a prime field
+### 1. Instantiate a prime field (`FieldOps` via `FpElement`)
 
 ```rust
-use crypto_bigint::{const_prime_monty_params, Uint};
+use crypto_bigint::{Uint, const_prime_monty_params};
 use fp::field_ops::FieldOps;
 use fp::fp_element::FpElement;
 
-// Define Fp with p = 19
 const_prime_monty_params!(Fp19Mod, Uint<1>, "0000000000000013", 2);
 type F19 = FpElement<Fp19Mod, 1>;
 
 let a = F19::from_u64(7);
 let b = F19::from_u64(8);
-assert_eq!((a * b).as_limbs()[0], 18); // 56 mod 19 = 18
+let c = a * b;
+assert_eq!(c.as_limbs()[0], 18); // 56 mod 19 = 18
 
-let inv = a.invert().unwrap();
-assert!((a * inv).is_one());
+let inv = a.invert().into_option().unwrap();
+assert!((a * inv).is_one().into());
 ```
 
-### Defining an extension field
+### 2. Instantiate an extension field (`FieldOps` via `FpExt`)
 
 ```rust
+use fp::field_ops::FieldOps;
+use fp::fp_element::FpElement;
 use fp::fp_ext::{FpExt, IrreduciblePoly};
 
-// F₁₉² = F₁₉[x] / (x² + 1)
 struct QuadPoly;
 impl IrreduciblePoly<Fp19Mod, 1, 2> for QuadPoly {
     fn modulus() -> [FpElement<Fp19Mod, 1>; 2] {
-        [FpElement::one(), FpElement::zero()] // x² + 1
+        [FpElement::one(), FpElement::zero()] // x^2 + 1
     }
 }
+
 type F19_2 = FpExt<Fp19Mod, 1, 2, QuadPoly>;
 
-let a = F19_2::new([F19::from_u64(3), F19::from_u64(2)]); // 3 + 2x
-let inv = a.invert().unwrap();
-assert!(FieldOps::mul(&a, &inv).is_one());
-
-// Frobenius, norm, and trace
-let frob = a.frobenius();             // a^p
-let n = a.norm();                      // product of conjugates (lies in Fp)
-let t = a.trace();                     // sum of conjugates (lies in Fp)
+let x = F19_2::new([F19::from_u64(3), F19::from_u64(2)]); // 3 + 2u
+let y = x.invert().into_option().unwrap();
+assert!(FieldOps::mul(&x, &y).is_one().into());
 ```
 
-## Project Structure
+### 3. Instantiate a curve (`Curve`) and a point (`PointOps`)
 
+```rust
+use ec::curve_weierstrass::WeierstrassCurve;
+use ec::point_weierstrass::AffinePoint;
+
+let curve = WeierstrassCurve::new_short(F19::from_u64(2), F19::from_u64(3));
+let p = AffinePoint::new(F19::from_u64(1), F19::from_u64(5));
+
+assert!(curve.contains(&p.x, &p.y));
+let q = p.double(&curve);
+let r = p.add(&q, &curve);
+let s = p.scalar_mul(&[5], &curve);
 ```
+
+## Examples and demos
+
+See [DEMO.md](DEMO.md) for several concrete examples showing how to instantiate the main traits and concrete types in this workspace:
+- `FieldOps` with `FpElement`
+- `FieldOps` with `FpExt`
+- `FieldOps` with `F2Ext`
+- `Curve` / `PointOps` with `WeierstrassCurve` and `AffinePoint`
+- `SecretScalar`, `Ecdh`, and `EcElGamal`
+- generic helper functions written against traits instead of concrete types
+
+## Repository layout
+
+```text
 ecrust/
-├── Cargo.toml              # Workspace root
-├── LICENSE                  # Apache 2.0
+├── Cargo.toml
+├── README.md
+├── DEMO.md
 ├── fp/
 │   ├── src/
-│   │   ├── lib.rs
-│   │   ├── field_ops.rs     # FieldOps trait
-│   │   ├── fp_element.rs    # Prime field Fp
-│   │   └── fp_ext.rs        # Extension field Fp^M
+│   │   ├── field_ops.rs
+│   │   ├── fp_element.rs
+│   │   ├── fp_ext.rs
+│   │   ├── f2_element.rs
+│   │   └── f2_ext.rs
 │   └── tests/
-│       ├── fp_tests.rs      # F₁₉ tests
-│       └── fp_ext_tests.rs  # F₁₉², F₁₉³ tests
 ├── ec/
 │   ├── src/
-│   │   ├── lib.rs
-│   │   ├── curve.rs         # WeierstrassCurve
-│   │   └── point.rs         # AffinePoint
+│   │   ├── curve_ops.rs
+│   │   ├── point_ops.rs
+│   │   ├── curve_weierstrass.rs
+│   │   └── point_weierstrass.rs
 │   └── tests/
-│       └── point_tests.rs
-└── isogeny/
+├── isogeny/
+│   ├── src/
+│   │   ├── kernel.rs
+│   │   └── isogeny.rs
+│   └── tests/
+└── protocol/
     ├── src/
-    │   ├── lib.rs
-    │   ├── isogeny.rs       # Isogeny map (Vélu's formulas)
-    │   └── kernel.rs        # KernelSubgroup
+    │   ├── scalar.rs
+    │   ├── ecdh.rs
+    │   └── elgamal.rs
     └── tests/
-        └── isogeny_tests.rs
 ```
 
-## Authors 
-- Gustavo Banegas 
+## Authors
+
+- Gustavo Banegas
 - Martin Azon
 - Sam Frengley
 
 ## License
 
-This project is licensed under the Apache License 2.0 — see the [LICENSE](LICENSE) file for details.
+Apache License 2.0. See [LICENSE](LICENSE).

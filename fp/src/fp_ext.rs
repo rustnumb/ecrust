@@ -28,7 +28,8 @@
 //! | Double      | Coefficient-wise                 | M  doubles         |
 //! | Multiply    | Schoolbook + reduction mod f     | M^2 muls + M^2 adds  |
 //! | Square      | Same as multiply (self * self)   | M^2 muls + M^2 adds  |
-//! | Invert      | Polynomial extended GCD          | O(M^2)              |
+//! |
+//!      | Polynomial extended GCD          | O(M^2)              |
 //! | Frobenius   | self^p  via square-and-multiply  | O(M^2 log p)        |
 //! | Norm        | Product of M Galois conjugates   | O(M^3 log p)        |
 //! | Trace       | Sum of M Galois conjugates       | O(M^2 log p)        |
@@ -36,10 +37,10 @@
 use core::ops::{Add, Mul, Neg, Sub};
 use std::marker::PhantomData;
 
-use crypto_bigint::{modular::ConstPrimeMontyParams, Uint};
-
 use crate::field_ops::FieldOps;
 use crate::fp_element::FpElement;
+use crypto_bigint::{modular::ConstPrimeMontyParams, Uint};
+use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 // ===========================================================================
 // IrreduciblePoly — the only thing callers need to implement for a new field
@@ -125,28 +126,28 @@ pub trait TonelliShanksConstants<const N: usize>: 'static {
 /// `P` is a zero-size marker type implementing [`IrreduciblePoly`].
 /// `M` is the extension degree (number of base-field coefficients stored).
 /// `N` is the number limbs needed to store p^M
-pub struct FpExt<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONTS>
+pub struct FpExt<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    TSCONTS: TonelliShanksConstants<N>,
+    TSCONSTS: TonelliShanksConstants<N>,
 {
     /// Coefficients in ascending degree: `coeffs[i]` = coefficient of `x^i`.
     pub coeffs: [FpElement<MOD, LIMBS>; M],
     _phantom: PhantomData<P>,
-    _order: PhantomData<TSCONTS>,
+    _order: PhantomData<TSCONSTS>,
 }
 
 // ---------------------------------------------------------------------------
 // Constructors
 // ---------------------------------------------------------------------------
 
-impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONTS>
-    FpExt<MOD, LIMBS, M, N, P, TSCONTS>
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS>
+    FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    TSCONTS: TonelliShanksConstants<N>,
+    TSCONSTS: TonelliShanksConstants<N>,
 {
     /// Construct from a coefficient array `[a_0, ..., a_{M-1}]`.
     pub fn new(coeffs: [FpElement<MOD, LIMBS>; M]) -> Self {
@@ -175,12 +176,12 @@ where
 // (manual impls so we don't over-constrain the bounds the way #[derive] would)
 // ---------------------------------------------------------------------------
 
-impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONTS> Clone
-    for FpExt<MOD, LIMBS, M, N, P, TSCONTS>
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS> Clone
+    for FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    TSCONTS: TonelliShanksConstants<N>,
+    TSCONSTS: TonelliShanksConstants<N>,
 {
     fn clone(&self) -> Self {
         Self {
@@ -192,22 +193,22 @@ where
 }
 
 // FpElement is Copy (derives it), so [FpElement; M] is Copy too.
-impl<MOD, const LIMBS: usize, const M: usize, P, const N: usize, TSCONTS> Copy
-    for FpExt<MOD, LIMBS, M, N, P, TSCONTS>
+impl<MOD, const LIMBS: usize, const M: usize, P, const N: usize, TSCONSTS> Copy
+    for FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    TSCONTS: TonelliShanksConstants<N>,
+    TSCONSTS: TonelliShanksConstants<N>,
     [FpElement<MOD, LIMBS>; M]: Copy,
 {
 }
 
-impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONTS> PartialEq
-    for FpExt<MOD, LIMBS, M, N, P, TSCONTS>
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS> PartialEq
+    for FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    TSCONTS: TonelliShanksConstants<N>,
+    TSCONSTS: TonelliShanksConstants<N>,
 {
     fn eq(&self, other: &Self) -> bool {
         self.coeffs
@@ -217,25 +218,89 @@ where
     }
 }
 
-impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONTS> Eq
-    for FpExt<MOD, LIMBS, M, N, P, TSCONTS>
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS> Eq
+    for FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    TSCONTS: TonelliShanksConstants<N>,
+    TSCONSTS: TonelliShanksConstants<N>,
 {
 }
 
-impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONTS> std::fmt::Debug
-    for FpExt<MOD, LIMBS, M, N, P, TSCONTS>
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS> std::fmt::Debug
+    for FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    TSCONTS: TonelliShanksConstants<N>,
+    TSCONSTS: TonelliShanksConstants<N>,
     FpElement<MOD, LIMBS>: std::fmt::Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "FpExt{:?}", self.coeffs.as_ref())
+    }
+}
+
+// ---------------------------------------------------------------------------
+// CtOption functionalities
+// ---------------------------------------------------------------------------
+
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS> Default
+    for FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
+where
+    MOD: ConstPrimeMontyParams<LIMBS>,
+    P: IrreduciblePoly<MOD, LIMBS, M>,
+    TSCONSTS: TonelliShanksConstants<N>,
+{
+    fn default() -> Self {
+        Self::zero()
+    }
+}
+
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS> ConditionallySelectable
+    for FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
+where
+    MOD: ConstPrimeMontyParams<LIMBS>,
+    P: IrreduciblePoly<MOD, LIMBS, M>,
+    TSCONSTS: TonelliShanksConstants<N>,
+{
+    fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
+        let mut res_coeffs = [FpElement::zero(); M];
+        for i in 0..M {
+            res_coeffs[i] = FpElement::conditional_select(&a.coeffs[i], &b.coeffs[i], choice);
+        }
+        Self::new(res_coeffs)
+    }
+
+    fn conditional_assign(&mut self, other: &Self, choice: Choice) {
+        for i in 0..M {
+            self.coeffs[i].conditional_assign(&other.coeffs[i], choice);
+        }
+    }
+
+    fn conditional_swap(a: &mut Self, b: &mut Self, choice: Choice) {
+        for i in 0..M {
+            FpElement::conditional_swap(&mut a.coeffs[i], &mut b.coeffs[i], choice);
+        }
+    }
+}
+
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS> ConstantTimeEq
+    for FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
+where
+    MOD: ConstPrimeMontyParams<LIMBS>,
+    P: IrreduciblePoly<MOD, LIMBS, M>,
+    TSCONSTS: TonelliShanksConstants<N>,
+{
+    fn ct_eq(&self, other: &Self) -> Choice {
+        let mut acc = Choice::from(1u8);
+        for i in 0..M {
+            acc &= self.coeffs[i].ct_eq(&other.coeffs[i]);
+        }
+        acc
+    }
+
+    fn ct_ne(&self, other: &Self) -> Choice {
+        !self.ct_eq(other)
     }
 }
 
@@ -325,7 +390,7 @@ fn poly_normalize<MOD, const LIMBS: usize>(mut a: Poly<MOD, LIMBS>) -> Poly<MOD,
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
 {
-    while a.last().map_or(false, |c| c.is_zero()) {
+    while a.last().map_or(false, |c| bool::from(c.is_zero())) {
         a.pop();
     }
     a
@@ -365,7 +430,7 @@ where
         // The current highest remaining degree is i + deg(b).
         let rem_deg = i + b.len() - 1;
         let coeff = FieldOps::mul(&rem[rem_deg], &b_lead_inv);
-        if coeff.is_zero() {
+        if bool::from(coeff.is_zero()) {
             continue;
         }
         quot[i] = coeff.clone();
@@ -401,7 +466,7 @@ where
     // Eliminate all terms of degree >= M, from the top down.
     for i in (M..a.len()).rev() {
         let lead = a[i].clone();
-        if lead.is_zero() {
+        if bool::from(lead.is_zero()) {
             continue;
         }
         // x^i = x^{i−M}  x^M  \equiv  −x^{i−M}  Σ_j modulus[j]x^j
@@ -472,12 +537,12 @@ where
 // Operator overloads (delegate to the FieldOps methods below)
 // ===========================================================================
 
-impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONTS> Add
-    for FpExt<MOD, LIMBS, M, N, P, TSCONTS>
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS> Add
+    for FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    TSCONTS: TonelliShanksConstants<N>,
+    TSCONSTS: TonelliShanksConstants<N>,
 {
     type Output = Self;
     fn add(self, rhs: Self) -> Self {
@@ -485,12 +550,12 @@ where
     }
 }
 
-impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONTS> Sub
-    for FpExt<MOD, LIMBS, M, N, P, TSCONTS>
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS> Sub
+    for FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    TSCONTS: TonelliShanksConstants<N>,
+    TSCONSTS: TonelliShanksConstants<N>,
 {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self {
@@ -498,12 +563,12 @@ where
     }
 }
 
-impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONTS> Mul
-    for FpExt<MOD, LIMBS, M, N, P, TSCONTS>
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS> Mul
+    for FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    TSCONTS: TonelliShanksConstants<N>,
+    TSCONSTS: TonelliShanksConstants<N>,
 {
     type Output = Self;
     fn mul(self, rhs: Self) -> Self {
@@ -511,12 +576,12 @@ where
     }
 }
 
-impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONTS> Neg
-    for FpExt<MOD, LIMBS, M, N, P, TSCONTS>
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS> Neg
+    for FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    TSCONTS: TonelliShanksConstants<N>,
+    TSCONSTS: TonelliShanksConstants<N>,
 {
     type Output = Self;
     fn neg(self) -> Self {
@@ -542,20 +607,20 @@ where
 ///
 /// Some of this is taken from my implementation at
 /// https://github.com/SamFrengley/ff-sqrtratio/blob/8e5aa6f934f32d9b9cff56177d9943a2effcd390/ff_derive/src/lib.rs
-fn ts_loop(x: &mut FpExt, w: &FpExt) {
-    let mut z = FpExt::TSCONSTS::ROOT_OF_UNITY;
-}
+// fn ts_loop(x: &mut FpExt, w: &FpExt) {
+//     let mut z = FpExt::TSCONSTS::ROOT_OF_UNITY;
+// }
 
 // ===========================================================================
 // FieldOps implementation
 // ===========================================================================
 
-impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONTS> FieldOps
-    for FpExt<MOD, LIMBS, M, N, P, TSCONTS>
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS> FieldOps
+    for FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    TSCONTS: TonelliShanksConstants<N>,
+    TSCONSTS: TonelliShanksConstants<N>,
 {
     // --- Identity elements --------------------------------------------------
 
@@ -571,12 +636,12 @@ where
 
     // --- Predicates ---------------------------------------------------------
 
-    fn is_zero(&self) -> bool {
-        self.coeffs.iter().all(|c| c.is_zero())
+    fn is_zero(&self) -> Choice {
+        self.ct_eq(&Self::zero())
     }
 
-    fn is_one(&self) -> bool {
-        self.coeffs[0].is_one() && self.coeffs[1..].iter().all(|c| c.is_zero())
+    fn is_one(&self) -> Choice {
+        Self::ct_eq(self, &Self::one())
     }
 
     // --- Core arithmetic ----------------------------------------------------
@@ -623,13 +688,8 @@ where
     /// Finds `s(x)` such that `self(x)s(x) \equiv 1  (mod f(x))` by computing
     /// `gcd(self, f) = g` (a nonzero constant if self ≠ 0) and setting
     /// `self⁻¹ = sg⁻¹ mod f`.
-    ///
-    /// UNSAFE: this is not constant time because of the if at the start
-    fn invert(&self) -> Option<Self> {
-        // UNSAFE: this leaks timing data if self is zero
-        if self.is_zero() {
-            return None;
-        }
+    fn invert(&self) -> CtOption<Self> {
+        let is_invertible = !self.is_zero();
 
         // Build the full irreducible polynomial as a Vec:
         // f = [c_0, c_1, ..., c_{M-1}, 1]  (coefficients in ascending degree)
@@ -640,12 +700,15 @@ where
         let (gcd, s) = poly_ext_gcd(a, f);
 
         // gcd is a nonzero constant in Fp (since f is irreducible and a ≠ 0).
-        let g0 = gcd.into_iter().next()?; // the constant term = gcd value
-        let g_inv = g0.invert()?; // invert in Fp
+        let g0 = gcd.into_iter().next().unwrap_or(FpElement::zero()); // the constant term = gcd value
+        let g_inv = g0.invert().unwrap_or(FpElement::zero()); // invert in Fp
 
         // self⁻¹ = s(x)  g⁻¹  reduced mod f
         let s_scaled = poly_scale(&s, &g_inv);
-        Some(Self::new(poly_reduce(s_scaled, &P::modulus())))
+        CtOption::new(
+            Self::new(poly_reduce(s_scaled, &P::modulus())),
+            is_invertible,
+        )
     }
 
     // --- Frobenius ----------------------------------------------------------
@@ -703,18 +766,20 @@ where
     /// # Returns
     ///
     /// `self^(1/2)` a choice of squareroot (type: Self)
-    fn sqrt(&self) -> Option<Self> {
+    fn sqrt(&self) -> CtOption<Self> {
         // let p = FpElement::<MOD, LIMBS>::characteristic();
         // let q = (&p, M);
         // assert!();
-        let half = TSCONTS::HALF_ORDER;
+        let is_invertible = !self.is_zero();
+        let half = TSCONSTS::HALF_ORDER;
         if half.as_limbs()[0].0 & 0b11 == 1 {
             // 1 mod 4
             todo!("Todo this fun thing")
         } else {
             // 3 mod 4
-            let exp = TSCONTS::PROJENATOR_EXP;
-            Some(self.pow(&exp))
+            let exp = TSCONSTS::PROJENATOR_EXP;
+            let exp_limbs = exp.as_limbs().map(|limb| limb.0);
+            CtOption::new(self.pow(&exp_limbs), is_invertible)
         }
     }
 
@@ -733,22 +798,16 @@ where
     /// Either `0` if `&self` is `0`, `1` if `&self` is a QR or `-1` if
     /// `&self` is not a QR. (type: i8)
     fn legendre(&self) -> i8 {
-        if self.is_zero() {
-            0
-        }
-        let exp = TSCONTS::HALF_ORDER;
+        let is_invertible = !self.is_zero();
+
+        let exp = TSCONSTS::HALF_ORDER;
         let exp_limbs = exp.as_limbs().map(|limb| limb.0);
         let symb = self.pow(&exp_limbs); // note, this is constant time since exp is constant
 
         // UNSAFE: Is this constant time ??
-        
-        if symb.is_zero() {
-            0
-        } else if symb.is_one() {
-            1
-        } else {
-            -1
-        }
+
+        let ret = i8::conditional_select(&1, &-1, symb.is_one());
+        i8::conditional_select(&ret, &0, is_invertible)
     }
 
     // --- Utilities ----------------------------------------------------------

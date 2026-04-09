@@ -2,8 +2,8 @@
 
 use core::ops::{Add, Mul, Neg, Sub};
 use std::marker::PhantomData;
-use crypto_bigint::{Uint, CtSelect};
-use subtle::{ConstantTimeEq};
+use crypto_bigint::Uint;
+use subtle::{Choice, CtOption, ConditionallySelectable, ConstantTimeEq};
 use crate::field_ops::FieldOps;
 
 
@@ -104,6 +104,51 @@ where
 
 
 // ---------------------------------------------------------------------------
+// CtOption functionalities
+// ---------------------------------------------------------------------------
+
+impl<const LIMBS: usize, P> Default for F2Ext<LIMBS, P>
+where
+    P: BinaryIrreducible<LIMBS>
+{
+    fn default() -> Self {
+        Self::zero()
+    }
+}
+
+impl<const LIMBS: usize, P> ConditionallySelectable for F2Ext<LIMBS, P>
+where
+    P: BinaryIrreducible<LIMBS>
+{
+    fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
+        Self::new(Uint::<LIMBS>::conditional_select(&a.value, &b.value, choice))
+    }
+
+    fn conditional_assign(&mut self, other: &Self, choice: Choice) {
+        self.value.conditional_assign(&other.value, choice)
+    }
+
+    fn conditional_swap(a: &mut Self, b: &mut Self, choice: Choice) {
+        Uint::<LIMBS>::conditional_swap(&mut a.value, &mut b.value, choice)
+    }
+}
+
+impl<const LIMBS: usize, P> ConstantTimeEq for F2Ext<LIMBS, P>
+where
+    P: BinaryIrreducible<LIMBS>
+{
+    fn ct_eq(&self, other: &Self) -> Choice {
+        Uint::<LIMBS>::ct_eq(&self.value, &other.value)
+    }
+
+    fn ct_ne(&self, other: &Self) -> Choice {
+        Uint::<LIMBS>::ct_ne(&self.value, &other.value)
+    }
+}
+
+
+
+// ---------------------------------------------------------------------------
 // Private helper functions
 // ---------------------------------------------------------------------------
 
@@ -126,7 +171,7 @@ where
         // Constant-time:
         // - keep `a` if bit == 0
         // - replace by `reduced` if bit == 1
-        a = Uint::<LIMBS>::ct_select(&a, &reduced, bit.into());
+        a = Uint::<LIMBS>::conditional_select(&a, &reduced, bit.into());
     }
     a
 }
@@ -151,7 +196,7 @@ where
 
         // if bit(b, i) = 1 then res += cur (sum here is just xor-ing)
         let res_xor = res ^ cur;
-        res = Uint::<LIMBS>::ct_select(&res, &res_xor, bit.into());
+        res = Uint::<LIMBS>::conditional_select(&res, &res_xor, bit.into());
 
         // We now multiply cur by x and reduce modulo P
 
@@ -166,7 +211,7 @@ where
         // if top = 1 then the term x^(m-1) appears in cur,
         // so x^m appears in shifted, and we need to simplify this using the equality x^m = lower.
         // It suffices to add modulus, because this adds lower and kills the leading term.
-        cur = Uint::<LIMBS>::ct_select(&shifted, &reduced, top.into());
+        cur = Uint::<LIMBS>::conditional_select(&shifted, &reduced, top.into());
     }
 
     res
@@ -188,18 +233,18 @@ where
 
         // if bit(a, i) = 1 then res += x^(2i) mod P
         let res_xor = res ^ cur;
-        res = Uint::<LIMBS>::ct_select(&res, &res_xor, bit.into());
+        res = Uint::<LIMBS>::conditional_select(&res, &res_xor, bit.into());
 
         // multiply cur by x^2 and reduce mod P (we do so in 2 steps)
         let top1 = cur.bit((m-1) as u32);
         let shifted1 = cur << 1;
         let reduced1 = shifted1 ^ modulus;
-        cur = Uint::<LIMBS>::ct_select(&shifted1, &reduced1, top1.into());
+        cur = Uint::<LIMBS>::conditional_select(&shifted1, &reduced1, top1.into());
 
         let top2 = cur.bit((m-1) as u32);
         let shifted2 = cur << 1;
         let reduced2 = shifted2 ^ modulus;
-        cur = Uint::<LIMBS>::ct_select(&shifted2, &reduced2, top2.into());
+        cur = Uint::<LIMBS>::conditional_select(&shifted2, &reduced2, top2.into());
     }
 
     res
@@ -222,7 +267,9 @@ where
 {
     // the degree m is public so its bits are public too!
     let m = P::degree();
-    assert!(m > 0);
+    if m == 1 {
+        return a.clone();
+    }
 
     let mut beta = a.clone();
     let mut r= 1usize;
@@ -241,6 +288,16 @@ where
         }
     }
     square_helper::<LIMBS, P>(&beta)
+}
+
+fn sqrt_helper<const LIMBS: usize, P>(a: &Uint<LIMBS>) -> Uint<LIMBS>
+where
+    P: BinaryIrreducible<LIMBS>
+{
+    // In the binary field F_{2^m}, we have sqrt(a) = a^(2^(m-1)) for any a (even a = 0)
+
+    let m = P::degree();
+    pow_2k_helper::<LIMBS, P>(&a, &(m-1))
 }
 
 
@@ -307,13 +364,11 @@ where
         Self::from_uint(Uint::<LIMBS>::ONE)
     }
 
-    fn is_zero(&self) -> bool {
-        bool::from(self.value.ct_eq(&Uint::<LIMBS>::ZERO))
+    fn is_zero(&self) -> Choice {
+        Self::ct_eq(self, &Self::zero())
     }
 
-    fn is_one(&self) -> bool {
-        bool::from(self.value.ct_eq(&Uint::<LIMBS>::ONE))
-    }
+    fn is_one(&self) -> Choice { Self::ct_eq(self, &Self::one()) }
 
     fn negate(&self) -> Self {
         // we have x = -x for any element x of a binary field
@@ -341,18 +396,9 @@ where
         Self::zero()
     }
 
-    fn invert(&self) -> Option<Self> {
-        if self.is_zero() {
-            return None;
-        }
-
-        let m = P::degree();
-        if m == 1 {
-            return Some(*self);
-        }
-
-        let inv = Self::new( itoh_tsujii::<LIMBS, P>(&self.value) );
-        Some(inv)
+    fn invert(&self) -> CtOption<Self> {
+        let is_invertible = !self.is_zero();
+        CtOption::new(Self::new(itoh_tsujii::<LIMBS, P>(&self.value)), is_invertible)
     }
 
     fn frobenius(&self) -> Self {
@@ -381,12 +427,15 @@ where
         result
     }
 
-    fn sqrt(&self) -> Option<Self> {
-        todo!()
+    fn sqrt(&self) -> CtOption<Self> {
+        // In binary fields, everything is a square, so the Choice object always wraps 1u8
+        let sqrt = Self::new(sqrt_helper::<LIMBS, P>(&self.value));
+        CtOption::new(sqrt, Choice::from(1u8))
     }
 
     fn legendre(&self) -> i8 {
-        todo!()
+        let is_zero = self.is_zero();
+        i8::conditional_select(&0i8, &1i8, is_zero)
     }
 
     fn characteristic() -> Vec<u64> {

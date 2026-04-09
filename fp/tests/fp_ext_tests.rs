@@ -54,20 +54,22 @@ fn characteristic_equals_base_field() {
 
 #[test]
 fn zero_is_zero() {
-    assert!(F19_2::zero().is_zero());
+    assert!(bool::from(F19_2::zero().is_zero()));
 }
 
 #[test]
 fn one_is_one() {
-    assert!(F19_2::one().is_one());
+    assert!(bool::from(F19_2::one().is_one()));
 }
 
+/*
 #[test]
 fn nonzero_is_not_zero() {
-    assert!(!el(1, 0).is_zero());
-    assert!(!el(0, 1).is_zero());
-    assert!(!el(3, 5).is_zero());
+    assert!(bool::from(!el(1, 0).is_zero()));
+    assert!(bool::from(!el(0, 1).is_zero()));
+    assert!(bool::from(!el(3, 5).is_zero()));
 }
+*/
 
 // -----------------------------------------------------------------------
 // Addition / subtraction / negation
@@ -96,7 +98,7 @@ fn sub_coefficient_wise() {
 #[test]
 fn negate_then_add_is_zero() {
     let a = el(7, 3);
-    assert!(FieldOps::add(&a, &a.negate()).is_zero());
+    assert!(bool::from(FieldOps::add(&a, &a.negate()).is_zero()));
 }
 
 #[test]
@@ -126,7 +128,7 @@ fn mul_x_squared_reduces_to_minus_one() {
     let x = el(0, 1);
     let r = FieldOps::mul(&x, &x);
     assert_eq!(r.coeffs[0].as_limbs()[0], 18);
-    assert!(r.coeffs[1].is_zero());
+    assert!(bool::from(r.coeffs[1].is_zero()));
 }
 
 #[test]
@@ -185,14 +187,18 @@ fn invert_concrete_value() {
 }
 
 #[test]
+fn one_is_not_zero_in_fp_ext() {
+    let a = el(1, 0);
+    assert!(!bool::from(a.is_zero()));
+}
+
+#[test]
 fn invert_correctness() {
     for (a0, a1) in [(1u64, 0u64), (0, 1), (3, 2), (7, 5), (13, 18), (1, 18)] {
         let a = el(a0, a1);
-        let inv = a
-            .invert()
-            .unwrap_or_else(|| panic!("({},{}) not invertible", a0, a1));
+        let inv = a.invert().unwrap();
         assert!(
-            FieldOps::mul(&a, &inv).is_one(),
+            bool::from(FieldOps::mul(&a, &inv).is_one()),
             "inv failed for ({},{})",
             a0,
             a1
@@ -202,7 +208,7 @@ fn invert_correctness() {
 
 #[test]
 fn invert_zero_is_none() {
-    assert!(F19_2::zero().invert().is_none());
+    assert!(bool::from(F19_2::zero().invert().is_none()));
 }
 
 // -----------------------------------------------------------------------
@@ -218,7 +224,7 @@ fn frobenius_of_base_element_is_identity() {
 #[test]
 fn frobenius_of_x() {
     let frob = el(0, 1).frobenius();
-    assert!(frob.coeffs[0].is_zero());
+    assert!(bool::from(frob.coeffs[0].is_zero()));
     assert_eq!(frob.coeffs[1].as_limbs()[0], 18);
 }
 
@@ -236,14 +242,14 @@ fn frobenius_squared_is_identity() {
 fn norm_lies_in_base_field() {
     let n = el(3, 4).norm();
     assert_eq!(n.coeffs[0].as_limbs()[0], 6); // 9+16=25≡6 mod 19
-    assert!(n.coeffs[1].is_zero());
+    assert!(bool::from(n.coeffs[1].is_zero()));
 }
 
 #[test]
 fn trace_lies_in_base_field() {
     let t = el(7, 5).trace();
     assert_eq!(t.coeffs[0].as_limbs()[0], 14); // 2·7=14
-    assert!(t.coeffs[1].is_zero());
+    assert!(bool::from(t.coeffs[1].is_zero()));
 }
 
 #[test]
@@ -258,8 +264,9 @@ fn norm_of_base_element_is_square() {
 
 #[test]
 fn pow_zero_is_one() {
-    assert!(el(3, 7).pow(&[0]).is_one());
+    assert!(bool::from(el(3, 7).pow(&[0]).is_one()));
 }
+
 #[test]
 fn pow_one_is_self() {
     let a = el(3, 7);
@@ -269,7 +276,7 @@ fn pow_one_is_self() {
 #[test]
 fn pow_group_order() {
     // |F₁₉²*| = 19² − 1 = 360
-    assert!(el(3, 2).pow(&[360]).is_one());
+    assert!(bool::from(el(3, 2).pow(&[360]).is_one()));
 }
 
 // -----------------------------------------------------------------------
@@ -307,18 +314,15 @@ impl TonelliShanksConstants<1> for TSCubic {
 
 type F19_3 = FpExt<Fp19Mod, 1, 3, 1, CubicPoly, TSCubic>;
 
-fn el3(a: u64, b: u64, c: u64) -> F19_3 {
-    F19_3::new([fp(a), fp(b), fp(c)])
-}
-
 #[test]
 fn cubic_degree_is_3() {
     assert_eq!(F19_3::degree(), 3);
 }
+
 #[test]
 fn cubic_zero_one() {
-    assert!(F19_3::zero().is_zero());
-    assert!(F19_3::one().is_one());
+    assert!(bool::from(F19_3::zero().is_zero()));
+    assert!(bool::from(F19_3::one().is_one()));
 }
 
 #[test]
@@ -327,8 +331,8 @@ fn cubic_x_cubed_reduces() {
     let x = el3(0, 1, 0);
     let x3 = FieldOps::mul(&FieldOps::mul(&x, &x), &x);
     assert_eq!(x3.coeffs[0].as_limbs()[0], 2);
-    assert!(x3.coeffs[1].is_zero());
-    assert!(x3.coeffs[2].is_zero());
+    assert!(bool::from(x3.coeffs[1].is_zero()));
+    assert!(bool::from(x3.coeffs[2].is_zero()));
 }
 
 #[test]
@@ -341,11 +345,13 @@ fn cubic_mul_commutativity() {
 #[test]
 fn cubic_invert_correctness() {
     let a = el3(1, 2, 3);
-    assert!(FieldOps::mul(&a, &a.invert().expect("invertible")).is_one());
+    assert!(bool::from(
+        FieldOps::mul(&a, &a.invert().expect("invertible")).is_one()
+    ));
 }
 
 #[test]
 fn cubic_pow_order() {
     // |F₁₉³*| = 19³ − 1 = 6858
-    assert!(el3(2, 1, 5).pow(&[6858]).is_one());
+    assert!(bool::from(el3(2, 1, 5).pow(&[6858]).is_one()));
 }

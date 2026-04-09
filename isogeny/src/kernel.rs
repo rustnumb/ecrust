@@ -1,15 +1,14 @@
 //! Kernel subgroup of an isogeny.
 
-use ec::point::AffinePoint;
+use ec::point_ops::PointOps;
+use ec::curve_ops::Curve;
 
-/// A finite subgroup of E(Fp) that will be used as the kernel of an isogeny.
-pub struct KernelSubgroup {
-    pub points: Vec<AffinePoint>,
+pub struct KernelSubgroup<C: Curve> {
+    pub points: Vec<C::Point>,
 }
 
-impl KernelSubgroup {
-    /// Constructs the trivial kernel (identity only).
-    pub fn trivial() -> Self {
-        Self { points: vec![AffinePoint::identity()] }
+impl<C: Curve> KernelSubgroup<C> {
+    pub fn trivial(curve: &C) -> Self {
+        Self { points: vec![C::Point::identity(curve)] }
     }
 }

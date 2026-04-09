@@ -6,7 +6,7 @@ use crypto_bigint::{
     modular::{ConstMontyForm, ConstPrimeMontyParams},
     Uint,
 };
-
+use subtle::{CtOption, Choice, ConditionallySelectable, ConstantTimeEq};
 use crate::field_ops::FieldOps;
 
 /// An element of the prime field Fp = Z/pZ, stored in Montgomery form.
@@ -62,6 +62,50 @@ where
     }
 }
 
+
+
+// ---------------------------------------------------------------------------
+// CtOption functionalities
+// ---------------------------------------------------------------------------
+
+impl<MOD, const LIMBS: usize> Default for FpElement<MOD, LIMBS>
+where
+    MOD: ConstPrimeMontyParams<LIMBS>,
+{
+    fn default() -> Self { Self::zero() }
+}
+
+impl<MOD, const LIMBS: usize> ConditionallySelectable for FpElement<MOD, LIMBS>
+where
+    MOD: ConstPrimeMontyParams<LIMBS>,
+{
+    fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
+        Self{ value: ConstMontyForm::conditional_select(&a.value, &b.value, choice) }
+    }
+
+    fn conditional_assign(&mut self, other: &Self, choice: Choice) {
+        self.value.conditional_assign(&other.value, choice)
+    }
+    
+    fn conditional_swap(a: &mut Self, b: &mut Self, choice: Choice) {
+        ConstMontyForm::conditional_swap(&mut a.value, &mut b.value, choice)
+    }
+}
+
+impl<MOD, const LIMBS: usize> ConstantTimeEq for FpElement<MOD, LIMBS>
+where
+    MOD: ConstPrimeMontyParams<LIMBS>
+{
+    fn ct_eq(&self, other: &Self) -> Choice {
+        ConstMontyForm::ct_eq(&self.value, &other.value)
+    }
+
+    fn ct_ne(&self, other: &Self) -> Choice {
+        ConstMontyForm::ct_ne(&self.value, &other.value)
+    }
+}
+
+
 // ---------------------------------------------------------------------------
 // Operator overloads
 // ---------------------------------------------------------------------------
@@ -105,8 +149,8 @@ where
     fn zero() -> Self { Self { value: ConstMontyForm::<MOD, LIMBS>::ZERO } }
     fn one()  -> Self { Self { value: ConstMontyForm::<MOD, LIMBS>::ONE  } }
 
-    fn is_zero(&self) -> bool { self.value == ConstMontyForm::<MOD, LIMBS>::ZERO }
-    fn is_one (&self) -> bool { self.value == ConstMontyForm::<MOD, LIMBS>::ONE  }
+    fn is_zero(&self) -> Choice { Self::ct_eq(self, &Self::zero()) }
+    fn is_one (&self) -> Choice { Self::ct_eq(self, &Self::one()) }
 
     fn negate(&self) -> Self { Self { value: -self.value } }
     fn add(&self, rhs: &Self) -> Self { Self { value: self.value + rhs.value } }
@@ -115,16 +159,19 @@ where
     fn square(&self) -> Self { Self { value: self.value.square() } }
     fn double(&self) -> Self { Self { value: self.value.double() } }
 
-    fn invert(&self) -> Option<Self> {
-        self.value.invert().into_option().map(|x| Self { value: x })
+    fn invert(&self) -> CtOption<Self> {
+        self.value
+            .invert()
+            .map(|inv| Self { value: inv })
+            .into()
     }
 
     fn frobenius(&self) -> Self { *self }
     fn norm(&self)      -> Self { *self }
     fn trace(&self)     -> Self { *self }
 
-    fn sqrt(&self) -> Option<Self> {
-        self.value.sqrt().into_option().map(|x| Self { value: x })
+    fn sqrt(&self) -> CtOption<Self> {
+        self.value.sqrt().map(|sqrt| Self { value: sqrt }).into()
     }
 
     fn legendre(&self) -> i8 { i8::from(self.value.jacobi_symbol()) }
@@ -143,62 +190,4 @@ where
     }
 
     fn degree() -> u32 { 1 }
-}
-
-// ---------------------------------------------------------------------------
-// Unit tests
-// ---------------------------------------------------------------------------
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crypto_bigint::{const_prime_monty_params, Uint};
-
-    const_prime_monty_params!(Fp19Modulus, Uint<1>, "0000000000000013", 2);
-    type F19 = FpElement<Fp19Modulus, 1>;
-
-    #[test] fn zero_is_zero()            { assert!(F19::zero().is_zero()); }
-    #[test] fn one_is_one()              { assert!(F19::one().is_one()); }
-    #[test] fn degree_is_one()           { assert_eq!(F19::degree(), 1); }
-    #[test] fn characteristic_is_19()   { assert_eq!(F19::characteristic(), vec![19u64]); }
-
-    #[test] fn add_mod_p() {
-        // 17 + 5 = 22 ≡ 3 (mod 19)
-        assert_eq!((F19::from_u64(17) + F19::from_u64(5)).as_limbs()[0], 3);
-    }
-
-    #[test] fn sub_mod_p() {
-        // 3 − 7 = −4 ≡ 15 (mod 19)
-        assert_eq!((F19::from_u64(3) - F19::from_u64(7)).as_limbs()[0], 15);
-    }
-
-    #[test] fn mul_mod_p() {
-        // 7 × 8 = 56 ≡ 18 (mod 19)
-        assert_eq!((F19::from_u64(7) * F19::from_u64(8)).as_limbs()[0], 18);
-    }
-
-    #[test] fn neg_mod_p() {
-        // −3 ≡ 16 (mod 19)
-        assert_eq!((-F19::from_u64(3)).as_limbs()[0], 16);
-    }
-
-    #[test] fn inv_works() {
-        let a = F19::from_u64(7);
-        assert_eq!((a * a.invert().unwrap()).as_limbs()[0], 1);
-    }
-
-    #[test] fn inv_zero_is_none() { assert!(F19::zero().invert().is_none()); }
-
-    #[test] fn pow_works() {
-        // 2^10 = 1024 ≡ 17 (mod 19)
-        use crate::field_ops::FieldOps;
-        assert_eq!(F19::from_u64(2).pow(&[10]).as_limbs()[0], 17);
-    }
-
-    #[test] fn sqrt_of_qr() {
-        // √4 squared must give back 4
-        let four = F19::from_u64(4);
-        let root = four.sqrt().expect("4 is a QR mod 19");
-        assert_eq!((root * root).as_limbs()[0], 4);
-    }
 }
