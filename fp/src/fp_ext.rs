@@ -109,6 +109,8 @@ implement, sorry
 /// ```
 pub trait TonelliShanksConstants<MOD, const LIMBS: usize, const M: usize, const N: usize>:
     'static
+where
+    MOD: ConstPrimeMontyParams<LIMBS>,
 {
     // Write the order of the multiplicative group as
     // (p^M - 1) = 2^S * T where T is odd
@@ -118,13 +120,13 @@ pub trait TonelliShanksConstants<MOD, const LIMBS: usize, const M: usize, const 
     // (p^M - 1) / 2
     const HALF_ORDER: Uint<N>;
     // Constant S
-    const S: u32;
+    const S: u64;
     // Constant T
     const T: Uint<N>;
     // Projenator exponent of the TS algorithm this is (T - 1) / 2
     const PROJENATOR_EXP: Uint<N>;
-    // Root of unity
-    const ROOT_OF_UNITY: [FpElement<MOD, LIMBS>; M];
+    // Root of unity TODO: implement in a way in which this is a const
+    fn root_of_unity() -> [FpElement<MOD, LIMBS>; M];
 }
 
 // ===========================================================================
@@ -628,12 +630,13 @@ fn ts_loop<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS>
     P: IrreduciblePoly<MOD, LIMBS, M>,
     TSCONSTS: TonelliShanksConstants<MOD, LIMBS, M, N>,
 {
-    let mut v = TSCONSTS::S;
+    let mut v = TSCONSTS::S as u32;
     *x = x.mul(*w);
     let mut b = x.mul(*w);
-    let mut z = FpExt::new(TSCONSTS::ROOT_OF_UNITY);
-    for max_v in (1..TSCONSTS::S).rev() {
-        let mut k = 1;
+    let mut z = FpExt::new(TSCONSTS::root_of_unity());
+
+    for max_v in (1..=TSCONSTS::S as u32).rev() {
+        let mut k = 1u32;
         let mut tmp = b.square();
         let mut j_less_than_v: Choice = 1.into();
 
@@ -642,7 +645,9 @@ fn ts_loop<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS>
             let squared = FpExt::conditional_select(&tmp, &z, tmp_is_one).square();
             tmp = FpExt::conditional_select(&squared, &tmp, tmp_is_one);
             let new_z = FpExt::conditional_select(&z, &squared, tmp_is_one);
+
             j_less_than_v &= !j.ct_eq(&v);
+
             k = u32::conditional_select(&j, &k, tmp_is_one);
             z = FpExt::conditional_select(&z, &new_z, j_less_than_v);
         }

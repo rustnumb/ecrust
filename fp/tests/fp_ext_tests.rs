@@ -17,12 +17,16 @@ impl IrreduciblePoly<Fp19Mod, 1, 2> for QuadPoly {
     }
 }
 
-impl TonelliShanksConstants<1> for TSQuad {
+impl TonelliShanksConstants<Fp19Mod, 1, 2, 1> for TSQuad {
     // Still only need 1 limb for 19^2
     const ORDER: Uint<1> = Uint::<1>::from_u64(360);
     const HALF_ORDER: Uint<1> = Uint::<1>::from_u64(180);
-    const PROJENATOR_EXP: Uint<1> = Uint::<1>::from_u64(0);
-    const ROOT_OF_UNITY: Uint<1> = Uint::<1>::from_u64(0);
+    const PROJENATOR_EXP: Uint<1> = Uint::<1>::from_u64(22);
+    fn root_of_unity() -> [FpElement<Fp19Mod, 1>; 2] {
+        [Fp19::from_u64(3), Fp19::from_u64(3)]
+    }
+    const S: u64 = 3;
+    const T: Uint<1> = Uint::<1>::from_u64(45);
 }
 
 type F19_2 = FpExt<Fp19Mod, 1, 2, 1, QuadPoly, TSQuad>;
@@ -293,6 +297,27 @@ fn quadratic_legendre_of_qr() {
     assert_eq!(a.legendre(), 1);
 }
 
+#[test]
+fn ts_consts_test_quad() {
+    let z = F19_2::new(TSQuad::root_of_unity());
+    let mut exp = 1u64;
+    for _ in 1..=TSQuad::S {
+        exp *= 2;
+    }
+    assert_eq!(z.pow(&[exp]), F19_2::one());
+}
+
+#[test]
+fn sqrt_test_quad() {
+    let mut rng = rand::rng();
+    let x: u64 = rng.random();
+    let y: u64 = rng.random();
+    let mut a = el(x, y);
+    a = a.pow(&[2]);
+    let z = a.sqrt().unwrap();
+    assert_eq!(z.pow(&[2]), a);
+}
+
 // -----------------------------------------------------------------------
 // Cubic extension  F₁₉³  with  f(x) = x³ − 2  (≡ x³ + 17 mod 19)
 // -----------------------------------------------------------------------
@@ -306,12 +331,16 @@ impl IrreduciblePoly<Fp19Mod, 1, 3> for CubicPoly {
     }
 }
 
-impl TonelliShanksConstants<1> for TSCubic {
+impl TonelliShanksConstants<Fp19Mod, 1, 3, 1> for TSCubic {
     // Still only need 1 limb for 19^3
     const ORDER: Uint<1> = Uint::<1>::from_u64(6858);
     const HALF_ORDER: Uint<1> = Uint::<1>::from_u64(3429);
-    const PROJENATOR_EXP: Uint<1> = Uint::<1>::from_u64(0);
-    const ROOT_OF_UNITY: Uint<1> = Uint::<1>::from_u64(0);
+    const PROJENATOR_EXP: Uint<1> = Uint::<1>::from_u64(1714);
+    fn root_of_unity() -> [FpElement<Fp19Mod, 1>; 3] {
+        [fp(1), fp(0), fp(0)]
+    }
+    const S: u64 = 1;
+    const T: Uint<1> = Uint::<1>::from_u64(3429);
 }
 
 type F19_3 = FpExt<Fp19Mod, 1, 3, 1, CubicPoly, TSCubic>;
@@ -359,4 +388,22 @@ fn cubic_invert_correctness() {
 fn cubic_pow_order() {
     // |F₁₉³*| = 19³ − 1 = 6858
     assert!(bool::from(el3(2, 1, 5).pow(&[6858]).is_one()));
+}
+
+#[test]
+fn ts_consts_test_cubic() {
+    let z = F19_3::new(TSCubic::root_of_unity());
+    assert_eq!(z.pow(&[TSCubic::S]), F19_3::one());
+}
+
+#[test]
+fn sqrt_test_cubic() {
+    let mut rng = rand::rng();
+    let x: u64 = rng.random();
+    let y: u64 = rng.random();
+    let z: u64 = rng.random();
+    let mut a = el3(x, y, z);
+    a = a.pow(&[2]);
+    let z = a.sqrt().unwrap();
+    assert_eq!(z.pow(&[2]), a);
 }
