@@ -1,7 +1,7 @@
 use crypto_bigint::{const_prime_monty_params, Uint};
 use fp::field_ops::FieldOps;
 use fp::fp_element::FpElement;
-use fp::fp_ext::{FpExt, IrreduciblePoly, MultiplicativeGroupOrder}; // ← was missing IrreduciblePoly
+use fp::fp_ext::{FpExt, IrreduciblePoly, TonelliShanksConstants}; // ← was missing IrreduciblePoly
 use rand::RngExt;
 
 const_prime_monty_params!(Fp19Mod, Uint<1>, "0000000000000013", 2);
@@ -9,7 +9,7 @@ const_prime_monty_params!(Fp19Mod, Uint<1>, "0000000000000013", 2);
 type Fp19 = FpElement<Fp19Mod, 1>;
 
 struct QuadPoly;
-struct OrderQuad;
+struct TSQuad;
 
 impl IrreduciblePoly<Fp19Mod, 1, 2> for QuadPoly {
     fn modulus() -> [Fp19; 2] {
@@ -17,7 +17,7 @@ impl IrreduciblePoly<Fp19Mod, 1, 2> for QuadPoly {
     }
 }
 
-impl MultiplicativeGroupOrder<1> for OrderQuad {
+impl TonelliShanksConstants<1> for TSQuad {
     // Still only need 1 limb for 19^2
     fn order() -> Uint<1> {
         const ORDER: Uint<1> = Uint::<1>::from_u64(360);
@@ -27,12 +27,12 @@ impl MultiplicativeGroupOrder<1> for OrderQuad {
         const HALFORDER: Uint<1> = Uint::<1>::from_u64(180);
         HALFORDER
     }
-    fn ts_proj() -> Uint<1> {
+    fn projenator() -> Uint<1> {
         0
     }
 }
 
-type F19_2 = FpExt<Fp19Mod, 1, 2, 1, QuadPoly, OrderQuad>;
+type F19_2 = FpExt<Fp19Mod, 1, 2, 1, QuadPoly, TSQuad>;
 
 fn fp(n: u64) -> Fp19 {
     Fp19::from_u64(n)
@@ -298,7 +298,7 @@ fn quadratic_legendre_of_qr() {
 // -----------------------------------------------------------------------
 
 struct CubicPoly;
-struct OrderCubic;
+struct TSCubic;
 
 impl IrreduciblePoly<Fp19Mod, 1, 3> for CubicPoly {
     fn modulus() -> [Fp19; 3] {
@@ -306,7 +306,7 @@ impl IrreduciblePoly<Fp19Mod, 1, 3> for CubicPoly {
     }
 }
 
-impl MultiplicativeGroupOrder<1> for OrderCubic {
+impl TonelliShanksConstants<1> for TSCubic {
     // Still only need 1 limb for 19^3
     fn order() -> Uint<1> {
         const ORDER: Uint<1> = Uint::<1>::from_u64(6858);
@@ -316,12 +316,12 @@ impl MultiplicativeGroupOrder<1> for OrderCubic {
         const HALFORDER: Uint<1> = Uint::<1>::from_u64(3429);
         HALFORDER
     }
-    fn ts_proj() -> Uint<1> {
+    fn projenator() -> Uint<1> {
         0
     }
 }
 
-type F19_3 = FpExt<Fp19Mod, 1, 3, 1, CubicPoly, OrderCubic>;
+type F19_3 = FpExt<Fp19Mod, 1, 3, 1, CubicPoly, TSCubic>;
 
 fn el3(a: u64, b: u64, c: u64) -> F19_3 {
     F19_3::new([fp(a), fp(b), fp(c)])

@@ -83,16 +83,18 @@ where
     fn modulus() -> [FpElement<MOD, LIMBS>; M];
 }
 
-// ===========================================================================
-// MultiplicativeGroupOrder - The only other thing users ahve to
-// implement, sorry
-// ===========================================================================
+/*
+===========================================================================
+TonelliShanksConstants - The only other thing users have to
+implement, sorry
+===========================================================================
+*/
 
 /// Supplies the group order of the multiplicative group
 ///
 /// # Example: F_(19^3)
 /// ```ignore
-/// impl MultiplicativeGroupOrder<3> for MyOrder {
+/// impl TonelliShanksConstants<3> for MyOrder {
 ///     // Still only need 1 limb for 19^3
 ///     fn order() -> Unit<1> {
 ///         const ORDER: Uint<1> = Uint::<1>::from_u64(6858);
@@ -104,14 +106,14 @@ where
 ///     }
 /// }
 /// ```
-pub trait MultiplicativeGroupOrder<const N: usize>: 'static {
+pub trait TonelliShanksConstants<const N: usize>: 'static {
     // Multiplicative group order `p^M - 1`
     // p^M - 1
     fn order() -> Uint<N>;
     // (p^M - 1) / 2
     fn half_order() -> Uint<N>;
     // Projenator of the TS algorithm
-    fn ts_proj() -> Uint<N>;
+    fn projenator() -> Uint<N>;
 }
 
 // ===========================================================================
@@ -127,7 +129,7 @@ pub struct FpExt<MOD, const LIMBS: usize, const M: usize, const N: usize, P, ORD
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    ORDER: MultiplicativeGroupOrder<N>,
+    ORDER: TonelliShanksConstants<N>,
 {
     /// Coefficients in ascending degree: `coeffs[i]` = coefficient of `x^i`.
     pub coeffs: [FpElement<MOD, LIMBS>; M],
@@ -144,7 +146,7 @@ impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, ORDER>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    ORDER: MultiplicativeGroupOrder<N>,
+    ORDER: TonelliShanksConstants<N>,
 {
     /// Construct from a coefficient array `[a_0, ..., a_{M-1}]`.
     pub fn new(coeffs: [FpElement<MOD, LIMBS>; M]) -> Self {
@@ -178,7 +180,7 @@ impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, ORDER> Clone
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    ORDER: MultiplicativeGroupOrder<N>,
+    ORDER: TonelliShanksConstants<N>,
 {
     fn clone(&self) -> Self {
         Self {
@@ -195,7 +197,7 @@ impl<MOD, const LIMBS: usize, const M: usize, P, const N: usize, ORDER> Copy
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    ORDER: MultiplicativeGroupOrder<N>,
+    ORDER: TonelliShanksConstants<N>,
     [FpElement<MOD, LIMBS>; M]: Copy,
 {
 }
@@ -205,7 +207,7 @@ impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, ORDER> PartialE
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    ORDER: MultiplicativeGroupOrder<N>,
+    ORDER: TonelliShanksConstants<N>,
 {
     fn eq(&self, other: &Self) -> bool {
         self.coeffs
@@ -220,7 +222,7 @@ impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, ORDER> Eq
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    ORDER: MultiplicativeGroupOrder<N>,
+    ORDER: TonelliShanksConstants<N>,
 {
 }
 
@@ -229,7 +231,7 @@ impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, ORDER> std::fmt
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    ORDER: MultiplicativeGroupOrder<N>,
+    ORDER: TonelliShanksConstants<N>,
     FpElement<MOD, LIMBS>: std::fmt::Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -475,7 +477,7 @@ impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, ORDER> Add
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    ORDER: MultiplicativeGroupOrder<N>,
+    ORDER: TonelliShanksConstants<N>,
 {
     type Output = Self;
     fn add(self, rhs: Self) -> Self {
@@ -488,7 +490,7 @@ impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, ORDER> Sub
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    ORDER: MultiplicativeGroupOrder<N>,
+    ORDER: TonelliShanksConstants<N>,
 {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self {
@@ -501,7 +503,7 @@ impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, ORDER> Mul
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    ORDER: MultiplicativeGroupOrder<N>,
+    ORDER: TonelliShanksConstants<N>,
 {
     type Output = Self;
     fn mul(self, rhs: Self) -> Self {
@@ -514,7 +516,7 @@ impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, ORDER> Neg
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    ORDER: MultiplicativeGroupOrder<N>,
+    ORDER: TonelliShanksConstants<N>,
 {
     type Output = Self;
     fn neg(self) -> Self {
@@ -531,7 +533,7 @@ impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, ORDER> FieldOps
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    ORDER: MultiplicativeGroupOrder<N>,
+    ORDER: TonelliShanksConstants<N>,
 {
     // --- Identity elements --------------------------------------------------
 
@@ -689,7 +691,7 @@ where
             todo!("Todo this fun thing")
         } else {
             // 3 mod 4
-            let exp = ORDER::ts_proj();
+            let exp = ORDER::projenator();
             let exp_limbs = exp.as_limbs().map(|limb| limb.0);
             Some(self.pow(&exp_limbs))
         }
