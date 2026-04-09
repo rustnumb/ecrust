@@ -1,5 +1,9 @@
 # ecRust
 
+<p align="center">
+  <img src="assets/ecrust_mascot.png" alt="ecRust mascot logo" width="420" />
+</p>
+
 A Rust library for finite-field arithmetic, elliptic-curve operations, isogeny scaffolding, and higher-level elliptic-curve protocols.
 
 The project is organized as a layered set of crates:
