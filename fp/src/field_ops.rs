@@ -1,7 +1,7 @@
 //! Core trait that every field element in the tower must implement.
 
 use std::ops::{Add, Mul, Neg, Sub};
-use subtle::{Choice, CtOption, ConditionallySelectable};
+use subtle::{Choice, ConditionallySelectable, CtOption};
 
 pub trait FieldOps:
     Sized
@@ -34,6 +34,8 @@ pub trait FieldOps:
     }
 
     /// `self^exp` using square-and multiply (litte-endian bit order)
+    ///
+    /// It is constant time for fixed `exp`
     ///
     /// # Arguments
     ///
@@ -78,6 +80,8 @@ pub trait FieldOps:
     /// `self^pow` in constant time using a Montgomery ladder
     ///
     /// Uses a Montgomery ladder to compute `self^exp`
+    /// WARNING: Only constant time if the number of limbs of exp is
+    /// constant
     ///
     /// # Arguments
     ///
