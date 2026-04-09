@@ -98,13 +98,27 @@ use fp::fp_element::FpElement;
 use fp::fp_ext::{FpExt, IrreduciblePoly};
 
 struct QuadPoly;
+struct TSQuad;
+
 impl IrreduciblePoly<Fp19Mod, 1, 2> for QuadPoly {
-    fn modulus() -> [FpElement<Fp19Mod, 1>; 2] {
-        [FpElement::one(), FpElement::zero()] // x^2 + 1
+    fn modulus() -> [F19; 2] {
+        [F19::one(), F19::zero()] // x² + 1
     }
 }
 
-type F19_2 = FpExt<Fp19Mod, 1, 2, QuadPoly>;
+impl TonelliShanksConstants<Fp19Mod, 1, 2, 1> for TSQuad {
+    // Still only need 1 limb for 19^2
+    const ORDER: Uint<1> = Uint::<1>::from_u64(360);
+    const HALF_ORDER: Uint<1> = Uint::<1>::from_u64(180);
+    const PROJENATOR_EXP: Uint<1> = Uint::<1>::from_u64(22);
+    fn root_of_unity() -> [FpElement<Fp19Mod, 1>; 2] {
+        [F19::from_u64(3), F19::from_u64(3)]
+    }
+    const S: u64 = 3;
+    const T: Uint<1> = Uint::<1>::from_u64(45);
+}
+
+type F19_2 = FpExt<Fp19Mod, 1, 2, 1, QuadPoly, TSQuad>;
 
 let x = F19_2::new([F19::from_u64(3), F19::from_u64(2)]); // 3 + 2u
 let y = x.invert().into_option().unwrap();
