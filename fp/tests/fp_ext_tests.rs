@@ -19,17 +19,9 @@ impl IrreduciblePoly<Fp19Mod, 1, 2> for QuadPoly {
 
 impl TonelliShanksConstants<1> for TSQuad {
     // Still only need 1 limb for 19^2
-    fn order() -> Uint<1> {
-        const ORDER: Uint<1> = Uint::<1>::from_u64(360);
-        ORDER
-    }
-    fn half_order() -> Uint<1> {
-        const HALFORDER: Uint<1> = Uint::<1>::from_u64(180);
-        HALFORDER
-    }
-    fn projenator() -> Uint<1> {
-        0
-    }
+    const ORDER: Uint<1> = Uint::<1>::from_u64(360);
+    const HALF_ORDER: Uint<1> = Uint::<1>::from_u64(180);
+    const PROJENATOR_EXP: [u64; 1] = [0];
 }
 
 type F19_2 = FpExt<Fp19Mod, 1, 2, 1, QuadPoly, TSQuad>;
@@ -308,17 +300,9 @@ impl IrreduciblePoly<Fp19Mod, 1, 3> for CubicPoly {
 
 impl TonelliShanksConstants<1> for TSCubic {
     // Still only need 1 limb for 19^3
-    fn order() -> Uint<1> {
-        const ORDER: Uint<1> = Uint::<1>::from_u64(6858);
-        ORDER
-    }
-    fn half_order() -> Uint<1> {
-        const HALFORDER: Uint<1> = Uint::<1>::from_u64(3429);
-        HALFORDER
-    }
-    fn projenator() -> Uint<1> {
-        0
-    }
+    const ORDER: Uint<1> = Uint::<1>::from_u64(6858);
+    const HALF_ORDER: Uint<1> = Uint::<1>::from_u64(3429);
+    const PROJENATOR_EXP: [u64; 1] = [0];
 }
 
 type F19_3 = FpExt<Fp19Mod, 1, 3, 1, CubicPoly, TSCubic>;

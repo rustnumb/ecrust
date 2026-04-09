@@ -97,7 +97,7 @@ implement, sorry
 /// impl TonelliShanksConstants<3> for MyOrder {
 ///     // Still only need 1 limb for 19^3
 ///     fn order() -> Unit<1> {
-///         const ORDER: Uint<1> = Uint::<1>::from_u64(6858);
+///         const TSCONSTS: Uint<1> = Uint::<1>::from_u64(6858);
 ///         ORDER
 ///     }
 ///     fn half_order() -> Unit<1> {
@@ -109,11 +109,11 @@ implement, sorry
 pub trait TonelliShanksConstants<const N: usize>: 'static {
     // Multiplicative group order `p^M - 1`
     // p^M - 1
-    fn order() -> Uint<N>;
+    const ORDER: Uint<N>;
     // (p^M - 1) / 2
-    fn half_order() -> Uint<N>;
-    // Projenator of the TS algorithm
-    fn projenator() -> Uint<N>;
+    const HALF_ORDER: Uint<N>;
+    // Projenator exponent of the TS algorithm
+    const PROJENATOR_EXP: Uint<N>;
 }
 
 // ===========================================================================
@@ -125,28 +125,28 @@ pub trait TonelliShanksConstants<const N: usize>: 'static {
 /// `P` is a zero-size marker type implementing [`IrreduciblePoly`].
 /// `M` is the extension degree (number of base-field coefficients stored).
 /// `N` is the number limbs needed to store p^M
-pub struct FpExt<MOD, const LIMBS: usize, const M: usize, const N: usize, P, ORDER>
+pub struct FpExt<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONTS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    ORDER: TonelliShanksConstants<N>,
+    TSCONTS: TonelliShanksConstants<N>,
 {
     /// Coefficients in ascending degree: `coeffs[i]` = coefficient of `x^i`.
     pub coeffs: [FpElement<MOD, LIMBS>; M],
     _phantom: PhantomData<P>,
-    _order: PhantomData<ORDER>,
+    _order: PhantomData<TSCONTS>,
 }
 
 // ---------------------------------------------------------------------------
 // Constructors
 // ---------------------------------------------------------------------------
 
-impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, ORDER>
-    FpExt<MOD, LIMBS, M, N, P, ORDER>
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONTS>
+    FpExt<MOD, LIMBS, M, N, P, TSCONTS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    ORDER: TonelliShanksConstants<N>,
+    TSCONTS: TonelliShanksConstants<N>,
 {
     /// Construct from a coefficient array `[a_0, ..., a_{M-1}]`.
     pub fn new(coeffs: [FpElement<MOD, LIMBS>; M]) -> Self {
@@ -175,12 +175,12 @@ where
 // (manual impls so we don't over-constrain the bounds the way #[derive] would)
 // ---------------------------------------------------------------------------
 
-impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, ORDER> Clone
-    for FpExt<MOD, LIMBS, M, N, P, ORDER>
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONTS> Clone
+    for FpExt<MOD, LIMBS, M, N, P, TSCONTS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    ORDER: TonelliShanksConstants<N>,
+    TSCONTS: TonelliShanksConstants<N>,
 {
     fn clone(&self) -> Self {
         Self {
@@ -192,22 +192,22 @@ where
 }
 
 // FpElement is Copy (derives it), so [FpElement; M] is Copy too.
-impl<MOD, const LIMBS: usize, const M: usize, P, const N: usize, ORDER> Copy
-    for FpExt<MOD, LIMBS, M, N, P, ORDER>
+impl<MOD, const LIMBS: usize, const M: usize, P, const N: usize, TSCONTS> Copy
+    for FpExt<MOD, LIMBS, M, N, P, TSCONTS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    ORDER: TonelliShanksConstants<N>,
+    TSCONTS: TonelliShanksConstants<N>,
     [FpElement<MOD, LIMBS>; M]: Copy,
 {
 }
 
-impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, ORDER> PartialEq
-    for FpExt<MOD, LIMBS, M, N, P, ORDER>
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONTS> PartialEq
+    for FpExt<MOD, LIMBS, M, N, P, TSCONTS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    ORDER: TonelliShanksConstants<N>,
+    TSCONTS: TonelliShanksConstants<N>,
 {
     fn eq(&self, other: &Self) -> bool {
         self.coeffs
@@ -217,21 +217,21 @@ where
     }
 }
 
-impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, ORDER> Eq
-    for FpExt<MOD, LIMBS, M, N, P, ORDER>
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONTS> Eq
+    for FpExt<MOD, LIMBS, M, N, P, TSCONTS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    ORDER: TonelliShanksConstants<N>,
+    TSCONTS: TonelliShanksConstants<N>,
 {
 }
 
-impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, ORDER> std::fmt::Debug
-    for FpExt<MOD, LIMBS, M, N, P, ORDER>
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONTS> std::fmt::Debug
+    for FpExt<MOD, LIMBS, M, N, P, TSCONTS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    ORDER: TonelliShanksConstants<N>,
+    TSCONTS: TonelliShanksConstants<N>,
     FpElement<MOD, LIMBS>: std::fmt::Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -472,12 +472,12 @@ where
 // Operator overloads (delegate to the FieldOps methods below)
 // ===========================================================================
 
-impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, ORDER> Add
-    for FpExt<MOD, LIMBS, M, N, P, ORDER>
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONTS> Add
+    for FpExt<MOD, LIMBS, M, N, P, TSCONTS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    ORDER: TonelliShanksConstants<N>,
+    TSCONTS: TonelliShanksConstants<N>,
 {
     type Output = Self;
     fn add(self, rhs: Self) -> Self {
@@ -485,12 +485,12 @@ where
     }
 }
 
-impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, ORDER> Sub
-    for FpExt<MOD, LIMBS, M, N, P, ORDER>
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONTS> Sub
+    for FpExt<MOD, LIMBS, M, N, P, TSCONTS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    ORDER: TonelliShanksConstants<N>,
+    TSCONTS: TonelliShanksConstants<N>,
 {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self {
@@ -498,12 +498,12 @@ where
     }
 }
 
-impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, ORDER> Mul
-    for FpExt<MOD, LIMBS, M, N, P, ORDER>
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONTS> Mul
+    for FpExt<MOD, LIMBS, M, N, P, TSCONTS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    ORDER: TonelliShanksConstants<N>,
+    TSCONTS: TonelliShanksConstants<N>,
 {
     type Output = Self;
     fn mul(self, rhs: Self) -> Self {
@@ -511,12 +511,12 @@ where
     }
 }
 
-impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, ORDER> Neg
-    for FpExt<MOD, LIMBS, M, N, P, ORDER>
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONTS> Neg
+    for FpExt<MOD, LIMBS, M, N, P, TSCONTS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    ORDER: TonelliShanksConstants<N>,
+    TSCONTS: TonelliShanksConstants<N>,
 {
     type Output = Self;
     fn neg(self) -> Self {
@@ -525,15 +525,37 @@ where
 }
 
 // ===========================================================================
+// Helper functions for Tonelli-Shanks algorithm
+// ===========================================================================
+/// The loop part of the Tonelli--Shanks algorithm
+///
+/// Takes as input an element `x` of FpM and the projenator `w =
+/// x^((t-1)/2)` for `x`. The function then modifies `x` and return
+/// the final value sqrt(x) if `x` is a quadratic residue in FpM
+///
+/// # Arguments
+///
+/// * `x` - The value to take the sqrt of (type: &mut FpExt)
+/// * `w` - The projenator for x (type: &FpExt)
+///
+/// # Note
+///
+/// Some of this is taken from my implementation at
+/// https://github.com/SamFrengley/ff-sqrtratio/blob/8e5aa6f934f32d9b9cff56177d9943a2effcd390/ff_derive/src/lib.rs
+fn ts_loop(x: &mut FpExt, w: &FpExt) {
+    let mut z = FpExt::TSCONSTS::ROOT_OF_UNITY;
+}
+
+// ===========================================================================
 // FieldOps implementation
 // ===========================================================================
 
-impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, ORDER> FieldOps
-    for FpExt<MOD, LIMBS, M, N, P, ORDER>
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONTS> FieldOps
+    for FpExt<MOD, LIMBS, M, N, P, TSCONTS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
-    ORDER: TonelliShanksConstants<N>,
+    TSCONTS: TonelliShanksConstants<N>,
 {
     // --- Identity elements --------------------------------------------------
 
@@ -685,15 +707,14 @@ where
         // let p = FpElement::<MOD, LIMBS>::characteristic();
         // let q = (&p, M);
         // assert!();
-        let half = ORDER::half_order();
-        if (half.as_limbs()[0].0 & 0b11 == 1) {
+        let half = TSCONTS::HALF_ORDER;
+        if half.as_limbs()[0].0 & 0b11 == 1 {
             // 1 mod 4
             todo!("Todo this fun thing")
         } else {
             // 3 mod 4
-            let exp = ORDER::projenator();
-            let exp_limbs = exp.as_limbs().map(|limb| limb.0);
-            Some(self.pow(&exp_limbs))
+            let exp = TSCONTS::PROJENATOR_EXP;
+            Some(self.pow(&exp))
         }
     }
 
@@ -701,6 +722,7 @@ where
     ///
     /// Implements the "Legendre symbol" which is 1 if and only if we
     /// have a quadratic residue in FpM
+    /// WARNING: Not constant time if `self` is zero
     ///
     /// # Arguments
     ///
@@ -711,11 +733,15 @@ where
     /// Either `0` if `&self` is `0`, `1` if `&self` is a QR or `-1` if
     /// `&self` is not a QR. (type: i8)
     fn legendre(&self) -> i8 {
-        let exp = ORDER::half_order();
+        if self.is_zero() {
+            0
+        }
+        let exp = TSCONTS::HALF_ORDER;
         let exp_limbs = exp.as_limbs().map(|limb| limb.0);
         let symb = self.pow(&exp_limbs); // note, this is constant time since exp is constant
 
         // UNSAFE: Is this constant time ??
+        
         if symb.is_zero() {
             0
         } else if symb.is_one() {
