@@ -1,4 +1,4 @@
-# ecrust
+# ecRust
 
 A Rust library for finite-field arithmetic, elliptic-curve operations, isogeny scaffolding, and higher-level elliptic-curve protocols.
 
