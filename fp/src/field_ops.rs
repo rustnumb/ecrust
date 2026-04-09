@@ -1,7 +1,7 @@
 //! Core trait that every field element in the tower must implement.
 
 use std::ops::{Add, Mul, Neg, Sub};
-use subtle::{Choice, CtOption, ConditionallySelectable};
+use subtle::{Choice, ConditionallySelectable, CtOption};
 
 pub trait FieldOps:
     Sized
@@ -60,7 +60,7 @@ pub trait FieldOps:
     ///
     /// Fully-qualified syntax `<Self as FieldOps>::mul(...)` bypasses method
     /// resolution entirely and calls exactly the trait method we want.
-    unsafe fn pow_vartime(&self, exp: &[u64]) -> Self {
+    fn pow_vartime(&self, exp: &[u64]) -> Self {
         let mut result = Self::one();
         let mut base = self.clone();
 

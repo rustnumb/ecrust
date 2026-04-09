@@ -819,7 +819,9 @@ where
         let mut x = *self;
         let exp = TSCONSTS::PROJENATOR_EXP;
         let exp_limbs = exp.as_limbs().map(|limb| limb.0);
-        let w = x.pow(&exp_limbs); // TODO: generate the addition chain for this specific constant
+        // TODO: generate the addition chain for this specific constant
+        // this is constant time since exp_limbs is always(!) the same
+        let w = x.pow_vartime(&exp_limbs);
         ts_loop(&mut x, &w);
         CtOption::new(
             x,
