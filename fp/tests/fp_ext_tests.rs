@@ -21,7 +21,8 @@ impl TonelliShanksConstants<1> for TSQuad {
     // Still only need 1 limb for 19^2
     const ORDER: Uint<1> = Uint::<1>::from_u64(360);
     const HALF_ORDER: Uint<1> = Uint::<1>::from_u64(180);
-    const PROJENATOR_EXP: [u64; 1] = [0];
+    const PROJENATOR_EXP: Uint<1> = Uint::<1>::from_u64(0);
+    const ROOT_OF_UNITY: Uint<1> = Uint::<1>::from_u64(0);
 }
 
 type F19_2 = FpExt<Fp19Mod, 1, 2, 1, QuadPoly, TSQuad>;
@@ -309,16 +310,20 @@ impl TonelliShanksConstants<1> for TSCubic {
     // Still only need 1 limb for 19^3
     const ORDER: Uint<1> = Uint::<1>::from_u64(6858);
     const HALF_ORDER: Uint<1> = Uint::<1>::from_u64(3429);
-    const PROJENATOR_EXP: [u64; 1] = [0];
+    const PROJENATOR_EXP: Uint<1> = Uint::<1>::from_u64(0);
+    const ROOT_OF_UNITY: Uint<1> = Uint::<1>::from_u64(0);
 }
 
 type F19_3 = FpExt<Fp19Mod, 1, 3, 1, CubicPoly, TSCubic>;
+
+fn el3(a: u64, b: u64, c: u64) -> F19_3 {
+    F19_3::new([fp(a), fp(b), fp(c)])
+}
 
 #[test]
 fn cubic_degree_is_3() {
     assert_eq!(F19_3::degree(), 3);
 }
-
 #[test]
 fn cubic_zero_one() {
     assert!(bool::from(F19_3::zero().is_zero()));
