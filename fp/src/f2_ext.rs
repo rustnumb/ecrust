@@ -1,11 +1,10 @@
 // Generic finary fields F_{2^m} = F_2[x] / (f(x))
 
-use core::ops::{Add, Mul, Neg, Sub};
-use std::marker::PhantomData;
-use crypto_bigint::Uint;
-use subtle::{Choice, CtOption, ConditionallySelectable, ConstantTimeEq};
 use crate::field_ops::FieldOps;
-
+use core::ops::{Add, Mul, Neg, Sub};
+use crypto_bigint::Uint;
+use std::marker::PhantomData;
+use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 // ---------------------------------------------------------------------------
 // IrreduciblePoly — the only thing callers need to implement for a new field
@@ -16,21 +15,19 @@ pub trait BinaryIrreducible<const LIMBS: usize>: 'static {
     fn modulus() -> Uint<LIMBS>;
 
     // Degree m of the irreducible polynomial
-    fn degree() ->  usize;
+    fn degree() -> usize;
 }
-
 
 // ---------------------------------------------------------------------------
 // F2Ext — element of F_{2^M}
 // ---------------------------------------------------------------------------
 pub struct F2Ext<const LIMBS: usize, P>
 where
-    P: BinaryIrreducible<LIMBS>
+    P: BinaryIrreducible<LIMBS>,
 {
     pub value: Uint<LIMBS>,
-    _phantom: PhantomData<P>
+    _phantom: PhantomData<P>,
 }
-
 
 // ---------------------------------------------------------------------------
 // Constructors
@@ -38,22 +35,31 @@ where
 
 impl<const LIMBS: usize, P> F2Ext<LIMBS, P>
 where
-    P: BinaryIrreducible<LIMBS>
+    P: BinaryIrreducible<LIMBS>,
 {
     pub fn new(x: Uint<LIMBS>) -> Self {
-        Self { value: reduce::<LIMBS, P>(x), _phantom: PhantomData }
+        Self {
+            value: reduce::<LIMBS, P>(x),
+            _phantom: PhantomData,
+        }
     }
 
-    pub fn from_u64(x: u64) -> Self { Self::new(Uint::from(x)) }
+    pub fn from_u64(x: u64) -> Self {
+        Self::new(Uint::from(x))
+    }
 
-    pub fn from_uint(x: Uint<LIMBS>) -> Self { Self::new(x) }
+    pub fn from_uint(x: Uint<LIMBS>) -> Self {
+        Self::new(x)
+    }
 
-    pub fn as_uint(&self) -> Uint<LIMBS> { self.value }
+    pub fn as_uint(&self) -> Uint<LIMBS> {
+        self.value
+    }
 
-    pub fn degree() -> usize { P::degree() }
-
+    pub fn degree() -> usize {
+        P::degree()
+    }
 }
-
 
 // ---------------------------------------------------------------------------
 // Clone / Copy / PartialEq / Eq / Debug
@@ -67,16 +73,12 @@ where
     fn clone(&self) -> Self {
         Self {
             value: self.value.clone(),
-            _phantom: PhantomData
+            _phantom: PhantomData,
         }
     }
 }
 
-impl<const LIMBS: usize, P> Copy for F2Ext<LIMBS, P>
-where
-    P: BinaryIrreducible<LIMBS>,
-{
-}
+impl<const LIMBS: usize, P> Copy for F2Ext<LIMBS, P> where P: BinaryIrreducible<LIMBS> {}
 
 impl<const LIMBS: usize, P> PartialEq for F2Ext<LIMBS, P>
 where
@@ -87,11 +89,7 @@ where
     }
 }
 
-impl<const LIMBS: usize, P> Eq for F2Ext<LIMBS, P>
-where
-    P: BinaryIrreducible<LIMBS>,
-{
-}
+impl<const LIMBS: usize, P> Eq for F2Ext<LIMBS, P> where P: BinaryIrreducible<LIMBS> {}
 
 impl<const LIMBS: usize, P> core::fmt::Debug for F2Ext<LIMBS, P>
 where
@@ -102,14 +100,13 @@ where
     }
 }
 
-
 // ---------------------------------------------------------------------------
 // CtOption functionalities
 // ---------------------------------------------------------------------------
 
 impl<const LIMBS: usize, P> Default for F2Ext<LIMBS, P>
 where
-    P: BinaryIrreducible<LIMBS>
+    P: BinaryIrreducible<LIMBS>,
 {
     fn default() -> Self {
         Self::zero()
@@ -118,10 +115,12 @@ where
 
 impl<const LIMBS: usize, P> ConditionallySelectable for F2Ext<LIMBS, P>
 where
-    P: BinaryIrreducible<LIMBS>
+    P: BinaryIrreducible<LIMBS>,
 {
     fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
-        Self::new(Uint::<LIMBS>::conditional_select(&a.value, &b.value, choice))
+        Self::new(Uint::<LIMBS>::conditional_select(
+            &a.value, &b.value, choice,
+        ))
     }
 
     fn conditional_assign(&mut self, other: &Self, choice: Choice) {
@@ -135,7 +134,7 @@ where
 
 impl<const LIMBS: usize, P> ConstantTimeEq for F2Ext<LIMBS, P>
 where
-    P: BinaryIrreducible<LIMBS>
+    P: BinaryIrreducible<LIMBS>,
 {
     fn ct_eq(&self, other: &Self) -> Choice {
         Uint::<LIMBS>::ct_eq(&self.value, &other.value)
@@ -146,15 +145,14 @@ where
     }
 }
 
-
-
 // ---------------------------------------------------------------------------
 // Private helper functions
 // ---------------------------------------------------------------------------
 
 fn reduce<const LIMBS: usize, P>(mut a: Uint<LIMBS>) -> Uint<LIMBS>
 where
-    P: BinaryIrreducible<LIMBS> {
+    P: BinaryIrreducible<LIMBS>,
+{
     let modulus = P::modulus();
     let m = P::degree();
     let nbits = Uint::<LIMBS>::BITS as usize;
@@ -164,7 +162,7 @@ where
 
     // Fixed iteration count => no leakage from the current degree of `a`.
     for i in (m..nbits).rev() {
-        let bit = a.bit(i as u32);      // Choice: whether x^i is present
+        let bit = a.bit(i as u32); // Choice: whether x^i is present
         let shifted = modulus << (i - m);
         let reduced = a ^ shifted;
 
@@ -176,20 +174,20 @@ where
     a
 }
 
-fn add_helper<const LIMBS: usize>(a: &Uint<LIMBS>, b: &Uint<LIMBS>)  -> Uint<LIMBS> {
+fn add_helper<const LIMBS: usize>(a: &Uint<LIMBS>, b: &Uint<LIMBS>) -> Uint<LIMBS> {
     a ^ b
 }
 
 // This implements the add-and-shift with immediate modular reduction algorithm
 fn mul_helper<const LIMBS: usize, P>(a: &Uint<LIMBS>, b: &Uint<LIMBS>) -> Uint<LIMBS>
 where
-    P: BinaryIrreducible<LIMBS>
+    P: BinaryIrreducible<LIMBS>,
 {
     let m = P::degree();
     let modulus = P::modulus();
 
     let mut res = Uint::<LIMBS>::ZERO;
-    let mut cur = a.clone();        // current term appearing in the sum
+    let mut cur = a.clone(); // current term appearing in the sum
 
     for i in 0..m {
         let bit = b.bit(i as u32);
@@ -200,7 +198,7 @@ where
 
         // We now multiply cur by x and reduce modulo P
 
-        let top = cur.bit((m-1) as u32);
+        let top = cur.bit((m - 1) as u32);
         // top represents the bit of cur at index (m-1), which is the highest coefficient of cur mod modulus
 
         let shifted = cur << 1;
@@ -217,16 +215,15 @@ where
     res
 }
 
-
 fn square_helper<const LIMBS: usize, P>(a: &Uint<LIMBS>) -> Uint<LIMBS>
 where
-    P: BinaryIrreducible<LIMBS>
+    P: BinaryIrreducible<LIMBS>,
 {
     let m = P::degree();
     let modulus = P::modulus();
 
     let mut res = Uint::<LIMBS>::ZERO;
-    let mut cur = Uint::<LIMBS>::ONE;   // cur = x^(2i) mod P, initially i = 0
+    let mut cur = Uint::<LIMBS>::ONE; // cur = x^(2i) mod P, initially i = 0
 
     for i in 0..m {
         let bit = a.bit(i as u32);
@@ -236,12 +233,12 @@ where
         res = Uint::<LIMBS>::conditional_select(&res, &res_xor, bit.into());
 
         // multiply cur by x^2 and reduce mod P (we do so in 2 steps)
-        let top1 = cur.bit((m-1) as u32);
+        let top1 = cur.bit((m - 1) as u32);
         let shifted1 = cur << 1;
         let reduced1 = shifted1 ^ modulus;
         cur = Uint::<LIMBS>::conditional_select(&shifted1, &reduced1, top1.into());
 
-        let top2 = cur.bit((m-1) as u32);
+        let top2 = cur.bit((m - 1) as u32);
         let shifted2 = cur << 1;
         let reduced2 = shifted2 ^ modulus;
         cur = Uint::<LIMBS>::conditional_select(&shifted2, &reduced2, top2.into());
@@ -252,7 +249,7 @@ where
 
 fn pow_2k_helper<const LIMBS: usize, P>(a: &Uint<LIMBS>, k: &usize) -> Uint<LIMBS>
 where
-    P: BinaryIrreducible<LIMBS>
+    P: BinaryIrreducible<LIMBS>,
 {
     let mut res = a.clone();
     for _ in 0..*k {
@@ -263,7 +260,7 @@ where
 
 fn itoh_tsujii<const LIMBS: usize, P>(a: &Uint<LIMBS>) -> Uint<LIMBS>
 where
-    P: BinaryIrreducible<LIMBS>
+    P: BinaryIrreducible<LIMBS>,
 {
     // the degree m is public so its bits are public too!
     let m = P::degree();
@@ -272,14 +269,14 @@ where
     }
 
     let mut beta = a.clone();
-    let mut r= 1usize;
+    let mut r = 1usize;
 
-    let top = (m - 1).ilog2();      // number of bits of m-1
+    let top = (m - 1).ilog2(); // number of bits of m-1
 
     for i in (0..top).rev() {
-        let beta_frob = pow_2k_helper::<LIMBS, P>(&beta, &r);       // computing beta_r^(2r)
-        beta = mul_helper::<LIMBS, P>(&beta, &beta_frob);                       // computing beta_(2r) = beta_r * beta_r^(2r)
-        r <<= 1;            // doubling r
+        let beta_frob = pow_2k_helper::<LIMBS, P>(&beta, &r); // computing beta_r^(2r)
+        beta = mul_helper::<LIMBS, P>(&beta, &beta_frob); // computing beta_(2r) = beta_r * beta_r^(2r)
+        r <<= 1; // doubling r
 
         if (((m - 1) >> i) & 1) == 1 {
             beta = mul_helper::<LIMBS, P>(&square_helper::<LIMBS, P>(&beta), a);
@@ -292,14 +289,13 @@ where
 
 fn sqrt_helper<const LIMBS: usize, P>(a: &Uint<LIMBS>) -> Uint<LIMBS>
 where
-    P: BinaryIrreducible<LIMBS>
+    P: BinaryIrreducible<LIMBS>,
 {
     // In the binary field F_{2^m}, we have sqrt(a) = a^(2^(m-1)) for any a (even a = 0)
 
     let m = P::degree();
-    pow_2k_helper::<LIMBS, P>(&a, &(m-1))
+    pow_2k_helper::<LIMBS, P>(&a, &(m - 1))
 }
-
 
 // ===========================================================================
 // Operator overloads (delegate to the FieldOps methods below)
@@ -345,19 +341,17 @@ where
     }
 }
 
-
 // ===========================================================================
 // FieldOps implementation
 // ===========================================================================
 
 impl<const LIMBS: usize, P> FieldOps for F2Ext<LIMBS, P>
 where
-    P: BinaryIrreducible<LIMBS>
+    P: BinaryIrreducible<LIMBS>,
 {
-
     // to be done: legendre, sqrt
     fn zero() -> Self {
-        Self::from_uint( Uint::<LIMBS>::ZERO)
+        Self::from_uint(Uint::<LIMBS>::ZERO)
     }
 
     fn one() -> Self {
@@ -368,7 +362,9 @@ where
         Self::ct_eq(self, &Self::zero())
     }
 
-    fn is_one(&self) -> Choice { Self::ct_eq(self, &Self::one()) }
+    fn is_one(&self) -> Choice {
+        Self::ct_eq(self, &Self::one())
+    }
 
     fn negate(&self) -> Self {
         // we have x = -x for any element x of a binary field
@@ -384,7 +380,7 @@ where
     }
 
     fn mul(&self, rhs: &Self) -> Self {
-        Self::new( mul_helper::<LIMBS, P>(&self.value, &rhs.value) )
+        Self::new(mul_helper::<LIMBS, P>(&self.value, &rhs.value))
     }
 
     fn square(&self) -> Self {
@@ -398,7 +394,10 @@ where
 
     fn invert(&self) -> CtOption<Self> {
         let is_invertible = !self.is_zero();
-        CtOption::new(Self::new(itoh_tsujii::<LIMBS, P>(&self.value)), is_invertible)
+        CtOption::new(
+            Self::new(itoh_tsujii::<LIMBS, P>(&self.value)),
+            is_invertible,
+        )
     }
 
     fn frobenius(&self) -> Self {
@@ -446,5 +445,3 @@ where
         P::degree() as u32
     }
 }
-
-

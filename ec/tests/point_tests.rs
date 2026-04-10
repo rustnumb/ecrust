@@ -139,6 +139,7 @@ impl TonelliShanksConstants<Fp19Mod, 1, 2, 1> for TSQuad {
     const ORDER: Uint<1> = Uint::<1>::from_u64(360);
     const HALF_ORDER: Uint<1> = Uint::<1>::from_u64(180);
     const PROJENATOR_EXP: Uint<1> = Uint::<1>::from_u64(22);
+    const TWOSM1: Uint<1> = Uint::<1>::from_u64(4);
     fn root_of_unity() -> [FpElement<Fp19Mod, 1>; 2] {
         [F19::from_u64(3), F19::from_u64(3)]
     }
