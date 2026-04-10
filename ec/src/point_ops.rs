@@ -5,7 +5,6 @@
 //! Montgomery, Edwards, etc., while keeping model-specific formulas inside
 //! each implementation.
 use fp::field_ops::FieldOps;
-use subtle::ConditionallySelectable;
 use crate::point_weierstrass::AffinePoint;
 
 /// Generic group interface for curve points.

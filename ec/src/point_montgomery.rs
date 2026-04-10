@@ -158,14 +158,14 @@ impl<F: FieldOps> KummerPoint<F> {
     /// Given `x(P)` in projective form `(X:Z)`, compute `x([2]P)`.
     pub fn xdouble(&self, curve: &MontgomeryCurve<F>) -> Self {
         if F::characteristic()[0] != 2 {
-            let q = <F as FieldOps>::square(&(self.x + self.z));
-            let r = <F as FieldOps>::square(&(self.x - self.z));
-            let s = q - r;
+            let sumsq = <F as FieldOps>::square(&(self.x + self.z));
+            let diffsq = <F as FieldOps>::square(&(self.x - self.z));
+            let fourxz = sumsq - diffsq;
             let a24 = curve.a24();
 
-            let new_z = s * (r + a24 * s);
+            let new_z = fourxz * (diffsq + a24 * fourxz);
 
-            Self{ x: q * r, z: new_z }
+            Self{ x: sumsq * diffsq, z: new_z }
         }
         else {
             let temp_x = self.x + curve.b * self.z;

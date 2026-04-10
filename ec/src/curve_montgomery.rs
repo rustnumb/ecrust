@@ -112,7 +112,7 @@ impl<F: FieldOps> Curve for MontgomeryCurve<F> {
         }
         else {
             if F::characteristic()[0] != 2 {
-                /// Check if `(x³ + A x² + x)/B` is a square in F or not.
+                // Check if `(x³ + A x² + x)/B` is a square in F or not.
                 let xsq = <F as FieldOps>::square(&point.x);
                 let xcubed = point.x * xsq;
                 let axsq = self.a * xsq;
