@@ -22,6 +22,7 @@ impl TonelliShanksConstants<Fp19Mod, 1, 2, 1> for TSQuad {
     const ORDER: Uint<1> = Uint::<1>::from_u64(360);
     const HALF_ORDER: Uint<1> = Uint::<1>::from_u64(180);
     const PROJENATOR_EXP: Uint<1> = Uint::<1>::from_u64(22);
+    const TWOSM1: Uint<1> = Uint::<1>::from_u64(4);
     fn root_of_unity() -> [FpElement<Fp19Mod, 1>; 2] {
         [Fp19::from_u64(3), Fp19::from_u64(3)]
     }
@@ -318,6 +319,120 @@ fn sqrt_test_quad() {
     assert_eq!(z.pow(&[2]), a);
 }
 
+#[test]
+fn sqrt_test_nr_quad() {
+    let a = el(5u64, 3u64); // nonresidue
+    let b = el(4u64, 7u64); // nonresidue
+    assert!(bool::from(a.sqrt().is_none()));
+    assert!(bool::from(b.sqrt().is_none()));
+}
+
+#[test]
+fn inv_and_sqrt_test_quad() {
+    let mut rng = rand::rng();
+    let x: u64 = rng.random();
+    let y: u64 = rng.random();
+    let mut a = el(x, y);
+    a = a.pow(&[2]);
+    let (myinv, mysqrt) = a.inverse_and_sqrt();
+    let should_be_one = FieldOps::mul(&a, &myinv.unwrap());
+    assert_eq!(mysqrt.unwrap().pow(&[2]), a);
+    assert!(bool::from(should_be_one.is_one()));
+}
+
+#[test]
+fn inv_and_sqrt_test_zero_quad() {
+    let a = el(0u64, 0u64); // nonresidue
+    let (myinv, mysqrt) = a.inverse_and_sqrt();
+    assert!(bool::from(myinv.is_none()));
+    assert_eq!(mysqrt.unwrap(), a);
+}
+
+#[test]
+fn inv_and_sqrt_test_nr_quad() {
+    let a = el(5u64, 3u64); // nonresidue
+    let (myinv, mysqrt) = a.inverse_and_sqrt();
+    assert!(bool::from(a.mul(&myinv.unwrap()).is_one()));
+    assert!(bool::from(mysqrt.is_none()));
+
+    let b = el(4u64, 7u64); // nonresidue
+    let (myinv, mysqrt) = b.inverse_and_sqrt();
+    assert!(bool::from(b.mul(&myinv.unwrap()).is_one()));
+    assert!(bool::from(mysqrt.is_none()));
+}
+
+#[test]
+fn invme_sqrtother_test_quad() {
+    let mut rng = rand::rng();
+    let x: u64 = rng.random();
+    let y: u64 = rng.random();
+    let a = el(x, y);
+    let x: u64 = rng.random();
+    let y: u64 = rng.random();
+    let mut b = el(x, y);
+    b = b.pow(&[2]);
+    let (myinv, mysqrt) = a.invertme_sqrtother(&b);
+    let should_be_one = FieldOps::mul(&a, &myinv.unwrap());
+    assert_eq!(mysqrt.unwrap().pow(&[2]), b);
+    assert!(bool::from(should_be_one.is_one()));
+}
+
+#[test]
+fn invertme_sqrtother_zero_quad() {
+    let mut rng = rand::rng();
+    let a = el(0u64, 0u64);
+    let x: u64 = rng.random();
+    let y: u64 = rng.random();
+    let mut b = el(x, y);
+    b = b.pow(&[2]);
+    let (myinv, mysqrt) = a.invertme_sqrtother(&b);
+    assert!(bool::from(myinv.is_none()));
+    assert!(bool::from(mysqrt.is_none()));
+}
+
+#[test]
+fn invertme_sqrtother_nr_quad() {
+    let mut rng = rand::rng();
+    let x: u64 = rng.random();
+    let y: u64 = rng.random();
+    let a = el(x, y);
+    let b = el(5u64, 3u64); // nonresidue
+    let (myinv, mysqrt) = a.invertme_sqrtother(&b);
+    assert!(bool::from(a.mul(&myinv.unwrap()).is_one()));
+    assert!(bool::from(mysqrt.is_none()));
+}
+
+#[test]
+fn sqrtratio_test_quad() {
+    let mut rng = rand::rng();
+    let x: u64 = rng.random();
+    let y: u64 = rng.random();
+    let mut a = el(x, y);
+    let x: u64 = rng.random();
+    let y: u64 = rng.random();
+    let mut b = el(x, y);
+    a = a.pow(&[2]);
+    b = b.pow(&[2]);
+    let mysqrt = a.sqrt_ratio(&b).unwrap();
+    assert_eq!(mysqrt.pow(&[2]), a.mul(&b.invert().unwrap()));
+}
+
+#[test]
+fn sqrtratio_nr_quad() {
+    let a = el(1, 0);
+    let b = el(5u64, 3u64); // nonresidue
+    let mysqrt = a.sqrt_ratio(&b);
+    assert!(bool::from(mysqrt.is_none()));
+}
+
+#[test]
+fn sqrtratio_zero_quad() {
+    let a = el(1, 0);
+    let b = el(0, 0); // nonresidue
+    let mysqrt = a.sqrt_ratio(&b);
+    assert!(bool::from(mysqrt.is_none()));
+}
+
 // -----------------------------------------------------------------------
 // Cubic extension  F₁₉³  with  f(x) = x³ − 2  (≡ x³ + 17 mod 19)
 // -----------------------------------------------------------------------
@@ -336,6 +451,7 @@ impl TonelliShanksConstants<Fp19Mod, 1, 3, 1> for TSCubic {
     const ORDER: Uint<1> = Uint::<1>::from_u64(6858);
     const HALF_ORDER: Uint<1> = Uint::<1>::from_u64(3429);
     const PROJENATOR_EXP: Uint<1> = Uint::<1>::from_u64(1714);
+    const TWOSM1: Uint<1> = Uint::<1>::from_u64(1);
     fn root_of_unity() -> [FpElement<Fp19Mod, 1>; 3] {
         [fp(1), fp(0), fp(0)]
     }
@@ -406,4 +522,98 @@ fn sqrt_test_cubic() {
     a = a.pow(&[2]);
     let z = a.sqrt().unwrap();
     assert_eq!(z.pow(&[2]), a);
+}
+
+//////////////
+#[test]
+fn sqrt_test_nr_cubic() {
+    let a = el3(1u64, 2u64, 3u64); // nonresidue
+    let b = el3(4u64, 4u64, 3u64); // nonresidue
+    assert!(bool::from(a.sqrt().is_none()));
+    assert!(bool::from(b.sqrt().is_none()));
+}
+
+#[test]
+fn inv_and_sqrt_test_cubic() {
+    let mut rng = rand::rng();
+    let x: u64 = rng.random();
+    let y: u64 = rng.random();
+    let z: u64 = rng.random();
+    let mut a = el3(x, y, z);
+    a = a.pow(&[2]);
+    let (myinv, mysqrt) = a.inverse_and_sqrt();
+    let should_be_one = FieldOps::mul(&a, &myinv.unwrap());
+    assert_eq!(mysqrt.unwrap().pow(&[2]), a);
+    assert!(bool::from(should_be_one.is_one()));
+}
+
+#[test]
+fn inv_and_sqrt_test_zero_cubic() {
+    let a = el3(0u64, 0u64, 0u64);
+    let (myinv, mysqrt) = a.inverse_and_sqrt();
+    assert!(bool::from(myinv.is_none()));
+    assert_eq!(mysqrt.unwrap(), a);
+}
+
+#[test]
+fn inv_and_sqrt_test_nr_cubic() {
+    let a = el3(1u64, 2u64, 3u64); // nonresidue
+    let (myinv, mysqrt) = a.inverse_and_sqrt();
+    assert!(bool::from(a.mul(&myinv.unwrap()).is_one()));
+    assert!(bool::from(mysqrt.is_none()));
+}
+
+#[test]
+fn invme_sqrtother_test_cubic() {
+    let mut rng = rand::rng();
+    let x: u64 = rng.random();
+    let y: u64 = rng.random();
+    let z: u64 = rng.random();
+    let a = el3(x, y, z);
+    let x: u64 = rng.random();
+    let y: u64 = rng.random();
+    let z: u64 = rng.random();
+    let mut b = el3(x, y, z);
+    b = b.pow(&[2]);
+    let (myinv, mysqrt) = a.invertme_sqrtother(&b);
+    let should_be_one = FieldOps::mul(&a, &myinv.unwrap());
+    assert_eq!(mysqrt.unwrap().pow(&[2]), b);
+    assert!(bool::from(should_be_one.is_one()));
+}
+
+#[test]
+fn invertme_sqrtother_nr_cubic() {
+    let mut rng = rand::rng();
+    let x: u64 = rng.random();
+    let y: u64 = rng.random();
+    let z: u64 = rng.random();
+    let a = el3(x, y, z);
+    let b = el3(1u64, 2u64, 3u64); // nonresidue
+    let (myinv, mysqrt) = a.invertme_sqrtother(&b);
+    assert!(bool::from(a.mul(&myinv.unwrap()).is_one()));
+    assert!(bool::from(mysqrt.is_none()));
+}
+
+#[test]
+fn sqrtratio_test_cubic() {
+    let mut rng = rand::rng();
+    let x: u64 = rng.random();
+    let y: u64 = rng.random();
+    let z: u64 = rng.random();
+    let mut a = el3(x, y, z);
+    let x: u64 = rng.random();
+    let z: u64 = rng.random();
+    let mut b = el3(x, y, z);
+    a = a.pow(&[2]);
+    b = b.pow(&[2]);
+    let mysqrt = a.sqrt_ratio(&b).unwrap();
+    assert_eq!(mysqrt.pow(&[2]), a.mul(&b.invert().unwrap()));
+}
+
+#[test]
+fn sqrtratio_nr_cubic() {
+    let a = el3(1, 0, 0);
+    let b = el3(1u64, 2u64, 3u64); // nonresidue
+    let mysqrt = a.sqrt_ratio(&b);
+    assert!(bool::from(mysqrt.is_none()));
 }

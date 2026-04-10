@@ -132,7 +132,93 @@ pub trait FieldOps:
 
     fn norm(&self) -> Self;
     fn trace(&self) -> Self;
+
+    /// Returns a squareroot if it exists
+    ///
+    /// Returns a squareroof of `self` if it exists in the finite
+    /// field FpM. The return type is Ctoption<Self> and it is not
+    /// none if and only if the squareroot exists. This is an
+    /// implementation fo the Tonelli--Shanks algorithm in the
+    /// multiplicative group FpM*
+    ///
+    /// # Arguments
+    ///
+    /// * `&self` - Element of FpM (type: self)
+    ///
+    /// # Returns
+    ///
+    /// The square root of `self` (type: CtOption<Self>)
     fn sqrt(&self) -> CtOption<Self>;
+
+    /// Computes the inverse and square root of `self`
+    ///
+    /// Computes simulaineously the inverse and square root of `self`.
+    ///
+    /// # Arguments
+    ///
+    /// * `&self` - Element of FpM (type: self)
+    ///
+    /// # Returns
+    ///
+    /// The inverse and square root of `self`. The former is none if
+    /// and only if nonzero and the latter is not none if and only if
+    /// there exists a squareroot in FpM
+    /// (type: (CtOption<Self>, CtOption<self>))
+    fn inverse_and_sqrt(&self) -> (CtOption<Self>, CtOption<Self>) {
+        (self.invert(), self.sqrt())
+    }
+
+    /// Computes the square root the inverse of `self`
+    ///
+    /// # Arguments
+    ///
+    /// * `&self` - Element of FpM (type: self)
+    ///
+    /// # Returns
+    ///
+    /// The square root of the inverse of `self`. The former is not
+    /// none if and only if it is both nonzero there exists a
+    /// squareroot in FpM (type: CtOption<self>)
+    fn inv_sqrt(&self) -> CtOption<Self> {
+        self.sqrt().and_then(|s| s.invert())
+    }
+
+    /// Computes the inverse of `self` and square root of `rhs`
+    ///
+    /// Computes simulaineously the inverse of `self` and square root
+    /// of `rhs`.
+    ///
+    /// # Arguments
+    ///
+    /// * `&self` - Element of FpM (type: self)
+    /// * `rhs` - Element of FpM (type: &Self)
+    ///
+    /// # Returns
+    ///
+    /// The inverse of `self` and square root fo `rhs`. Theq former is
+    /// none if and only if `self` is nonzero and the latter is not
+    /// none if and only if there exists a squareroot of `rhs` in FpM
+    /// (type: (CtOption<Self>, CtOption<self>))
+    fn invertme_sqrtother(&self, rhs: &Self) -> (CtOption<Self>, CtOption<Self>) {
+        (self.invert(), rhs.sqrt())
+    }
+
+    /// Computes the squareroot of a ratio `self/rhs`
+    ///
+    /// # Arguments
+    ///
+    /// * `&self` - Element of FpM (type: self)
+    /// * `rhs` - Element of FpM (type: &Self)
+    ///
+    /// # Returns
+    ///
+    /// The squareroot of the ratio `self/rhs` is not none if and only
+    /// if `rhs` is invertible and the ratio has an FpM squareroot
+    /// (type: (CtOption<Self>, CtOption<self>))
+    fn sqrt_ratio(&self, rhs: &Self) -> CtOption<Self> {
+        rhs.invert().and_then(|inv_rhs| self.mul(&inv_rhs).sqrt())
+    }
+
     fn legendre(&self) -> i8;
     fn characteristic() -> Vec<u64>;
     fn degree() -> u32;

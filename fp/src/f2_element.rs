@@ -1,29 +1,34 @@
 //! Base binary field element F2 = Z / 2Z
 
+use crate::field_ops::FieldOps;
 use core::ops::{Add, Mul, Neg, Sub};
 use crypto_bigint::Uint;
-use subtle::{Choice, CtOption, ConditionallySelectable, ConstantTimeEq};
-use crate::field_ops::FieldOps;
-
+use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct F2Element {
-    pub(crate) value: Uint<1>
+    pub(crate) value: Uint<1>,
 }
-
-
 
 // ---------------------------------------------------------------------------
 // Constructors / accessors
 // ---------------------------------------------------------------------------
 
 impl F2Element {
-    pub const ZERO: Self = Self { value: Uint::<1>::ZERO };
-    pub const ONE:  Self = Self { value: Uint::<1>::ONE };
+    pub const ZERO: Self = Self {
+        value: Uint::<1>::ZERO,
+    };
+    pub const ONE: Self = Self {
+        value: Uint::<1>::ONE,
+    };
 
-    fn new(x: Uint<1>) -> Self { Self { value: x & Uint::<1>::ONE } }
+    fn new(x: Uint<1>) -> Self {
+        Self {
+            value: x & Uint::<1>::ONE,
+        }
+    }
 
-    pub fn from_u64(x : u64) -> Self{
+    pub fn from_u64(x: u64) -> Self {
         Self::new(Uint::from(x & 1))
     }
 
@@ -35,7 +40,6 @@ impl F2Element {
         self.value.to_words()[0] as u8
     }
 }
-
 
 // ---------------------------------------------------------------------------
 // CtOption functionalities
@@ -71,12 +75,9 @@ impl ConstantTimeEq for F2Element {
     }
 }
 
-
-
 // ---------------------------------------------------------------------------
 // Operator overloads
 // ---------------------------------------------------------------------------
-
 
 impl Add for F2Element {
     type Output = Self;
@@ -112,32 +113,56 @@ impl Neg for F2Element {
     }
 }
 
-
-
 // ---------------------------------------------------------------------------
 // FieldOps implementation
 // ---------------------------------------------------------------------------
 
 impl FieldOps for F2Element {
-    fn zero() -> Self { Self::ZERO }
-    fn one() -> Self { Self::ONE }
+    fn zero() -> Self {
+        Self::ZERO
+    }
+    fn one() -> Self {
+        Self::ONE
+    }
 
-    fn is_zero(&self) -> Choice { Self::ct_eq(self, &Self::zero()) }
-    fn is_one(&self) -> Choice { Self::ct_eq(self, &Self::one()) }
-    fn negate(&self) -> Self { *self }
-    fn add(&self, rhs: &Self) -> Self { Self::new(self.value ^ rhs.value) }
-    fn sub(&self, rhs: &Self) -> Self { Self::new(self.value ^ rhs.value) }
-    fn mul(&self, rhs: &Self) -> Self { Self::new(self.value & rhs.value) }
-    fn square(&self) -> Self { *self }      // x = x^2 for every x in F_2
-    fn double(&self) -> Self { Self::ZERO }
+    fn is_zero(&self) -> Choice {
+        Self::ct_eq(self, &Self::zero())
+    }
+    fn is_one(&self) -> Choice {
+        Self::ct_eq(self, &Self::one())
+    }
+    fn negate(&self) -> Self {
+        *self
+    }
+    fn add(&self, rhs: &Self) -> Self {
+        Self::new(self.value ^ rhs.value)
+    }
+    fn sub(&self, rhs: &Self) -> Self {
+        Self::new(self.value ^ rhs.value)
+    }
+    fn mul(&self, rhs: &Self) -> Self {
+        Self::new(self.value & rhs.value)
+    }
+    fn square(&self) -> Self {
+        *self
+    } // x = x^2 for every x in F_2
+    fn double(&self) -> Self {
+        Self::ZERO
+    }
     fn invert(&self) -> CtOption<Self> {
         let is_invertible = !self.is_zero();
         CtOption::new(*self, is_invertible)
     }
 
-    fn frobenius(&self) -> Self { *self }
-    fn norm(&self)      -> Self { *self }
-    fn trace(&self)     -> Self { *self }
+    fn frobenius(&self) -> Self {
+        *self
+    }
+    fn norm(&self) -> Self {
+        *self
+    }
+    fn trace(&self) -> Self {
+        *self
+    }
 
     fn sqrt(&self) -> CtOption<Self> {
         let is_non_zero = !self.is_zero();
@@ -148,6 +173,10 @@ impl FieldOps for F2Element {
         self.as_u8() as i8
     }
 
-    fn characteristic() -> Vec<u64> { vec![2] }
-    fn degree() -> u32 { 1 }
+    fn characteristic() -> Vec<u64> {
+        vec![2]
+    }
+    fn degree() -> u32 {
+        1
+    }
 }

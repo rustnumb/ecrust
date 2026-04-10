@@ -121,6 +121,8 @@ where
     const HALF_ORDER: Uint<N>;
     // Constant S
     const S: u64;
+    // Constant 2^(S - 1)
+    const TWOSM1: Uint<N>;
     // Constant T
     const T: Uint<N>;
     // Projenator exponent of the TS algorithm this is (T - 1) / 2
@@ -827,6 +829,130 @@ where
             x,
             x.mul(x).ct_eq(self), // Only return Some if it's the square root.
         )
+    }
+
+    /// Inverse and sqrt in one exponentiation
+    ///
+    /// Computes the inverse and squareroot of `self` in one
+    /// exponentiation using the tricks in Scott's article
+    ///
+    /// # Arguments
+    ///
+    /// * `&self` - An element of Fp^M (type: &self)
+    ///
+    /// # Returns
+    ///
+    /// `(myinv, mysqrt)` which is `self.invert()` and `self.sqrt()`
+    fn inverse_and_sqrt(&self) -> (CtOption<Self>, CtOption<Self>) {
+        let is_invertible = !self.is_zero();
+
+        let mut mysqrt = *self;
+        let exp = TSCONSTS::PROJENATOR_EXP;
+        let exp_limbs = exp.as_limbs().map(|limb| limb.0);
+        // TODO: generate the addition chain for this specific constant
+        // this is constant time since exp_limbs is always(!) the same
+        let w = mysqrt.pow_vartime(&exp_limbs);
+        ts_loop(&mut mysqrt, &w);
+
+        let e0 = TSCONSTS::TWOSM1;
+        let e0_limbs = e0.as_limbs().map(|limb| limb.0);
+        let e1 = e0.sub(Uint::<N>::from_u64(1));
+        let e1_limbs = e1.as_limbs().map(|limb| limb.0);
+
+        // Compute x^(2^(S - 1) - 1) * (x * w^4)^(2^(S - 1))
+        let myinv = self
+            .pow_vartime(&e1_limbs)
+            .mul((self.mul(&w.pow_vartime(&[4 as u64]))).pow_vartime(&e0_limbs));
+
+        (
+            CtOption::new(myinv, is_invertible),
+            CtOption::new(
+                mysqrt,
+                mysqrt.mul(mysqrt).ct_eq(self), // Only return Some if it's the square root.
+            ),
+        )
+    }
+
+    /// Inverse of squareroot of `self` in 1 exponentiation
+    ///
+    /// Computes 1/sqrt(self) using the trick from Mike Scott's
+    /// "Tricks of the trade" article Section 2
+    /// https://eprint.iacr.org/2020/1497
+    ///
+    /// # Arguments
+    ///
+    /// * `&self` - Description of &self (type: self)
+    ///
+    /// # Returns
+    ///
+    /// The inverse of the squareroot of `self` (type: CtOption<Self>)
+    fn inv_sqrt(&self) -> CtOption<Self> {
+        let (inv, sqrt) = self.inverse_and_sqrt();
+        inv.and_then(|a| sqrt.map(|b| a * b))
+    }
+
+    /// Inverse of `self` and squareroot of `rhs` in 1 exponentiation
+    ///
+    /// Computes `1/self` and `rhs.sqrt()` simulaineously using the
+    /// trick from Mike Scott's "Tricks of the trade" article Section
+    /// 2 https://eprint.iacr.org/2020/1497
+    ///
+    /// # Returns
+    ///
+    /// The inverse of `self` and square root fo `rhs`. Theq former is
+    /// none if and only if `self` is nonzero and the latter is not
+    /// none if and only if there exists a squareroot of `rhs` in FpM
+    /// (type: (CtOption<Self>, CtOption<self>))
+    fn invertme_sqrtother(&self, rhs: &Self) -> (CtOption<Self>, CtOption<Self>) {
+        let is_invertible = !self.is_zero();
+
+        let x = self.mul(self).mul(*rhs);
+        let (myinv, mysqrt) = x.inverse_and_sqrt();
+
+        let myinv_value = myinv.unwrap_or(Self::zero());
+        let mysqrt_value = mysqrt.unwrap_or(Self::zero());
+        let inv_value = self.mul(rhs).mul(myinv_value);
+        let sqrt_value = inv_value.mul(mysqrt_value);
+
+        let inv_is_some = is_invertible & myinv.is_some();
+
+        let sqrt_is_some = inv_is_some & mysqrt.is_some() & (sqrt_value.mul(sqrt_value)).ct_eq(rhs);
+
+        (
+            CtOption::new(inv_value, inv_is_some),
+            CtOption::new(sqrt_value, sqrt_is_some),
+        )
+    }
+
+    /// Computes the squareroot of a ratio `self/rhs`
+    ///
+    /// Computes `sqrt(self/rhs)` in one exponentiation using the
+    /// trick from Mike Scott's "Tricks of the trade" article Section
+    /// 2 https://eprint.iacr.org/2020/1497
+    ///
+    /// # Arguments
+    ///
+    /// * `&self` - Element of FpM (type: self)
+    /// * `rhs` - Element of FpM (type: &Self)
+    ///
+    /// # Returns
+    ///
+    /// The squareroot of the ratio `self/rhs` is not none if and only
+    /// if `rhs` is invertible and the ratio has an FpM squareroot
+    /// (type: (CtOption<Self>, CtOption<self>))
+    fn sqrt_ratio(&self, rhs: &Self) -> CtOption<Self> {
+        let x = self.mul(&self.mul(self)).mul(*rhs);
+        let (myinv, mysqrt) = x.inverse_and_sqrt();
+
+        let myinv_value = myinv.unwrap_or(Self::zero());
+        let mysqrt_value = mysqrt.unwrap_or(Self::zero());
+        let ans_value = self.mul(self).mul(myinv_value).mul(mysqrt_value);
+
+        let inv_is_some = myinv.is_some();
+        let ans_is_some =
+            inv_is_some & mysqrt.is_some() & (mysqrt_value.mul(mysqrt_value)).ct_eq(&x);
+
+        CtOption::new(ans_value, ans_is_some)
     }
 
     /// a is a QR in Fp^M iff a^{(p^M-1)/2} = 1.
