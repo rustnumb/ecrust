@@ -1,6 +1,5 @@
 //! X-only arithmetic on a Montgomery curve via the Kummer line.
 //!
-//!
 //! # Kummer-line representation
 //!
 //! A Montgomery point is represented only by its x-coordinate, in projective
@@ -60,6 +59,8 @@ where
     /// ```text
     /// X1 Z2 = X2 Z1.
     /// ```
+    ///
+    /// WARNING: SOMETHING CHANGES IN CHAR 2?? WE SHOULD HAVE A LOOK AT THIS!
     fn eq(&self, other: &Self) -> bool {
         self.x * other.z == other.x * self.z
     }
@@ -88,7 +89,7 @@ impl<F: FieldOps> KummerPoint<F> {
 
     /// The image of the identity point on the Kummer line.
     pub fn identity() -> Self {
-        Self{ x: F::one(), z: F::zero()}
+        Self{ x: F::zero(), z: F::one()}
     }
 
     /// Return `true` if this point is the image of identity.
@@ -98,8 +99,8 @@ impl<F: FieldOps> KummerPoint<F> {
 
     /// Attempt to recover the affine x-coordinate (succeeds when Z != 0).
     pub fn to_x(&self) -> CtOption<F> {
-        let z_is_non_zero = !self.z.is_zero();
-        CtOption::new(self.x, z_is_non_zero)
+        let z_is_zero = self.z.is_zero();
+        CtOption::new(self.x, z_is_zero)
     }
 }
 
@@ -158,21 +159,17 @@ impl<F: FieldOps> KummerPoint<F> {
     /// Given `x(P)` in projective form `(X:Z)`, compute `x([2]P)`.
     pub fn xdouble(&self, curve: &MontgomeryCurve<F>) -> Self {
         if F::characteristic()[0] != 2 {
-            let sumsq = <F as FieldOps>::square(&(self.x + self.z));
-            let diffsq = <F as FieldOps>::square(&(self.x - self.z));
-            let fourxz = sumsq - diffsq;
+            let q = <F as FieldOps>::square(&(self.x + self.z));
+            let r = <F as FieldOps>::square(&(self.x - self.z));
+            let s = q - r;
             let a24 = curve.a24();
 
-            let new_z = fourxz * (diffsq + a24 * fourxz);
+            let new_z = s * (r + a24 * s);
 
-            Self{ x: sumsq * diffsq, z: new_z }
+            Self{ x: q * r, z: new_z }
         }
         else {
-            let temp_x = self.x + curve.b * self.z;
-            let new_x = <F as FieldOps>::square(&<F as FieldOps>::square(&temp_x));
-            let xz = self.x * self.z;
-            let new_z = <F as FieldOps>::square(&xz);
-            Self{ x: new_x, z: new_z }
+            todo!()
         }
 
     }
@@ -195,14 +192,7 @@ impl<F: FieldOps> KummerPoint<F> {
             Self { x: new_x, z: new_z }
         }
         else {
-            let x1z2 = self.x * other.z;
-            let x2z1 = other.x * self.z;
-            let sum_squared = <F as FieldOps>::square(&(x1z2 + x2z1));
-
-            let new_x = diff.x * sum_squared + diff.z * x1z2 * x2z1;
-            let new_z = diff.z * sum_squared;
-
-            Self { x: new_x, z: new_z }
+            todo!()
         }
     }
 

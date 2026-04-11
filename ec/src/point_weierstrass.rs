@@ -14,7 +14,7 @@
 //! | Negate            | `-(x,y) = (x, -y - a_1x - a_3)`          | 3 mul + 2 add  |
 //! | Add  (P ≠ ±Q)    | Chord-and-tangent (general Weierstrass)   | 1 inv + 6 mul  |
 //! | Double            | Tangent (general Weierstrass)            | 1 inv + 7 mul  |
-//! | Scalar multiply   | Double-and-add (MSB, variable time)      | O(n) doubles   |
+//! | Scalar multiply   | Montgomery ladder (scalar-constant-time)| O(n) doubles   |
 
 
 // WARNING: SOME OF THE FUNCTIONS BELOW USE BRANCHES DEPENDING
@@ -284,29 +284,31 @@ impl<F: FieldOps> AffinePoint<F> {
         Self::new(x3, y3)
     }
 
-    /// Scalar multiplication  `[k]P`  using double-and-add (MSB first).
-    ///
-    /// The scalar `k` is given as a slice of `u64` limbs in **little-endian**
-    /// order (same convention as `FieldOps::pow`).
-    pub fn scalar_mul(&self, k: &[u64], curve: &WeierstrassCurve<F>) -> Self {
-        if self.infinity || k.is_empty() {
-            return Self::identity();
-        }
-
-        let mut result = Self::identity();
+    pub fn scalar_mul(&self, k: &[u64], curve: &<AffinePoint<F> as PointOps>::Curve) -> Self {
+        let mut r0 = Self::identity();
+        let mut r1 = self.clone();
 
         for &limb in k.iter().rev() {
             for bit in (0..64).rev() {
-                let doubled = result.double(curve);
-                let added = doubled.add(self, curve);
                 let choice = Choice::from(((limb >> bit) & 1) as u8);
-                result = Self::conditional_select(&doubled, &added, choice);
+
+                Self::conditional_swap(&mut r0, &mut r1, choice);
+
+                let sum = r0.add(&r1, curve);
+                let dbl = r0.double(curve);
+                r1 = sum;
+                r0 = dbl;
+
+                Self::conditional_swap(&mut r0, &mut r1, choice);
             }
         }
 
-        result
+        r0
     }
+
 }
+
+
 
 
 impl<F> PointOps for AffinePoint<F>
@@ -326,18 +328,17 @@ where
         AffinePoint::<F>::negate(self, curve)
     }
 
-    /*
-    fn add(&self, rhs: &Self, curve: &Self::Curve) -> Self {
-        AffinePoint::<F>::add(self, rhs, curve)
-    }
-
-    fn double(&self, curve: &Self::Curve) -> Self {
-        AffinePoint::<F>::double(self, curve)
-    }
-    */
-
     fn scalar_mul(&self, k: &[u64], curve: &Self::Curve) -> Self {
         AffinePoint::<F>::scalar_mul(self, k, curve)
+    }
+}
+
+impl<F> crate::point_ops::PointAdd for AffinePoint<F>
+where
+    F: FieldOps,
+{
+    fn add(&self, other: &Self, curve: &Self::Curve) -> Self {
+        AffinePoint::<F>::add(self, other, curve)
     }
 }
 
