@@ -340,6 +340,10 @@ where
     fn add(&self, other: &Self, curve: &Self::Curve) -> Self {
         AffinePoint::<F>::add(self, other, curve)
     }
+
+    fn scalar_mul(&self, k: &[u64], curve: &Self::Curve) -> Self {
+        AffinePoint::<F>::scalar_mul(self, k, curve)
+    }
 }
 
 
