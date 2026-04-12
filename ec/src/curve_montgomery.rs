@@ -104,11 +104,19 @@ impl<F: FieldOps> Curve for MontgomeryCurve<F> {
         }
         else {
             if F::characteristic()[0] != 2 {
-                let xsq = <F as FieldOps>::square(&point.x);
-                let xcubed = point.x * xsq;
+                // Normalise projective (X : Z) to affine x = X / Z.
+                let z_inv = <F as FieldOps>::invert(&point.z);
+                if bool::from(z_inv.is_none()) {
+                    // Z = 0 means identity, already handled above.
+                    return true;
+                }
+                let x = point.x * z_inv.unwrap();
+
+                let xsq = <F as FieldOps>::square(&x);
+                let xcubed = x * xsq;
                 let axsq = self.a * xsq;
                 let binv = <F as FieldOps>::invert(&self.b).unwrap();
-                let sum = xcubed + axsq + point.x;
+                let sum = xcubed + axsq + x;
                 <F as FieldOps>::legendre(&(sum * binv)) > -1i8
             }
             else {

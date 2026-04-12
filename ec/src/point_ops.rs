@@ -30,3 +30,12 @@ pub trait PointOps: Clone  + ConditionallySelectable{
 
 }
 
+/// Extension trait for points that support full group addition.
+///
+/// Not every point representation can add two arbitrary points (e.g.
+/// Montgomery x-only points). Protocols that need addition (like ElGamal)
+/// should bound on `PointAdd` instead of plain `PointOps`.
+pub trait PointAdd: PointOps {
+    fn add(&self, other: &Self, curve: &Self::Curve) -> Self;
+}
+
