@@ -20,8 +20,6 @@ pub trait PointOps: Clone  + ConditionallySelectable{
     fn identity(curve: &Self::Curve) -> Self;
     fn is_identity(&self) -> bool;
     fn negate(&self, curve: &Self::Curve) -> Self;
-    fn add(&self, rhs: &Self, curve: &Self::Curve) -> Self;
-    fn double(&self, curve: &Self::Curve) -> Self;
 
     /// Scalar multiplication  `[k]P`  (variable-time double-and-add).
     ///
