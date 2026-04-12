@@ -99,8 +99,8 @@ impl<F: FieldOps> KummerPoint<F> {
 
     /// Attempt to recover the affine x-coordinate (succeeds when Z != 0).
     pub fn to_x(&self) -> CtOption<F> {
-        let z_is_zero = self.z.is_zero();
-        CtOption::new(self.x, z_is_zero)
+        let z_inv = <F as FieldOps>::invert(&self.z);
+        z_inv.map(|zi| self.x * zi)
     }
 }
 

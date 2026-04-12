@@ -4,7 +4,7 @@
 //! encode arbitrary byte strings into curve points. That keeps the abstraction
 //! compact and lets it directly reuse the existing `ec` layer.
 
-use ec::point_ops::{PointOps};
+use ec::point_ops::PointAdd;
 
 use crate::scalar::SecretScalar;
 
@@ -31,7 +31,7 @@ impl EcElGamal {
         curve: &P::Curve,
     ) -> Option<Ciphertext<P>>
     where
-        P: PointOps,
+        P: PointAdd,
     {
         if recipient_public.is_identity() {
             return None;
@@ -54,7 +54,7 @@ impl EcElGamal {
         curve: &P::Curve,
     ) -> P
     where
-        P: PointOps,
+        P: PointAdd,
     {
         let shared = ciphertext
             .ephemeral_public

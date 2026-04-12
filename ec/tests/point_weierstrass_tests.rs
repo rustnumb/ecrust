@@ -9,7 +9,7 @@ use crypto_bigint::{const_prime_monty_params, Uint};
 
 use fp::field_ops::FieldOps;
 use fp::fp_element::FpElement;
-use fp::fp_ext::{FpExt, IrreduciblePoly};
+use fp::fp_ext::{FpExt, IrreduciblePoly, TonelliShanksConstants};
 
 use ec::curve_weierstrass::WeierstrassCurve;
 use ec::point_weierstrass::AffinePoint;
@@ -20,7 +20,9 @@ use ec::point_weierstrass::AffinePoint;
 
 const_prime_monty_params!(Fp19Mod, Uint<1>, "0000000000000013", 2);
 type F19 = FpElement<Fp19Mod, 1>;
-fn fp(n: u64) -> F19 { F19::from_u64(n) }
+fn fp(n: u64) -> F19 {
+    F19::from_u64(n)
+}
 
 /// Brute-force: all affine points on  y² = x³ + ax + b  over F_p.
 fn all_points_short_19(a: u64, b: u64) -> Vec<(u64, u64)> {
@@ -29,7 +31,9 @@ fn all_points_short_19(a: u64, b: u64) -> Vec<(u64, u64)> {
     for x in 0..p {
         let rhs = (x * x % p * x % p + a * x % p + b) % p;
         for y in 0..p {
-            if (y * y) % p == rhs { pts.push((x, y)); }
+            if (y * y) % p == rhs {
+                pts.push((x, y));
+            }
         }
     }
     pts
@@ -48,7 +52,9 @@ fn fp19_negate_then_add_is_identity() {
         let neg = p.negate(&c);
         assert!(
             p.add(&neg, &c).is_identity(),
-            "P + (−P) should be O for ({}, {})", xv, yv,
+            "P + (−P) should be O for ({}, {})",
+            xv,
+            yv,
         );
     }
 }
@@ -58,13 +64,17 @@ fn fp19_commutativity() {
     let c = WeierstrassCurve::new_short(fp(2), fp(3));
     let pts = all_points_short_19(2, 3);
     for i in 0..pts.len().min(5) {
-        for j in (i+1)..pts.len().min(5) {
+        for j in (i + 1)..pts.len().min(5) {
             let p = AffinePoint::new(fp(pts[i].0), fp(pts[i].1));
             let q = AffinePoint::new(fp(pts[j].0), fp(pts[j].1));
             assert_eq!(
-                p.add(&q, &c), q.add(&p, &c),
+                p.add(&q, &c),
+                q.add(&p, &c),
                 "P+Q ≠ Q+P for P=({},{}), Q=({},{})",
-                pts[i].0, pts[i].1, pts[j].0, pts[j].1,
+                pts[i].0,
+                pts[i].1,
+                pts[j].0,
+                pts[j].1,
             );
         }
     }
@@ -78,10 +88,7 @@ fn fp19_associativity() {
     let p = AffinePoint::new(fp(pts[0].0), fp(pts[0].1));
     let q = AffinePoint::new(fp(pts[1].0), fp(pts[1].1));
     let r = AffinePoint::new(fp(pts[2].0), fp(pts[2].1));
-    assert_eq!(
-        p.add(&q, &c).add(&r, &c),
-        p.add(&q.add(&r, &c), &c),
-    );
+    assert_eq!(p.add(&q, &c).add(&r, &c), p.add(&q.add(&r, &c), &c),);
 }
 
 #[test]
@@ -94,7 +101,8 @@ fn fp19_scalar_mul_order() {
     let p = AffinePoint::new(fp(1), y);
     assert!(
         p.scalar_mul(&[order], &c).is_identity(),
-        "[#E]P must be O  (order = {})", order,
+        "[#E]P must be O  (order = {})",
+        order,
     );
 }
 
@@ -118,20 +126,36 @@ fn fp19_scalar_mul_consistency() {
 // ===========================================================================
 
 struct QuadPoly;
+struct TSQuad;
+
 impl IrreduciblePoly<Fp19Mod, 1, 2> for QuadPoly {
     fn modulus() -> [F19; 2] {
-        [F19::one(), F19::zero()]   // x² + 1
+        [F19::one(), F19::zero()] // x² + 1
     }
 }
-type F19_2 = FpExt<Fp19Mod, 1, 2, QuadPoly>;
 
-fn el(a: u64, b: u64) -> F19_2 { F19_2::new([fp(a), fp(b)]) }
+impl TonelliShanksConstants<Fp19Mod, 1, 2, 1> for TSQuad {
+    // Still only need 1 limb for 19^2
+    const ORDER: Uint<1> = Uint::<1>::from_u64(360);
+    const HALF_ORDER: Uint<1> = Uint::<1>::from_u64(180);
+    const PROJENATOR_EXP: Uint<1> = Uint::<1>::from_u64(22);
+    const TWOSM1: Uint<1> = Uint::<1>::from_u64(4);
+    fn root_of_unity() -> [FpElement<Fp19Mod, 1>; 2] {
+        [F19::from_u64(3), F19::from_u64(3)]
+    }
+    const S: u64 = 3;
+    const T: Uint<1> = Uint::<1>::from_u64(45);
+}
+
+type F19_2 = FpExt<Fp19Mod, 1, 2, 1, QuadPoly, TSQuad>;
+
+fn el(a: u64, b: u64) -> F19_2 {
+    F19_2::new([fp(a), fp(b)])
+}
 
 /// Try to find a point on y² = x³ + ax + b over F₁₉² by scanning a few
 /// elements and testing whether the RHS is a square (via Euler criterion).
-fn find_point_fp19_2(
-    curve: &WeierstrassCurve<F19_2>,
-) -> Option<AffinePoint<F19_2>> {
+fn find_point_fp19_2(curve: &WeierstrassCurve<F19_2>) -> Option<AffinePoint<F19_2>> {
     // |F₁₉²*| = 19² − 1 = 360,  so  (p^m−1)/2 = 180
     let half_order: &[u64] = &[180];
 
@@ -196,19 +220,25 @@ fn fp19_2_add_inverse() {
 // 3.  General Weierstrass over F₂⁴  (binary extension)
 // ===========================================================================
 
-use fp::f2_ext::{F2Ext, BinaryIrreducible};
+use fp::f2_ext::{BinaryIrreducible, F2Ext};
 
 /// Irreducible polynomial  x⁴ + x + 1  over F₂.
 /// Binary representation: 10011 = 0x13.
 struct Poly2_4;
 impl BinaryIrreducible<1> for Poly2_4 {
-    fn modulus() -> Uint<1> { Uint::from_u64(0x13) } // x⁴ + x + 1
-    fn degree()  -> usize   { 4 }
+    fn modulus() -> Uint<1> {
+        Uint::from_u64(0x13)
+    } // x⁴ + x + 1
+    fn degree() -> usize {
+        4
+    }
 }
 
 type GF16 = F2Ext<1, Poly2_4>;
 
-fn gf(n: u64) -> GF16 { GF16::from_u64(n) }
+fn gf(n: u64) -> GF16 {
+    GF16::from_u64(n)
+}
 
 /// In characteristic 2 the short Weierstrass form degenerates, so we use
 /// the general Weierstrass form:
@@ -220,11 +250,11 @@ fn gf(n: u64) -> GF16 { GF16::from_u64(n) }
 /// This is a standard "non-supersingular" form for binary curves.
 fn binary_curve() -> WeierstrassCurve<GF16> {
     WeierstrassCurve::new(
-        gf(1),          // a₁ = 1
-        gf(0b1000),     // a₂ = x^3   (some nonzero element)
-        gf(0),          // a₃ = 0
-        gf(0),          // a₄ = 0
-        gf(1),          // a₆ = 1
+        gf(1),      // a₁ = 1
+        gf(0b1000), // a₂ = x^3   (some nonzero element)
+        gf(0),      // a₃ = 0
+        gf(0),      // a₄ = 0
+        gf(1),      // a₆ = 1
     )
 }
 
@@ -291,10 +321,7 @@ fn gf16_add_on_curve() {
         for j in 0..pts.len().min(8) {
             let r = pts[i].add(&pts[j], &c);
             if !r.is_identity() {
-                assert!(
-                    c.contains(&r.x, &r.y),
-                    "P+Q not on curve",
-                );
+                assert!(c.contains(&r.x, &r.y), "P+Q not on curve",);
             }
         }
     }
@@ -305,11 +332,8 @@ fn gf16_commutativity() {
     let c = binary_curve();
     let pts = all_points_gf16(&c);
     for i in 0..pts.len().min(6) {
-        for j in (i+1)..pts.len().min(6) {
-            assert_eq!(
-                pts[i].add(&pts[j], &c),
-                pts[j].add(&pts[i], &c),
-            );
+        for j in (i + 1)..pts.len().min(6) {
+            assert_eq!(pts[i].add(&pts[j], &c), pts[j].add(&pts[i], &c),);
         }
     }
 }
@@ -322,10 +346,7 @@ fn gf16_associativity() {
         let p = &pts[0];
         let q = &pts[1];
         let r = &pts[2];
-        assert_eq!(
-            p.add(q, &c).add(r, &c),
-            p.add(&q.add(r, &c), &c),
-        );
+        assert_eq!(p.add(q, &c).add(r, &c), p.add(&q.add(r, &c), &c),);
     }
 }
 
@@ -338,7 +359,8 @@ fn gf16_scalar_mul_order() {
     for p in &pts {
         assert!(
             p.scalar_mul(&[group_order], &c).is_identity(),
-            "[{}]P should be O", group_order,
+            "[{}]P should be O",
+            group_order,
         );
     }
 }

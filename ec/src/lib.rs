@@ -22,5 +22,7 @@ pub mod point_ops;
 
 pub mod curve_weierstrass;
 pub mod point_weierstrass;
-mod point_montgomery;
-mod curve_montgomery;
+pub mod point_montgomery;
+pub mod curve_montgomery;
+pub mod point_edwards;
+pub mod curve_edwards;
