@@ -1,7 +1,7 @@
 # ecRust
 
 <p align="center">
-  <img src="assets/ecrust_mascot.png" alt="ecRust mascot logo" width="420" />
+  <img src="assets/ecrust_mascot_small.png" alt="ecRust mascot logo" width="420" />
 </p>
 
 A Rust library for finite-field arithmetic, elliptic-curve operations, isogeny scaffolding, and higher-level elliptic-curve protocols.
