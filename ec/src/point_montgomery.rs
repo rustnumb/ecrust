@@ -1,5 +1,6 @@
 //! X-only arithmetic on a Montgomery curve via the Kummer line.
 //!
+//!
 //! # Kummer-line representation
 //!
 //! A Montgomery point is represented only by its x-coordinate, in projective
@@ -40,7 +41,7 @@ use fp::field_ops::FieldOps;
 /// - `(1 : 0)` for the identity image,
 /// - `(X : Z)` with `Z ≠ 0` for finite x-coordinates.
 #[derive(Debug, Clone, Copy)]
-pub struct KummerPoint<F: FieldOps> {
+pub struct KummerPoint<F: FieldOps + Copy> {
     pub x: F,
     pub z: F,
 }
@@ -59,8 +60,6 @@ where
     /// ```text
     /// X1 Z2 = X2 Z1.
     /// ```
-    ///
-    /// WARNING: SOMETHING CHANGES IN CHAR 2?? WE SHOULD HAVE A LOOK AT THIS!
     fn eq(&self, other: &Self) -> bool {
         self.x * other.z == other.x * self.z
     }
@@ -78,6 +77,7 @@ where
 impl<F: FieldOps> KummerPoint<F> {
     /// Construct a projective x-line point `(X : Z)` without validation.
     pub fn new(x: F, z: F) -> Self {
+        assert!(!bool::from((x * z).is_zero()));
         Self{ x, z }
     }
 
@@ -89,7 +89,7 @@ impl<F: FieldOps> KummerPoint<F> {
 
     /// The image of the identity point on the Kummer line.
     pub fn identity() -> Self {
-        Self{ x: F::zero(), z: F::one()}
+        Self{ x: F::one(), z: F::zero()}
     }
 
     /// Return `true` if this point is the image of identity.
@@ -99,8 +99,8 @@ impl<F: FieldOps> KummerPoint<F> {
 
     /// Attempt to recover the affine x-coordinate (succeeds when Z != 0).
     pub fn to_x(&self) -> CtOption<F> {
-        let z_inv = <F as FieldOps>::invert(&self.z);
-        z_inv.map(|zi| self.x * zi)
+        let z_inv = self.z.invert();
+        z_inv.map(|zinv| self.x * zinv)
     }
 }
 
@@ -153,23 +153,27 @@ where
 // X-only arithmetic
 // ---------------------------------------------------------------------------
 
-impl<F: FieldOps> KummerPoint<F> {
+impl<F: FieldOps + Copy> KummerPoint<F> {
     /// Point doubling on the Kummer line.
     ///
     /// Given `x(P)` in projective form `(X:Z)`, compute `x([2]P)`.
     pub fn xdouble(&self, curve: &MontgomeryCurve<F>) -> Self {
         if F::characteristic()[0] != 2 {
-            let q = <F as FieldOps>::square(&(self.x + self.z));
-            let r = <F as FieldOps>::square(&(self.x - self.z));
-            let s = q - r;
+            let sumsq = <F as FieldOps>::square(&(self.x + self.z));
+            let diffsq = <F as FieldOps>::square(&(self.x - self.z));
+            let fourxz = sumsq - diffsq;
             let a24 = curve.a24();
 
-            let new_z = s * (r + a24 * s);
+            let new_z = fourxz * (diffsq + a24 * fourxz);
 
-            Self{ x: q * r, z: new_z }
+            Self{ x: sumsq * diffsq, z: new_z }
         }
         else {
-            todo!()
+            let temp_x = self.x + curve.b * self.z;
+            let new_x = <F as FieldOps>::square(&<F as FieldOps>::square(&temp_x));
+            let xz = self.x * self.z;
+            let new_z = <F as FieldOps>::square(&xz);
+            Self{ x: new_x, z: new_z }
         }
 
     }
@@ -192,7 +196,14 @@ impl<F: FieldOps> KummerPoint<F> {
             Self { x: new_x, z: new_z }
         }
         else {
-            todo!()
+            let x1z2 = self.x * other.z;
+            let x2z1 = other.x * self.z;
+            let sum_squared = <F as FieldOps>::square(&(x1z2 + x2z1));
+
+            let new_x = diff.x * sum_squared + diff.z * x1z2 * x2z1;
+            let new_z = diff.z * sum_squared;
+
+            Self { x: new_x, z: new_z }
         }
     }
 
@@ -206,19 +217,39 @@ impl<F: FieldOps> KummerPoint<F> {
             return Self::identity();
         }
 
-        let mut result = Self::identity();
-        let diff = self.clone();
+        // Ladder state:
+        // r0 = x([m]P)
+        // r1 = x([m+1]P)
+        let mut r0 = Self::identity();
+        let mut r1 = *self;
+
+        let mut swap = Choice::from(0u8);
 
         for &limb in k.iter().rev() {
             for bit in (0..64).rev() {
-                let doubled = result.xdouble(curve);
-                let added = doubled.xadd(self, &diff);
-                let choice = Choice::from(((limb >> bit) & 1) as u8);
-                result = Self::conditional_select(&doubled, &added, choice);
+                let ki = Choice::from(((limb >> bit) & 1) as u8);
+
+                // Swap exactly when the current bit differs from the previous one.
+                let do_swap = swap ^ ki;
+                Self::conditional_swap(&mut r0, &mut r1, do_swap);
+                swap = ki;
+
+                // After the swap, the invariant is arranged so that:
+                //   r0 <- [2]r0
+                //   r1 <- r0 + r1
+                // and x(r1 - r0) remains x(P).
+                let r0_dbl = r0.xdouble(curve);
+                let r0_plus_r1 = r0.xadd(&r1, self);
+
+                r0 = r0_dbl;
+                r1 = r0_plus_r1;
             }
         }
 
-        result
+        // Final swap to undo the last deferred permutation.
+        Self::conditional_swap(&mut r0, &mut r1, swap);
+
+        r0
     }
 }
 
@@ -228,7 +259,7 @@ impl<F: FieldOps> KummerPoint<F> {
 
 impl<F> PointOps for KummerPoint<F>
 where
-    F: FieldOps,
+    F: FieldOps + Copy,
 {
     type BaseField = F;
     type Curve = MontgomeryCurve<F>;

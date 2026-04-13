@@ -123,6 +123,7 @@ fn conditional_swap_choice_true_swaps_both() {
     assert_eq!(q, KummerPoint::new(fp(1), fp(2)));
 }
 
+
 #[test]
 fn xdouble_of_curve_point_stays_on_curve() {
     let c = curve();
@@ -159,6 +160,59 @@ fn xadd_of_known_points_stays_on_curve() {
 }
 
 #[test]
+fn xdouble_concrete_values() {
+    let c = curve();
+    let pairs = [
+        (fp(1), fp(0)),
+        (fp(6), fp(1)),
+        (fp(8), fp(1)),
+        (fp(12), fp(1)),
+        (fp(18), fp(0))
+    ];
+    for pair in pairs.iter() {
+        let p = KummerPoint::from_x(pair.0);
+        let dbl = p.xdouble(&c);
+        assert_eq!(dbl.to_x().expect("z should be invertible"), pair.1);
+    }
+}
+
+#[test]
+
+fn points_of_order_two() {
+    let c = curve();
+    let xs = [fp(0), fp(3), fp(13)];
+
+    for x in xs.iter() {
+        let p = KummerPoint::from_x(*x);
+        let dbl = p.xdouble(&c);
+        assert!(bool::from(dbl.is_identity()));
+    }
+}
+
+#[test]
+fn xadd_concrete_values() {
+    let c = curve();
+    let tuples = [
+        (fp(0), fp(1), fp(1), fp(1)),
+        (fp(0), fp(3), fp(13), fp(13)),
+        (fp(0), fp(6), fp(16), fp(16)),
+        (fp(0), fp(8), fp(12), fp(12)),
+        (fp(1), fp(13), fp(18), fp(18)),
+        (fp(3), fp(6), fp(12), fp(12)),
+        (fp(3), fp(16), fp(8), fp(8)),
+        (fp(3), fp(18), fp(1), fp(1)),
+    ];
+
+    for tuple in tuples.iter() {
+        let p = KummerPoint::from_x(tuple.0);
+        let q = KummerPoint::from_x(tuple.1);
+        let diff = KummerPoint::from_x(tuple.2);
+        let sum = p.xadd(&q, &diff);
+        assert_eq!(sum.to_x().expect("z should be invertible"), tuple.3);
+    }
+}
+
+#[test]
 fn scalar_mul_zero_is_identity() {
     let c = curve();
     let p = KummerPoint::from_x(fp(4));
@@ -179,14 +233,13 @@ fn scalar_mul_two_matches_xdouble() {
     assert_eq!(p.scalar_mul(&[2], &c), p.xdouble(&c));
 }
 
-/*
+
 #[test]
 fn pointops_identity_matches_inherent_identity() {
     let c = curve();
     assert_eq!(KummerPoint::<F19>::identity(), KummerPoint::<F19>::identity());
 }
 
-*/
 
 #[test]
 fn negate_is_trivial_on_kummer_line() {
