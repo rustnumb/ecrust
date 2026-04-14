@@ -7,7 +7,7 @@ license.workspace = true
 
 [dependencies]
 crypto-bigint = { workspace = true, features = ["subtle"] }
-rand = "0.10.0"
+rand = "0.10.1"
 subtle = "2.6"
 
 [dev-dependencies]
