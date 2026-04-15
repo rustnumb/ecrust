@@ -4,9 +4,10 @@
 //! # Overview
 //!
 //! Given a prime $p$ and a monic irreducible polynomial $f$ of degree
-//! $M$ over $\mathbb{F}_p$, the extension field $\mathbb{F}_p^M =
-//! \mathbb{F}_p\[x\] / (f(x))$ is the set of polynomials of degree $M$
-//! with coefficients in $\mathbb{F}_p$, where arithmetic is done modulo $f$.
+//! $M$ over $\\mathbb{F}\_{p}$, the extension field $\mathbb{F}_{{p^M}} =
+//! \mathbb{F}_p\[x\] / (f(x))$ is the set of polynomials of degree
+//! $M$ with coefficients in $\mathbb{F}_p$, where arithmetic is done
+//! modulo $f$.
 //!
 //! This module provides a single generic type [`FpExt<MOD, LIMBS, M, P>`] that
 //! covers *any* such extension.  The irreducible polynomial is supplied via the
