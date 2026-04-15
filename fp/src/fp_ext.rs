@@ -43,7 +43,7 @@ use crypto_bigint::{modular::ConstPrimeMontyParams, Uint};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 // ===========================================================================
-// IrreduciblePoly — the only thing callers need to implement for a new field
+// IrreduciblePoly — one thing callers need to implement for a new field
 // ===========================================================================
 
 /// Supplies the monic irreducible polynomial
@@ -87,23 +87,43 @@ where
 /*
 ===========================================================================
 TonelliShanksConstants - The only other thing users have to
-implement, sorry
+implement for a new field
 ===========================================================================
 */
 
-/// Supplies the group order of the multiplicative group
+/// Supplies the constants for Tonelli--Shanks algorithm.
 ///
-/// # Example: F_(19^3)
+/// # Conventions
+///
+/// The input value `N` (type: usize) in the definition of the trait should
+/// be chosen so that p^M fits in a UInt<N>. One should supply the following
+/// data:
+/// * `ORDER`: (p^M - 1) (type: UInt<N>)
+/// * `HALF_ORDER`: (p^M - 1) / 2 (type: UInt<N>)
+/// * `S`: So that (p^M - 1) = 2^S * T with T odd (type: u64)
+/// * `T`: So that (p^M - 1) = 2^S * T with T odd (type: UInt<N>)
+/// * `PROJENATOR_EXP`: (T - 1) / 2 (type: UInt<N>)
+/// * `TWOSM1`: 2^(S - 1) (type: UInt<N>)
+/// * `root_of_unity() -> [FpElement<MOD, LIMBS>; M]`: 2^S root of unity
+///   in FpM
+///
+/// # Example: F_(19^2)
 /// ```ignore
-/// impl TonelliShanksConstants<3> for MyOrder {
-///     // Still only need 1 limb for 19^3
-///     fn order() -> Unit<1> {
-///         const TSCONSTS: Uint<1> = Uint::<1>::from_u64(6858);
-///         ORDER
-///     }
-///     fn half_order() -> Unit<1> {
-///         const ORDER: Uint<1> = Uint::<1>::from_u64(3429);
-///         ORDER
+/// impl TonelliShanksConstants<Fp19Mod, 1, 2, 1> for TSQuad {
+///     // p^2 - 1
+///     const ORDER: Uint<1> = Uint::<1>::from_u64(360);
+///     // (p^2 - 1) / 2
+///     const HALF_ORDER: Uint<1> = Uint::<1>::from_u64(180);
+///     // p^2 - 1 = 2^S * T with T odd
+///     const S: u64 = 3;
+///     const T: Uint<1> = Uint::<1>::from_u64(45);
+///     // (T - 1) / 2
+///     const PROJENATOR_EXP: Uint<1> = Uint::<1>::from_u64(22);
+///     // 2^(S - 1)
+///     const TWOSM1: Uint<1> = Uint::<1>::from_u64(4);
+///     // 2^S root of unity
+///     fn root_of_unity() -> [FpElement<Fp19Mod, 1>; 2] {
+///         [Fp19::from_u64(3), Fp19::from_u64(3)]
 ///     }
 /// }
 /// ```
