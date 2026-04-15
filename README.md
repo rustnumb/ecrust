@@ -100,7 +100,6 @@ use fp::fp_element::FpElement;
 use fp::fp_ext::{FpExt, IrreduciblePoly};
 
 struct QuadPoly;
-struct TSQuad;
 
 impl IrreduciblePoly<Fp19Mod, 1, 2> for QuadPoly {
     fn modulus() -> [F19; 2] {
@@ -108,16 +107,23 @@ impl IrreduciblePoly<Fp19Mod, 1, 2> for QuadPoly {
     }
 }
 
+struct TSQuad;
 impl TonelliShanksConstants<Fp19Mod, 1, 2, 1> for TSQuad {
-    // Still only need 1 limb for 19^2
+    // p^2 - 1
     const ORDER: Uint<1> = Uint::<1>::from_u64(360);
+    // (p^2 - 1) / 2
     const HALF_ORDER: Uint<1> = Uint::<1>::from_u64(180);
-    const PROJENATOR_EXP: Uint<1> = Uint::<1>::from_u64(22);
-    fn root_of_unity() -> [FpElement<Fp19Mod, 1>; 2] {
-        [F19::from_u64(3), F19::from_u64(3)]
-    }
+    // p^2 - 1 = 2^S * T with T odd
     const S: u64 = 3;
     const T: Uint<1> = Uint::<1>::from_u64(45);
+    // (T - 1) / 2
+    const PROJENATOR_EXP: Uint<1> = Uint::<1>::from_u64(22);
+    // 2^(S - 1)
+    const TWOSM1: Uint<1> = Uint::<1>::from_u64(4);
+    // 2^S root of unity 
+    fn root_of_unity() -> [FpElement<Fp19Mod, 1>; 2] {
+        [Fp19::from_u64(3), Fp19::from_u64(3)]
+    }
 }
 
 type F19_2 = FpExt<Fp19Mod, 1, 2, 1, QuadPoly, TSQuad>;
