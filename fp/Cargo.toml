@@ -12,3 +12,5 @@ subtle = "2.6"
 [dev-dependencies]
 rand = "0.10.1"
 
+[package.metadata.docs.rs]
+rustdoc-args = [ "--html-in-header", "../katex-header.html" ]

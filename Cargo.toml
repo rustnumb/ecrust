@@ -5,6 +5,12 @@ members = [
     "isogeny",
     "protocol",
 ]
+default-members = [
+    "fp",
+    "ec",
+    "isogeny",
+    "protocol",
+]
 resolver = "2"
 
 [workspace.package]
