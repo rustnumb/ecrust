@@ -17,6 +17,7 @@
 //! - Addition: Bernstein–Lange–Rezaeian Farashahi §3 formulas
 //!   (strongly unified — works for doubling too)
 
+use core::fmt;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
 use crate::curve_edwards::EdwardsCurve;
@@ -28,6 +29,29 @@ use fp::field_ops::FieldOps;
 pub struct EdwardsPoint<F: FieldOps> {
     pub x: F,
     pub y: F,
+}
+
+impl<F> fmt::Display for EdwardsPoint<F>
+where
+    F: FieldOps + fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.is_identity() {
+            if f.alternate() {
+                if F::characteristic()[0] != 2 {
+                    write!(f, "EdwardsPoint {{ O = (0,1) }}")
+                } else {
+                    write!(f, "EdwardsPoint {{ O = (0,0) }}")
+                }
+            } else {
+                write!(f, "O")
+            }
+        } else if f.alternate() {
+            write!(f, "EdwardsPoint {{ x = {}, y = {} }}", self.x, self.y)
+        } else {
+            write!(f, "({}, {})", self.x, self.y)
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------

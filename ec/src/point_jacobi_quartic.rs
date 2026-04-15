@@ -15,7 +15,7 @@
 //! crate, they assume the denominators are invertible. For exceptional inputs
 //! where the result leaves this affine chart, the code panics instead of trying
 //! to model the desingularized points at infinity.
-
+use core::fmt;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
 use crate::curve_jacobi_quartic::JacobiQuarticCurve;
@@ -27,6 +27,25 @@ use fp::field_ops::FieldOps;
 pub struct JacobiQuarticPoint<F: FieldOps> {
     pub x: F,
     pub y: F,
+}
+
+impl<F> fmt::Display for JacobiQuarticPoint<F>
+where
+    F: FieldOps + fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.is_identity() {
+            if f.alternate() {
+                write!(f, "JacobiQuarticPoint {{ O = (0,1) }}")
+            } else {
+                write!(f, "O")
+            }
+        } else if f.alternate() {
+            write!(f, "JacobiQuarticPoint {{ x = {}, y = {} }}", self.x, self.y)
+        } else {
+            write!(f, "({}, {})", self.x, self.y)
+        }
+    }
 }
 
 impl<F: FieldOps> PartialEq for JacobiQuarticPoint<F> {
