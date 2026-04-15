@@ -1,9 +1,9 @@
-#![doc = include_str!("../../katex-header.html")]
 //! Core trait that every field element in the tower must implement.
 
 use std::ops::{Add, Mul, Neg, Sub};
 use subtle::{Choice, ConditionallySelectable, CtOption};
 
+/// This is the general wrapper for a field. Any field must implement this
 pub trait FieldOps:
     Sized
     + Clone
@@ -16,18 +16,40 @@ pub trait FieldOps:
     + Default
     + ConditionallySelectable
 {
+    /// Create the constant zero
     fn zero() -> Self;
+
+    /// Create the constant one  
     fn one() -> Self;
+
+    /// Check if element is zero
     fn is_zero(&self) -> Choice;
+
+    /// Check if element is one
     fn is_one(&self) -> Choice;
+
+    /// Negate `self` to `-self`
     fn negate(&self) -> Self;
+
+    /// Add `rhs` to `self`
     fn add(&self, rhs: &Self) -> Self;
+
+    /// Sub `rhs` from `self`
     fn sub(&self, rhs: &Self) -> Self;
+
+    /// Multipliy `self` by `rhs`
     fn mul(&self, rhs: &Self) -> Self;
+
+    /// Square `self`
     fn square(&self) -> Self;
+
+    /// Double `self`
     fn double(&self) -> Self;
+
+    /// Invert `self`
     fn invert(&self) -> CtOption<Self>;
 
+    /// Divide `self` by `rhs`
     fn div(&self, rhs: &Self) -> CtOption<Self> {
         rhs.invert().map(|inv| self.mul(&inv))
     }
@@ -112,8 +134,10 @@ pub trait FieldOps:
         result
     }
 
+    /// Compute `self^p` the frobenius acting on `self`
     fn frobenius(&self) -> Self;
 
+    /// Compute `self^{p^k}` a power of the frobenius
     fn frobenius_pow(&self, k: u32) -> Self {
         let mut result = self.clone();
         for _ in 0..k {
@@ -122,7 +146,12 @@ pub trait FieldOps:
         result
     }
 
+    /// compute the norm of `self` down to $\mathbb{F}_p$ (as an
+    /// element of type `Self`)
     fn norm(&self) -> Self;
+
+    /// compute the trace of `self` down to $\mathbb{F}_p$ (as an
+    /// element of type `Self`)
     fn trace(&self) -> Self;
 
     /// Returns a squareroot if it exists
@@ -211,7 +240,13 @@ pub trait FieldOps:
         rhs.invert().and_then(|inv_rhs| self.mul(&inv_rhs).sqrt())
     }
 
+    /// Computes the "Legendre symbol" i.e., if 0,1,-1 depending if
+    /// `self` is 0, a square or a nonsquare.
     fn legendre(&self) -> i8;
+
+    /// Returns the characteristic of the field.
     fn characteristic() -> Vec<u64>;
+
+    /// Returns the extension degree of the field.
     fn degree() -> u32;
 }

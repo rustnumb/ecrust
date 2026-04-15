@@ -2,32 +2,29 @@
 //!
 //! # Representation
 //!
-//! Points are stored in **affine** coordinates `(x, y)` or as the
-//! distinguished point at infinity `O` (the group identity).
+//! Points are stored in **affine** coordinates $(x, y)$ or as the
+//! distinguished point at infinity $O$ (the group identity).
 //!
 //! # Group law
 //!
 //! The addition formulas implement the general Weierstrass group law:
 //!
-//! | Operation         | Algorithm                                | Cost           |
-//! |-------------------|------------------------------------------|----------------|
-//! | Negate            | `-(x,y) = (x, -y - a_1x - a_3)`          | 3 mul + 2 add  |
-//! | Add  (P ≠ ±Q)    | Chord-and-tangent (general Weierstrass)   | 1 inv + 6 mul  |
-//! | Double            | Tangent (general Weierstrass)            | 1 inv + 7 mul  |
-//! | Scalar multiply   | Montgomery ladder (scalar-constant-time)| O(n) doubles   |
-
+//! | Operation        | Algorithm                                | Cost              |
+//! |------------------|------------------------------------------|-------------------|
+//! | Negate           | $-(x,y) = (x, -y - a_1 x - a_3)$         | $3$ mul + $2$ add |
+//! | Add $(P \ne \pm Q)$ | Chord-and-tangent (general Weierstrass) | $1$ inv + $6$ mul |
+//! | Double           | Tangent (general Weierstrass)            | $1$ inv + $7$ mul |
+//! | Scalar multiply  | Montgomery ladder (constant-time scalar) | $O(n)$ doublings  |
 
 // WARNING: SOME OF THE FUNCTIONS BELOW USE BRANCHES DEPENDING
 // ON WHETHER A POINT IS AT INFINITY OR NOT!!!!
 
-
-
 //use std::os::unix::raw::ino_t;
 //use crypto_bigint::modular::ConstMontyForm;
-use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 use crate::curve_weierstrass::WeierstrassCurve;
 use crate::point_ops::PointOps;
 use fp::field_ops::FieldOps;
+use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
 /// An affine point on a Weierstrass elliptic curve over `F`.
 ///
@@ -35,8 +32,11 @@ use fp::field_ops::FieldOps;
 /// the `x` and `y` fields are meaningless (set to zero by convention).
 #[derive(Debug, Clone, Copy)]
 pub struct AffinePoint<F: FieldOps> {
+    /// x coordinate
     pub x: F,
+    /// y coordinate
     pub y: F,
+    /// true if and only if the ponit at infinity
     pub infinity: bool,
 }
 
@@ -47,24 +47,18 @@ pub struct AffinePoint<F: FieldOps> {
 impl<F: FieldOps> PartialEq for AffinePoint<F>
 where
     F: FieldOps + ConstantTimeEq,
-
 {
     fn eq(&self, other: &Self) -> bool {
         match (self.infinity, other.infinity) {
-            (true, true)   => true,
-            (true, false)  => false,
-            (false, true)  => false,
+            (true, true) => true,
+            (true, false) => false,
+            (false, true) => false,
             (false, false) => self.x == other.x && self.y == other.y,
         }
     }
 }
 
-
-
-impl<F: FieldOps> Eq for AffinePoint<F>
-where
-F: FieldOps + ConstantTimeEq
-{ }
+impl<F: FieldOps> Eq for AffinePoint<F> where F: FieldOps + ConstantTimeEq {}
 
 // ---------------------------------------------------------------------------
 // Constructors
@@ -76,12 +70,20 @@ impl<F: FieldOps> AffinePoint<F> {
     /// **No** on-curve check is performed; use
     /// [`WeierstrassCurve::contains`] if you need validation.
     pub fn new(x: F, y: F) -> Self {
-        Self { x, y, infinity: false }
+        Self {
+            x,
+            y,
+            infinity: false,
+        }
     }
 
     /// The point at infinity `O` (the group identity).
     pub fn identity() -> Self {
-        Self { x: F::zero(), y: F::zero(), infinity: true }
+        Self {
+            x: F::zero(),
+            y: F::zero(),
+            infinity: true,
+        }
     }
 
     /// Returns `true` if this is the point at infinity.
@@ -163,7 +165,7 @@ impl<F: FieldOps> AffinePoint<F> {
             return Self::identity();
         }
 
-        let neg_y = - self.y - curve.a1 * self.x - curve.a3;
+        let neg_y = -self.y - curve.a1 * self.x - curve.a3;
 
         Self::new(self.x.clone(), neg_y)
     }
@@ -190,12 +192,12 @@ impl<F: FieldOps> AffinePoint<F> {
         // If denominator is zero the tangent is vertical → result is O.
         let denom_inv = match denom.invert().into_option() {
             Some(inv) => inv,
-            None      => return Self::identity(),
+            None => return Self::identity(),
         };
 
         // numerator = 3x₁² + 2a₂x₁ + a₄ − a₁y₁
         let numer = {
-            let x1_sq  = <F as FieldOps>::square(&self.x);
+            let x1_sq = <F as FieldOps>::square(&self.x);
             let three_x1_sq = x1_sq + <F as FieldOps>::double(&x1_sq);
             let two_a2_x1 = <F as FieldOps>::double(&(curve.a2 * self.x));
             let a1y1 = curve.a1 * self.y;
@@ -214,9 +216,9 @@ impl<F: FieldOps> AffinePoint<F> {
 
         // y₃ = λ(x₁ − x₃) − y₁ − a₁x₃ − a₃
         let y3 = {
-            let dx= self.x - x3;
+            let dx = self.x - x3;
             let lam_dx = lambda * dx;
-            let a1x3 = curve.a1 *x3;
+            let a1x3 = curve.a1 * x3;
 
             lam_dx - self.y - a1x3 - curve.a3
         };
@@ -263,7 +265,10 @@ impl<F: FieldOps> AffinePoint<F> {
         let dy = other.y - self.y;
 
         // dx ≠ 0 guaranteed by the x₁ ≠ x₂ check above
-        let dx_inv = dx.invert().into_option().expect("dx must be invertible (x₁ ≠ x₂)");
+        let dx_inv = dx
+            .invert()
+            .into_option()
+            .expect("dx must be invertible (x₁ ≠ x₂)");
         let lambda = dy * dx_inv;
 
         // x₃ = λ² + a₁λ − a₂ − x₁ − x₂
@@ -284,6 +289,17 @@ impl<F: FieldOps> AffinePoint<F> {
         Self::new(x3, y3)
     }
 
+    /// Multiply `self` by `k`
+    ///
+    /// # Arguments
+    ///
+    /// * `&self` - Point on curve (type: `Self`)
+    /// * `k` - Integer (type: `&[u64]`)
+    /// * `curve` - The curve we're on (type: `&<AffinePoint<F> as PointOps>::Curve`)
+    ///
+    /// # Returns
+    ///
+    /// The point `k * self` (type: `Self`)
     pub fn scalar_mul(&self, k: &[u64], curve: &<AffinePoint<F> as PointOps>::Curve) -> Self {
         let mut r0 = Self::identity();
         let mut r1 = self.clone();
@@ -305,11 +321,7 @@ impl<F: FieldOps> AffinePoint<F> {
 
         r0
     }
-
 }
-
-
-
 
 impl<F> PointOps for AffinePoint<F>
 where
@@ -322,7 +334,9 @@ where
         AffinePoint::<F>::identity()
     }
 
-    fn is_identity(&self) -> bool { self.infinity }
+    fn is_identity(&self) -> bool {
+        self.infinity
+    }
 
     fn negate(&self, curve: &Self::Curve) -> Self {
         AffinePoint::<F>::negate(self, curve)
@@ -341,5 +355,3 @@ where
         AffinePoint::<F>::add(self, other, curve)
     }
 }
-
-

@@ -1,5 +1,5 @@
-#![doc = include_str!("../../katex-header.html")]
-//! Base prime-field element Fp = Z / pZ backed by `crypto-bigint`.
+//! Base prime-field element $\mathbb{F}_p = \mathbb{Z} / p\mathbb{Z}$
+//! backed by `crypto-bigint`.
 
 use core::ops::{Add, Mul, Neg, Sub};
 
@@ -10,7 +10,8 @@ use crypto_bigint::{
 };
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
-/// An element of the prime field Fp = Z/pZ, stored in Montgomery form.
+/// An element of the prime field $\mathbb{F}_p =
+/// \mathbb{Z}/p\mathbb{Z}$, stored in Montgomery form.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FpElement<MOD, const LIMBS: usize>
 where
@@ -27,16 +28,43 @@ impl<MOD, const LIMBS: usize> FpElement<MOD, LIMBS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
 {
+    /// Goes from an `Uint<LIMBS>` to an element of $\mathbb{F}_p$
+    ///
+    /// # Arguments
+    ///
+    /// * `x` - An integer (type: `Uint<LIMBS>`)
+    ///
+    /// # Returns
+    ///
+    /// Element of $\mathbb{F}_p$ (type: `Self`)        
     pub fn from_uint(x: Uint<LIMBS>) -> Self {
         Self {
             value: ConstMontyForm::<MOD, LIMBS>::new(&x),
         }
     }
 
+    /// Goes from an `[u64; LIMBS]` to an element of $\mathbb{F}_p$
+    ///
+    /// # Arguments
+    ///
+    /// * `words` - A vec of `u64` (type: `[u64; LIMBS]`)
+    ///
+    /// # Returns
+    ///
+    /// Element of $\mathbb{F}_p$ (type: `Self`)    
     pub fn from_words(words: [u64; LIMBS]) -> Self {
         Self::from_uint(Uint::<LIMBS>::from_words(words))
     }
 
+    /// Goes from an `&[u64]` to an element of $\mathbb{F}_p$
+    ///
+    /// # Arguments
+    ///
+    /// * `limbs` - A vec of `u64` (type: `&[u64]`)
+    ///
+    /// # Returns
+    ///
+    /// Element of $\mathbb{F}_p$ (type: `Self`)
     pub fn from_limbs(limbs: &[u64]) -> Self {
         assert_eq!(limbs.len(), LIMBS, "wrong number of limbs");
         let mut words = [0u64; LIMBS];
@@ -44,22 +72,68 @@ where
         Self::from_words(words)
     }
 
+    /// Goes from an `u64` to an element of $\mathbb{F}_p$
+    ///
+    /// # Arguments
+    ///
+    /// * `val` - A `u64` int (type: `u64`)
+    ///
+    /// # Returns
+    ///
+    /// Element of $\mathbb{F}_p$ (type: `Self`)
     pub fn from_u64(val: u64) -> Self {
         Self::from_uint(Uint::<LIMBS>::from_u64(val))
     }
 
+    /// Goes from an element of $\mathbb{F}_p$ to the corresponding `Uint`
+    ///
+    /// # Arguments
+    ///
+    /// * `&self` - Element of $\mathbb{F}_p$ (type: `Self`)
+    ///
+    /// # Returns
+    ///
+    /// The corresponding `Uint` (type: `Uint<LIMBS>`)
     pub fn as_uint(&self) -> Uint<LIMBS> {
         self.value.retrieve()
     }
 
+    /// Goes from an element of $\mathbb{F}_p$ to the limbs
+    ///
+    /// # Arguments
+    ///
+    /// * `&self` - Element of $\mathbb{F}_p$ (type: `Self`)
+    ///
+    /// # Returns
+    ///
+    /// The limbs giving the integer (type: `[u64; LIMBS]`)
     pub fn as_limbs(&self) -> [u64; LIMBS] {
         self.value.retrieve().to_words()
     }
 
+    /// Gives a montgomery `Uint<LIMBS>` from an $\mathbb{F}_p$
+    /// element
+    ///
+    /// # Arguments
+    ///
+    /// * `&self` - Element of $\mathbb{F}_p$ (type: `Self`)
+    ///
+    /// # Returns
+    ///
+    /// Integer in montgomery from (type: `Uint<LIMBS>`)
     pub fn to_montgomery(&self) -> Uint<LIMBS> {
         self.value.to_montgomery()
     }
 
+    /// Gives an element of $\mathbb{F}_p$ from the Montgomery
+    ///
+    /// # Arguments
+    ///
+    /// * `mont` - The input montgomery (type: `Uint<LIMBS>`)
+    ///
+    /// # Returns
+    ///
+    /// Corresponding element of $\mathbb{F}_p$ (type: `Self`)
     pub fn from_montgomery(mont: Uint<LIMBS>) -> Self {
         Self {
             value: ConstMontyForm::<MOD, LIMBS>::from_montgomery(mont),

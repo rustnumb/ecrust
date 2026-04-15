@@ -12,3 +12,6 @@ subtle = "2.6"
 
 [dev-dependencies]
 # Add test-only dependencies here as needed
+
+[package.metadata.docs.rs]
+rustdoc-args = [ "--html-in-header", "katex-header.html" ]

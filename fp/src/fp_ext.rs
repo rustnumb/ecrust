@@ -1,5 +1,4 @@
-#![doc = include_str!("../../katex-header.html")]
-//! Generic extension field  $\mathbb{F}_{p^M} = \mathbb{F}_p[x] / (f(x))$.
+//! Generic extension field  $\mathbb{F}_{p^M} = \mathbb{F}_p\[x\] / (f(x))$.
 //!
 //! # Overview
 //!
@@ -474,13 +473,14 @@ where
     (quot, poly_normalize(rem))
 }
 
-/// Reduce polynomial `a` modulo the irreducible `f(x) = x^M + Σ modulus[j]x^j`.
+/// Reduce polynomial $a$ modulo the irreducible $f(x) = x^M + \sum_j c_j x^j$.
 ///
 /// Uses the substitution rule:
-///   `x^M \equiv −(modulus[0] + modulus[1]x + ... + modulus[M-1]x^{M-1})`
+/// $$x^M \equiv − (c_0 + c_1 x + ... + c_{M-1} x^{M-1})$$
 ///
-/// Sweeps from the highest degree of `a` down to `M`, eliminating one term
-/// per step.  Each step costs M multiplications and M additions in Fp.
+/// Sweeps from the highest degree of `a` down to `M`, eliminating one
+/// term per step.  Each step costs `M` multiplications and `M`
+/// additions in $\mathbb{F}_p$. Note that $c_i$ is `modulus[i]` below.
 fn poly_reduce<MOD, const LIMBS: usize, const M: usize>(
     a: Vec<FpElement<MOD, LIMBS>>,
     modulus: &[FpElement<MOD, LIMBS>; M],
@@ -639,7 +639,7 @@ where
 /// # Note
 ///
 /// Most of this is directly taken from the Fp case at
-/// https://github.com/SamFrengley/ff-sqrtratio/blob/8e5aa6f934f32d9b9cff56177d9943a2effcd390/ff_derive/src/lib.rs
+/// <https://github.com/SamFrengley/ff-sqrtratio/blob/8e5aa6f934f32d9b9cff56177d9943a2effcd390/ff_derive/src/lib.rs>
 /// under an MIT liscence.
 fn ts_loop<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS>(
     x: &mut FpExt<MOD, LIMBS, M, N, P, TSCONSTS>,

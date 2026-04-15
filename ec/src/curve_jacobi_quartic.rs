@@ -2,16 +2,18 @@
 //!
 //! # Equation
 //!
-//! ```text
-//! y² = d x⁴ + 2 a x² + 1
-//! ```
+//! The curve is given by
 //!
-//! over a field `F` of characteristic different from `2`.
+//! $$
+//! y^2 = d x^4 + 2 a x^2 + 1
+//! $$
+//!
+//! over a field $F$ with $\mathrm{char}(F) \ne 2$.
 //!
 //! This follows the model studied in Hisil–Wong–Carter–Dawson,
 //! *Jacobi Quartic Curves Revisited* (2009), which treats the more general
-//! “extended Jacobi quartic” family with arbitrary `a` and `d` satisfying
-//! `d(a²-d) ≠ 0`.
+//! “extended Jacobi quartic” family with parameters $a$ and $d$ satisfying
+//! $d(a^2 - d) \ne 0$.
 
 use fp::field_ops::FieldOps;
 
@@ -20,19 +22,22 @@ use crate::point_jacobi_quartic::JacobiQuarticPoint;
 
 /// A Jacobi quartic curve
 ///
-/// ```text
-/// y² = d x⁴ + 2 a x² + 1
-/// ```
+/// $$y^2 = d x^4 + 2 a x^2 + 1$
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct JacobiQuarticCurve<F: FieldOps> {
+    /// Invariant a in the definition
     pub a: F,
+    /// Invariant d in the definition
     pub d: F,
 }
 
 impl<F: FieldOps> JacobiQuarticCurve<F> {
     /// Construct a Jacobi quartic curve from `(a, d)`.
     pub fn new(a: F, d: F) -> Self {
-        assert!(F::characteristic()[0] != 2, "Jacobi quartics require char(F) != 2");
+        assert!(
+            F::characteristic()[0] != 2,
+            "Jacobi quartics require char(F) != 2"
+        );
         assert!(Self::is_smooth(&a, &d), "singular Jacobi quartic");
         Self { a, d }
     }
@@ -90,11 +95,9 @@ impl<F: FieldOps> Curve for JacobiQuarticCurve<F> {
         let a2 = <F as FieldOps>::square(&self.a);
         let three = <F as FieldOps>::double(&F::one()) + F::one();
 
-        let eight = <F as FieldOps>::double(
-            &<F as FieldOps>::double(
-                &<F as FieldOps>::double(&F::one())
-            )
-        );
+        let eight = <F as FieldOps>::double(&<F as FieldOps>::double(&<F as FieldOps>::double(
+            &F::one(),
+        )));
         let sixty_four = eight * eight; // 8 * 8 = 64
 
         let num_base = a2 + three * self.d;
