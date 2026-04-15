@@ -21,6 +21,7 @@ license = "Apache-2.0"
 [workspace.dependencies]
 # External
 crypto-bigint = "0.7.1"
+rand = "0.10.1"
 
 # Internal
 fp       = { path = "fp",       version = "0.1.0" }

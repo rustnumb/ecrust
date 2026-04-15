@@ -31,7 +31,7 @@ pub trait Curve: Sized + Clone + PartialEq + Eq {
     fn is_on_curve(&self, point: &Self::Point) -> bool;
 
     /// Return a random point that is on the curve.
-    fn random_point(&self) -> Self::Point;
+    fn random_point(&self, rng: &mut (impl rand::CryptoRng + rand::Rng)) -> Self::Point;
 
     /// Return the j_invariant of the curve;
     fn j_invariant(&self) -> Self::BaseField;

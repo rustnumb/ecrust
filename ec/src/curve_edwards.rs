@@ -28,7 +28,8 @@
 //! - Binary Edwards curves (characteristic $2$): Bernstein–Lange–Rezaeian Farashahi (2008)
 //! - Odd characteristic: <https://hyperelliptic.org/EFD/g1p/auto-edwards.html>
 
-use fp::field_ops::FieldOps;
+use core::fmt;
+use fp::field_ops::{FieldOps, FieldRandom};
 
 use crate::curve_ops::Curve;
 use crate::point_edwards::EdwardsPoint;
@@ -45,7 +46,40 @@ pub struct EdwardsCurve<F: FieldOps> {
     pub d2: F,
 }
 
-impl<F: FieldOps> EdwardsCurve<F> {
+impl<F> fmt::Display for EdwardsCurve<F>
+where
+    F: FieldOps + fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if F::characteristic()[0] != 2 {
+            if f.alternate() {
+                write!(
+                    f,
+                    "EdwardsCurve {{\n  x^2 + y^2 = 1 + d x^2 y^2\n  d = {}\n}}",
+                    self.d2
+                )
+            } else {
+                write!(f, "x^2 + y^2 = 1 + ({})x^2y^2", self.d2)
+            }
+        } else {
+            if f.alternate() {
+                write!(
+                    f,
+                    "EdwardsCurve {{\n  d1(x+y) + d2(x^2+y^2) = xy + xy(x+y) + x^2y^2\n  d1 = {}\n  d2 = {}\n}}",
+                    self.d1, self.d2
+                )
+            } else {
+                write!(
+                    f,
+                    "{}(x+y) + {}(x^2+y^2) = xy + xy(x+y) + x^2y^2",
+                    self.d1, self.d2
+                )
+            }
+        }
+    }
+}
+
+impl<F: FieldOps + FieldRandom> EdwardsCurve<F> {
     /// Construct an odd-characteristic Edwards curve `x² + y² = 1 + d·x²·y²`.
     ///
     /// Stores `d` as `d2`; `d1` is set to zero (unused).
@@ -90,9 +124,39 @@ impl<F: FieldOps> EdwardsCurve<F> {
             self.d1 * xpy + self.d2 * (x2 + y2) == xy + xy * xpy + x2 * y2
         }
     }
+
+    /// Sample a random affine point on this Edwards curve using the provided RNG.
+    ///
+    /// This currently uses a square-root-based construction and is implemented
+    /// only for odd characteristic. It returns a point `P` such that
+    /// `self.is_on_curve(&P)` holds.
+    pub fn random_point(&self, rng: &mut (impl rand::CryptoRng + rand::Rng)) -> EdwardsPoint<F> {
+        assert!(
+            F::characteristic()[0] != 2,
+            "random_point currently implemented only for odd characteristic"
+        );
+
+        loop {
+            let x = F::random(rng);
+            let x2 = <F as FieldOps>::square(&x);
+            let denom = F::one() - self.d2 * x2;
+
+            if bool::from(denom.is_zero()) {
+                continue;
+            }
+
+            let rhs = (F::one() - x2) * denom.invert().unwrap();
+
+            if let Some(y) = rhs.sqrt().into_option() {
+                let p = EdwardsPoint::new(x, y);
+                debug_assert!(self.is_on_curve(&p));
+                return p;
+            }
+        }
+    }
 }
 
-impl<F: FieldOps> Curve for EdwardsCurve<F> {
+impl<F: FieldOps + FieldRandom> Curve for EdwardsCurve<F> {
     type BaseField = F;
     type Point = EdwardsPoint<F>;
 
@@ -100,8 +164,8 @@ impl<F: FieldOps> Curve for EdwardsCurve<F> {
         self.contains(&point.x, &point.y)
     }
 
-    fn random_point(&self) -> Self::Point {
-        todo!()
+    fn random_point(&self, rng: &mut (impl rand::CryptoRng + rand::Rng)) -> Self::Point {
+       EdwardsCurve::random_point(self, rng)
     }
 
     fn j_invariant(&self) -> F {

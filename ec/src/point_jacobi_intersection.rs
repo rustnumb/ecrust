@@ -9,7 +9,7 @@
 //!
 //! We use those formulas directly, with neutral element `(0, 1, 1)` and
 //! negation `-(s, c, d) = (-s, c, d)`.
-
+use core::fmt;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
 use crate::curve_jacobi_intersection::JacobiIntersectionCurve;
@@ -25,6 +25,30 @@ pub struct JacobiIntersectionPoint<F: FieldOps> {
     pub c: F,
     /// The coordinate `d` of the point
     pub d: F,
+}
+
+
+impl<F> fmt::Display for JacobiIntersectionPoint<F>
+where
+    F: FieldOps + fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.is_identity() {
+            if f.alternate() {
+                write!(f, "JacobiIntersectionPoint {{ O = (0,1,1) }}")
+            } else {
+                write!(f, "O")
+            }
+        } else if f.alternate() {
+            write!(
+                f,
+                "JacobiIntersectionPoint {{ s = {}, c = {}, d = {} }}",
+                self.s, self.c, self.d
+            )
+        } else {
+            write!(f, "({}, {}, {})", self.s, self.c, self.d)
+        }
+    }
 }
 
 impl<F: FieldOps> PartialEq for JacobiIntersectionPoint<F> {

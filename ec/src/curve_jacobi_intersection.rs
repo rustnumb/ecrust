@@ -13,11 +13,12 @@
 //! The EFD records that this model is birationally equivalent to the Weierstrass
 //! curve
 //!
-//! $$
-//! y^2 = x^3 + (2 - a)x^2 + (1 - a)x.
-//! $$
-
-use fp::field_ops::FieldOps;
+//! ```text
+//! y² = x³ + (2-a)x² + (1-a)x.
+//! ```
+//!
+use core::fmt;
+use fp::field_ops::{FieldOps, FieldRandom};
 
 use crate::curve_ops::Curve;
 use crate::curve_weierstrass::WeierstrassCurve;
@@ -41,7 +42,24 @@ pub struct JacobiIntersectionCurve<F: FieldOps> {
     pub a: F,
 }
 
-impl<F: FieldOps> JacobiIntersectionCurve<F> {
+impl<F> fmt::Display for JacobiIntersectionCurve<F>
+where
+    F: FieldOps + fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if f.alternate() {
+            write!(
+                f,
+                "JacobiIntersectionCurve {{\n  s^2 + c^2 = 1\n  a s^2 + d^2 = 1\n  a = {}\n}}",
+                self.a
+            )
+        } else {
+            write!(f, "s^2 + c^2 = 1, {} s^2 + d^2 = 1", self.a)
+        }
+    }
+}
+
+impl<F: FieldOps + FieldRandom> JacobiIntersectionCurve<F> {
     /// Construct a Jacobi intersection from its parameter `a`.
     pub fn new(a: F) -> Self {
         assert!(
@@ -72,8 +90,30 @@ impl<F: FieldOps> JacobiIntersectionCurve<F> {
         [self.a]
     }
 
+    /// Sample a random affine point on this Jacobi-intersection curve using the
+    /// provided RNG.
+    ///
+    /// The method repeatedly samples `s` and then solves the defining quadrics
+    /// for `c` and `d` by square-root extraction, returning a point
+    /// `(s, c, d)` on the curve.
+    pub fn random_point(&self, rng: &mut (impl rand::CryptoRng + rand::Rng)) -> JacobiIntersectionPoint<F> {
+        loop {
+            let s = F::random(rng);
+            let s2 = <F as FieldOps>::square(&s);
+
+            let c2 = F::one() - s2;
+            let d2 = F::one() - self.a * s2;
+
+            if let (Some(c), Some(d)) = (c2.sqrt().into_option(), d2.sqrt().into_option()) {
+                let p = JacobiIntersectionPoint::new(s, c, d);
+                debug_assert!(self.is_on_curve(&p));
+                return p;
+            }
+        }
+    }
+
     /// Birationally equivalent Weierstrass model
-    /// `y² = x³ + (2-a)x² + (1-a)x`.
+    /// $y^2 = x^3 + (2-a)x^2 + (1-a)x$.
     pub fn to_weierstrass_curve(&self) -> WeierstrassCurve<F> {
         let two = <F as FieldOps>::double(&F::one());
         WeierstrassCurve::new(
@@ -86,7 +126,7 @@ impl<F: FieldOps> JacobiIntersectionCurve<F> {
     }
 }
 
-impl<F: FieldOps> Curve for JacobiIntersectionCurve<F> {
+impl<F: FieldOps + FieldRandom> Curve for JacobiIntersectionCurve<F> {
     type BaseField = F;
     type Point = JacobiIntersectionPoint<F>;
 
@@ -94,8 +134,8 @@ impl<F: FieldOps> Curve for JacobiIntersectionCurve<F> {
         self.contains(&point.s, &point.c, &point.d)
     }
 
-    fn random_point(&self) -> Self::Point {
-        todo!()
+    fn random_point(&self, rng: &mut (impl rand::CryptoRng + rand::Rng)) -> Self::Point {
+        JacobiIntersectionCurve::random_point(self, rng)
     }
 
     fn j_invariant(&self) -> F {

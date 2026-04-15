@@ -28,11 +28,12 @@
 //!   `x(P + Q)`,
 //! - scalar multiplication via the Montgomery ladder.
 
-use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
+use core::fmt;
+use subtle::{Choice, CtOption, ConditionallySelectable, ConstantTimeEq};
 
 use crate::curve_montgomery::MontgomeryCurve;
 use crate::point_ops::PointOps;
-use fp::field_ops::FieldOps;
+use fp::field_ops::{FieldOps};
 
 /// A point on the Kummer line of a Montgomery curve, represented by `(X : Z)`.
 ///
@@ -51,6 +52,36 @@ pub struct KummerPoint<F: FieldOps + Copy> {
 // ---------------------------------------------------------------------------
 // Manual trait impls
 // ---------------------------------------------------------------------------
+
+impl<F> fmt::Display for KummerPoint<F>
+where
+    F: FieldOps + Copy + fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.is_identity() {
+            if f.alternate() {
+                write!(f, "KummerPoint {{ O = (1:0) }}")
+            } else {
+                write!(f, "O")
+            }
+        } else if f.alternate() {
+            match self.to_x().into_option() {
+                Some(x_aff) => write!(
+                    f,
+                    "KummerPoint {{ X:Z = ({}:{}), x = {} }}",
+                    self.x, self.z, x_aff
+                ),
+                None => write!(
+                    f,
+                    "KummerPoint {{ X:Z = ({}:{}) }}",
+                    self.x, self.z
+                ),
+            }
+        } else {
+            write!(f, "({}:{})", self.x, self.z)
+        }
+    }
+}
 
 impl<F: FieldOps> PartialEq for KummerPoint<F>
 where

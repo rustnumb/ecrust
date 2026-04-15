@@ -1,6 +1,6 @@
 //! Generic finary fields $F_{2^m} = F_2\[x\] / (f(x))$
 
-use crate::field_ops::FieldOps;
+use crate::field_ops::{FieldOps, FieldRandom};
 use core::ops::{Add, Mul, Neg, Sub};
 use crypto_bigint::Uint;
 use std::marker::PhantomData;
@@ -108,6 +108,44 @@ where
         write!(f, "F2Ext({:?})", self.value)
     }
 }
+
+// ---------------------------------------------------------------------------
+// Pretty Display — polynomial form over F_2
+// ---------------------------------------------------------------------------
+//
+// Shows the element as a sum of powers of x, e.g.  `x^7 + x^3 + x + 1`.
+// The zero element is printed as `0`.
+
+impl<const LIMBS: usize, P> core::fmt::Display for F2Ext<LIMBS, P>
+where
+    P: BinaryIrreducible<LIMBS>,
+{
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let m = P::degree();
+        let mut terms = Vec::new();
+        let words = self.value.to_words();
+
+        // Collect set bits from high to low for descending-degree display.
+        for i in (0..m).rev() {
+            let word = words[i / 64];
+            let bit = (word >> (i % 64)) & 1;
+            if bit == 1 {
+                match i {
+                    0 => terms.push("1".to_string()),
+                    1 => terms.push("x".to_string()),
+                    _ => terms.push(format!("x^{i}")),
+                }
+            }
+        }
+
+        if terms.is_empty() {
+            write!(f, "0")
+        } else {
+            write!(f, "{}", terms.join(" + "))
+        }
+    }
+}
+
 
 // ---------------------------------------------------------------------------
 // CtOption functionalities
@@ -452,5 +490,42 @@ where
 
     fn degree() -> u32 {
         P::degree() as u32
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Cryptographically secure random sampling
+// ---------------------------------------------------------------------------
+
+impl<const LIMBS: usize, P> FieldRandom for F2Ext<LIMBS, P>
+where
+    P: BinaryIrreducible<LIMBS>,
+{
+    /// Sample a uniformly random element of F_{2^m} using a CSPRNG.
+    ///
+    /// Fills a `Uint<LIMBS>` with random bytes, masks to `m` bits,
+    /// and wraps via `F2Ext::new` (which reduces mod the irreducible).
+    fn random(rng: &mut (impl rand::CryptoRng + rand::Rng)) -> Self {
+
+        let m = P::degree();
+        let mut words = [0u64; LIMBS];
+        for w in words.iter_mut() {
+            *w = rng.next_u64();
+        }
+
+        // Mask to m bits so we stay in the valid range [0, 2^m).
+        let full_limbs = m / 64;
+        let leftover = m % 64;
+
+        // Zero out limbs beyond the ones we need.
+        for w in words.iter_mut().skip(full_limbs + if leftover > 0 { 1 } else { 0 }) {
+            *w = 0;
+        }
+        // Mask the partial top limb.
+        if leftover > 0 && full_limbs < LIMBS {
+            words[full_limbs] &= (1u64 << leftover) - 1;
+        }
+
+        Self::new(Uint::from_words(words))
     }
 }

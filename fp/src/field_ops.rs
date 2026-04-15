@@ -3,7 +3,33 @@
 use std::ops::{Add, Mul, Neg, Sub};
 use subtle::{Choice, ConditionallySelectable, CtOption};
 
-/// This is the general wrapper for a field. Any field must implement this
+/// Trait for generating cryptographically secure random field elements.
+///
+/// Separated from [`FieldOps`] so that downstream code that doesn't
+/// need randomness is free of the `rand` dependency.
+pub trait FieldRandom: Sized {
+    /// Sample a uniformly random element using a cryptographic RNG.
+    fn random(rng: &mut (impl rand::CryptoRng + rand::Rng)) -> Self;
+}
+
+/// Core arithmetic interface for field elements used throughout the library.
+///
+/// This trait abstracts the operations needed by the prime-field layer,
+/// extension fields, and higher-level elliptic-curve code.
+///
+/// It combines:
+/// - basic ring-style operations (`+`, `-`, `*`, unary `-`);
+/// - distinguished constants `zero()` and `one()`;
+/// - predicates such as `is_zero()` and `is_one()`;
+/// - field-specific operations such as inversion, Frobenius, norm, trace,
+///   square roots, and Legendre-symbol-style square testing;
+/// - constant-time conditional selection via `subtle::ConditionallySelectable`.
+///
+/// The trait is intentionally separate from [`FieldRandom`], so downstream code
+/// that only needs deterministic arithmetic does not need to depend on `rand`.
+///
+/// Scalars used by exponentiation methods are encoded as little-endian `u64`
+/// limbs, matching the convention used elsewhere in the library.
 pub trait FieldOps:
     Sized
     + Clone

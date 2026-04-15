@@ -3,6 +3,8 @@
 //! This crate provides elliptic curve point arithmetic built on top of
 //! the finite field primitives in `fp`.
 
+extern crate core;
+
 pub mod curve_ops;
 pub mod point_ops;
 
