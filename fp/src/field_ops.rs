@@ -1,3 +1,4 @@
+#![doc = include_str!("../../katex-header.html")]
 //! Core trait that every field element in the tower must implement.
 
 use std::ops::{Add, Mul, Neg, Sub};
@@ -14,8 +15,6 @@ pub trait FieldOps:
     + Neg<Output = Self>
     + Default
     + ConditionallySelectable
-// const time impl will have the following trait too
-// + ConditionallySelectable
 {
     fn zero() -> Self;
     fn one() -> Self;
@@ -67,9 +66,9 @@ pub trait FieldOps:
         for &limb in exp {
             let mut limb = limb;
             for _ in 0..64 {
-                if limb & 1 == 1 {
-                    result = <Self as FieldOps>::mul(&result, &base);
-                }
+                let mybit = limb & 1;
+                let tmp = <Self as FieldOps>::mul(&result, &base);
+                result = Self::conditional_select(&result, &tmp, (mybit as u8).into());
                 base = <Self as FieldOps>::square(&base);
                 limb >>= 1;
             }
@@ -103,17 +102,10 @@ pub trait FieldOps:
             let mut limb = limb.reverse_bits();
             for _ in 0..64 {
                 let mybit = limb & 1;
-                // TODO: true constant time implementation will have the below
-                // conditional_swap(&base, &result, ((limb & 1) as u8).into());
-                if mybit == 1 {
-                    (result, base) = (base, result);
-                }
+                Self::conditional_swap(&mut base, &mut result, (mybit as u8).into());
                 base = <Self as FieldOps>::mul(&result, &base);
                 result = <Self as FieldOps>::square(&result);
-                // conditional_swap(&base, &result, ((limb & 1) as u8).into());
-                if mybit == 1 {
-                    (result, base) = (base, result);
-                }
+                Self::conditional_swap(&mut base, &mut result, (mybit as u8).into());
                 limb >>= 1;
             }
         }
@@ -136,18 +128,18 @@ pub trait FieldOps:
     /// Returns a squareroot if it exists
     ///
     /// Returns a squareroof of `self` if it exists in the finite
-    /// field FpM. The return type is Ctoption<Self> and it is not
-    /// none if and only if the squareroot exists. This is an
-    /// implementation fo the Tonelli--Shanks algorithm in the
-    /// multiplicative group FpM*
+    /// field $\mathbb{F}_{p^M}$. The return type is `CtOption<Self>`
+    /// and it is not none if and only if the squareroot exists. This
+    /// is an implementation fo the Tonelli--Shanks algorithm in the
+    /// multiplicative group $\mathbb{F}_{p^M}^*$
     ///
     /// # Arguments
     ///
-    /// * `&self` - Element of FpM (type: self)
+    /// * `&self` - Element of $\mathbb{F}_{p^M}$ (type: self)
     ///
     /// # Returns
     ///
-    /// The square root of `self` (type: CtOption<Self>)
+    /// The square root of `self` (type: `CtOption<Self>`)
     fn sqrt(&self) -> CtOption<Self>;
 
     /// Computes the inverse and square root of `self`
@@ -156,14 +148,14 @@ pub trait FieldOps:
     ///
     /// # Arguments
     ///
-    /// * `&self` - Element of FpM (type: self)
+    /// * `&self` - Element of $\mathbb{F}_{p^M}$ (type: self)
     ///
     /// # Returns
     ///
     /// The inverse and square root of `self`. The former is none if
     /// and only if nonzero and the latter is not none if and only if
-    /// there exists a squareroot in FpM
-    /// (type: (CtOption<Self>, CtOption<self>))
+    /// there exists a squareroot in $\mathbb{F}_{p^M}$
+    /// (type: `(CtOption<Self>, CtOption<self>)`)
     fn inverse_and_sqrt(&self) -> (CtOption<Self>, CtOption<Self>) {
         (self.invert(), self.sqrt())
     }
@@ -172,13 +164,13 @@ pub trait FieldOps:
     ///
     /// # Arguments
     ///
-    /// * `&self` - Element of FpM (type: self)
+    /// * `&self` - Element of $\mathbb{F}_{p^M}$ (type: self)
     ///
     /// # Returns
     ///
     /// The square root of the inverse of `self`. The former is not
     /// none if and only if it is both nonzero there exists a
-    /// squareroot in FpM (type: CtOption<self>)
+    /// squareroot in $\mathbb{F}_{p^M}$ (type: `CtOption<self>`)
     fn inv_sqrt(&self) -> CtOption<Self> {
         self.sqrt().and_then(|s| s.invert())
     }
@@ -190,15 +182,15 @@ pub trait FieldOps:
     ///
     /// # Arguments
     ///
-    /// * `&self` - Element of FpM (type: self)
-    /// * `rhs` - Element of FpM (type: &Self)
+    /// * `&self` - Element of $\mathbb{F}_{p^M}$ (type: self)
+    /// * `rhs` - Element of $\mathbb{F}_{p^M}$ (type: &Self)
     ///
     /// # Returns
     ///
     /// The inverse of `self` and square root fo `rhs`. Theq former is
     /// none if and only if `self` is nonzero and the latter is not
-    /// none if and only if there exists a squareroot of `rhs` in FpM
-    /// (type: (CtOption<Self>, CtOption<self>))
+    /// none if and only if there exists a squareroot of `rhs` in $\mathbb{F}_{p^M}$
+    /// (type: `(CtOption<Self>, CtOption<self>)`)
     fn invertme_sqrtother(&self, rhs: &Self) -> (CtOption<Self>, CtOption<Self>) {
         (self.invert(), rhs.sqrt())
     }
@@ -207,14 +199,14 @@ pub trait FieldOps:
     ///
     /// # Arguments
     ///
-    /// * `&self` - Element of FpM (type: self)
-    /// * `rhs` - Element of FpM (type: &Self)
+    /// * `&self` - Element of $\mathbb{F}_{p^M}$ (type: self)
+    /// * `rhs` - Element of $\mathbb{F}_{p^M}$ (type: &Self)
     ///
     /// # Returns
     ///
     /// The squareroot of the ratio `self/rhs` is not none if and only
-    /// if `rhs` is invertible and the ratio has an FpM squareroot
-    /// (type: (CtOption<Self>, CtOption<self>))
+    /// if `rhs` is invertible and the ratio has an $\mathbb{F}_{p^M}$ squareroot
+    /// (type: `(CtOption<Self>, CtOption<self>))`
     fn sqrt_ratio(&self, rhs: &Self) -> CtOption<Self> {
         rhs.invert().and_then(|inv_rhs| self.mul(&inv_rhs).sqrt())
     }

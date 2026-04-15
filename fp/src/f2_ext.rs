@@ -1,3 +1,4 @@
+#![doc = include_str!("../../katex-header.html")]
 // Generic finary fields F_{2^m} = F_2[x] / (f(x))
 
 use crate::field_ops::FieldOps;

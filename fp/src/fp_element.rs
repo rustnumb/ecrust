@@ -1,3 +1,4 @@
+#![doc = include_str!("../../katex-header.html")]
 //! Base prime-field element Fp = Z / pZ backed by `crypto-bigint`.
 
 use core::ops::{Add, Mul, Neg, Sub};

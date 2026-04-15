@@ -1,3 +1,4 @@
+#![doc = include_str!("../../katex-header.html")]
 //! Base binary field element F2 = Z / 2Z
 
 use crate::field_ops::FieldOps;
