@@ -12,6 +12,24 @@ pub trait FieldRandom: Sized {
     fn random(rng: &mut (impl rand::CryptoRng + rand::Rng)) -> Self;
 }
 
+/// Core arithmetic interface for field elements used throughout the library.
+///
+/// This trait abstracts the operations needed by the prime-field layer,
+/// extension fields, and higher-level elliptic-curve code.
+///
+/// It combines:
+/// - basic ring-style operations (`+`, `-`, `*`, unary `-`);
+/// - distinguished constants `zero()` and `one()`;
+/// - predicates such as `is_zero()` and `is_one()`;
+/// - field-specific operations such as inversion, Frobenius, norm, trace,
+///   square roots, and Legendre-symbol-style square testing;
+/// - constant-time conditional selection via `subtle::ConditionallySelectable`.
+///
+/// The trait is intentionally separate from [`FieldRandom`], so downstream code
+/// that only needs deterministic arithmetic does not need to depend on `rand`.
+///
+/// Scalars used by exponentiation methods are encoded as little-endian `u64`
+/// limbs, matching the convention used elsewhere in the library.
 pub trait FieldOps:
     Sized
     + Clone
