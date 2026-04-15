@@ -8,12 +8,27 @@ use ec::point_ops::PointAdd;
 
 use crate::scalar::SecretScalar;
 
-/// ElGamal ciphertext `(c1, c2)` with
-/// - `c1 = [r]G`
-/// - `c2 = M + [r]PK`
+/// ElGamal ciphertext consisting of a pair $(c_1, c_2)$.
+///
+/// The ciphertext is formed as:
+///
+/// $$
+/// c_1 = rG, \quad c_2 = M + r \mathsf{PK}
+/// $$
+///
+/// where:
+/// - $r$ is a random
+/// - $G$ is the generator of the group
+/// - $PK$ is the recipient’s public key
+/// - $M$ is the plaintext message point
+///
+/// This struct stores the two ciphertext components.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Ciphertext<P> {
+    /// The ephemeral public component $c_1 = r G$.
     pub ephemeral_public: P,
+
+    /// The blinded message component $c_2 = M + r \mathsf{PK}$.
     pub blinded_message: P,
 }
 

@@ -18,16 +18,16 @@ impl IrreduciblePoly<Fp19Mod, 1, 2> for QuadPoly {
 }
 
 impl TonelliShanksConstants<Fp19Mod, 1, 2, 1> for TSQuad {
-    // Still only need 1 limb for 19^2
+    // Still only need 1 limb for $19^2$
     const ORDER: Uint<1> = Uint::<1>::from_u64(360);
     const HALF_ORDER: Uint<1> = Uint::<1>::from_u64(180);
+    const S: u64 = 3;
+    const T: Uint<1> = Uint::<1>::from_u64(45);
     const PROJENATOR_EXP: Uint<1> = Uint::<1>::from_u64(22);
     const TWOSM1: Uint<1> = Uint::<1>::from_u64(4);
     fn root_of_unity() -> [FpElement<Fp19Mod, 1>; 2] {
         [Fp19::from_u64(3), Fp19::from_u64(3)]
     }
-    const S: u64 = 3;
-    const T: Uint<1> = Uint::<1>::from_u64(45);
 }
 
 type F19_2 = FpExt<Fp19Mod, 1, 2, 1, QuadPoly, TSQuad>;
@@ -343,6 +343,20 @@ fn pow_group_order() {
     assert!(bool::from(el(3, 2).pow(&[360]).is_one()));
 }
 
+#[test]
+fn pow_vartime_group_order() {
+    // |F₁₉²*| = 19² − 1 = 360
+    assert!(bool::from(el(3, 2).pow_vartime(&[360]).is_one()));
+}
+
+#[test]
+fn pow_vartime_eq_pow() {
+    // |F₁₉²*| = 19² − 1 = 360
+    let x = el(3, 2).pow_vartime(&[11]);
+    let y = el(3, 2).pow(&[11]);
+    assert!(bool::from(x.sub(&y).is_zero()));
+}
+
 // -----------------------------------------------------------------------
 // Legendre and squareroot
 // -----------------------------------------------------------------------
@@ -508,13 +522,13 @@ impl TonelliShanksConstants<Fp19Mod, 1, 3, 1> for TSCubic {
     // Still only need 1 limb for 19^3
     const ORDER: Uint<1> = Uint::<1>::from_u64(6858);
     const HALF_ORDER: Uint<1> = Uint::<1>::from_u64(3429);
+    const S: u64 = 1;
+    const T: Uint<1> = Uint::<1>::from_u64(3429);
     const PROJENATOR_EXP: Uint<1> = Uint::<1>::from_u64(1714);
     const TWOSM1: Uint<1> = Uint::<1>::from_u64(1);
     fn root_of_unity() -> [FpElement<Fp19Mod, 1>; 3] {
         [fp(1), fp(0), fp(0)]
     }
-    const S: u64 = 1;
-    const T: Uint<1> = Uint::<1>::from_u64(3429);
 }
 
 type F19_3 = FpExt<Fp19Mod, 1, 3, 1, CubicPoly, TSCubic>;

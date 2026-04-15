@@ -2,10 +2,10 @@
 //!
 //! The EFD gives the affine group law for
 //!
-//! ```text
-//! s² + c² = 1,
-//! a s² + d² = 1.
-//! ```
+//! $$
+//! s^2 + c^2 = 1 \quad
+//! a s^2 + d^2 = 1.
+//! $$
 //!
 //! We use those formulas directly, with neutral element `(0, 1, 1)` and
 //! negation `-(s, c, d) = (-s, c, d)`.
@@ -16,11 +16,14 @@ use crate::curve_jacobi_intersection::JacobiIntersectionCurve;
 use crate::point_ops::{PointAdd, PointOps};
 use fp::field_ops::FieldOps;
 
-/// An affine point `(s, c, d)` on a Jacobi intersection.
+/// An affine point $(s, c, d)$ on a Jacobi intersection.
 #[derive(Debug, Clone, Copy)]
 pub struct JacobiIntersectionPoint<F: FieldOps> {
+    /// The coordinate `s` of the point
     pub s: F,
+    /// The coordinate `c` of the point
     pub c: F,
+    /// The coordinate `d` of the point
     pub d: F,
 }
 
@@ -57,15 +60,45 @@ impl<F: FieldOps> PartialEq for JacobiIntersectionPoint<F> {
 impl<F: FieldOps> Eq for JacobiIntersectionPoint<F> {}
 
 impl<F: FieldOps> JacobiIntersectionPoint<F> {
+    /// Creates a new point on a Jacobi intersection
+    ///
+    /// The point should satisfy
+    /// $$
+    /// s^2 + c^2 = 1 \quad
+    /// a s^2 + d^2 = 1.
+    /// $$
+    ///
+    /// # Arguments
+    ///
+    /// * `s` - Element of `F` (type: F)
+    /// * `c` - Element of `F` (type: F)
+    /// * `d` - Element of `F` (type: F)
+    ///
+    /// # Returns
+    ///
+    /// Returns the point on the Jacobi intersection (type: Self)
     pub fn new(s: F, c: F, d: F) -> Self {
         Self { s, c, d }
     }
 
-    /// The neutral element `(0, 1, 1)`.
+    /// The neutral element $(0, 1, 1)$.
     pub fn identity() -> Self {
-        Self { s: F::zero(), c: F::one(), d: F::one() }
+        Self {
+            s: F::zero(),
+            c: F::one(),
+            d: F::one(),
+        }
     }
 
+    /// Checks if the point is the indentity point
+    ///
+    /// # Arguments
+    ///
+    /// * `&self` - A point on the curve (type: self)
+    ///
+    /// # Returns
+    ///
+    /// True if and only if it is $(0,1,1)$ (type: bool)
     pub fn is_identity(&self) -> bool {
         self.s == F::zero() && self.c == F::one() && self.d == F::one()
     }
@@ -126,7 +159,9 @@ impl<F: FieldOps> JacobiIntersectionPoint<F> {
     pub fn add(&self, other: &Self, curve: &JacobiIntersectionCurve<F>) -> Self {
         let d1s2 = self.d * other.s;
         let denom = <F as FieldOps>::square(&other.c) + <F as FieldOps>::square(&d1s2);
-        let denom_inv = denom.invert().into_option()
+        let denom_inv = denom
+            .invert()
+            .into_option()
             .expect("Jacobi-intersection addition denominator vanished");
 
         let s3 = (other.c * self.s * other.d + self.d * other.s * self.c) * denom_inv;
@@ -147,7 +182,9 @@ impl<F: FieldOps> JacobiIntersectionPoint<F> {
     pub fn double(&self, curve: &JacobiIntersectionCurve<F>) -> Self {
         let ds = self.d * self.s;
         let denom = <F as FieldOps>::square(&self.c) + <F as FieldOps>::square(&ds);
-        let denom_inv = denom.invert().into_option()
+        let denom_inv = denom
+            .invert()
+            .into_option()
             .expect("Jacobi-intersection doubling denominator vanished");
 
         let two = <F as FieldOps>::double(&F::one());
@@ -162,6 +199,19 @@ impl<F: FieldOps> JacobiIntersectionPoint<F> {
         Self::new(s3, c3, d3)
     }
 
+    /// Scalar multiplication on the curve
+    ///
+    /// Multiplies a point by an integers
+    ///
+    /// # Arguments
+    ///
+    /// * `&self` - Point on the curve (type: `Self`)
+    /// * `k` - An integer represented as a vec of `u64` (type: `&[u64]`)
+    /// * `curve` - The curve on which `self` lies (type: `&JacobiIntersectionCurve<F>`)
+    ///
+    /// # Returns
+    ///
+    /// The point `k * self` (type: Self)
     pub fn scalar_mul(&self, k: &[u64], curve: &JacobiIntersectionCurve<F>) -> Self {
         let mut result = Self::identity();
 

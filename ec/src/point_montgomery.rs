@@ -43,7 +43,9 @@ use fp::field_ops::{FieldOps};
 /// - `(X : Z)` with `Z ≠ 0` for finite x-coordinates.
 #[derive(Debug, Clone, Copy)]
 pub struct KummerPoint<F: FieldOps + Copy> {
+    /// Projective x coordinate
     pub x: F,
+    /// Projective z coordinate
     pub z: F,
 }
 
@@ -96,10 +98,7 @@ where
     }
 }
 
-impl<F: FieldOps> Eq for KummerPoint<F>
-where
-    F: FieldOps + ConstantTimeEq,
-{ }
+impl<F: FieldOps> Eq for KummerPoint<F> where F: FieldOps + ConstantTimeEq {}
 
 // ---------------------------------------------------------------------------
 // Constructors
@@ -109,18 +108,21 @@ impl<F: FieldOps> KummerPoint<F> {
     /// Construct a projective x-line point `(X : Z)` without validation.
     pub fn new(x: F, z: F) -> Self {
         assert!(!bool::from((x * z).is_zero()));
-        Self{ x, z }
+        Self { x, z }
     }
 
     /// Construct the finite x-line point corresponding to the affine
     /// x-coordinate `x`, i.e. `(x : 1)`.
     pub fn from_x(x: F) -> Self {
-        Self{ x, z: F::one() }
+        Self { x, z: F::one() }
     }
 
     /// The image of the identity point on the Kummer line.
     pub fn identity() -> Self {
-        Self{ x: F::one(), z: F::zero()}
+        Self {
+            x: F::one(),
+            z: F::zero(),
+        }
     }
 
     /// Return `true` if this point is the image of identity.
@@ -135,7 +137,6 @@ impl<F: FieldOps> KummerPoint<F> {
     }
 }
 
-
 // ---------------------------------------------------------------------------
 // Constant-time functionalities
 // ---------------------------------------------------------------------------
@@ -145,9 +146,9 @@ where
     F: FieldOps + Copy,
 {
     fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
-        Self{
-            x: F::conditional_select(& a.x, &b.x, choice),
-            z: F::conditional_select(& a.z, &b.z, choice),
+        Self {
+            x: F::conditional_select(&a.x, &b.x, choice),
+            z: F::conditional_select(&a.z, &b.z, choice),
         }
     }
 
@@ -173,12 +174,13 @@ where
     fn ct_eq(&self, other: &Self) -> Choice {
         let x1z2 = self.x * other.z;
         let x2z1 = other.x * self.z;
-        x1z2.ct_eq(& x2z1)
+        x1z2.ct_eq(&x2z1)
     }
 
-    fn ct_ne(&self, other: &Self) -> Choice { !self.ct_eq(other) }
+    fn ct_ne(&self, other: &Self) -> Choice {
+        !self.ct_eq(other)
+    }
 }
-
 
 // ---------------------------------------------------------------------------
 // X-only arithmetic
@@ -197,16 +199,17 @@ impl<F: FieldOps + Copy> KummerPoint<F> {
 
             let new_z = fourxz * (diffsq + a24 * fourxz);
 
-            Self{ x: sumsq * diffsq, z: new_z }
-        }
-        else {
+            Self {
+                x: sumsq * diffsq,
+                z: new_z,
+            }
+        } else {
             let temp_x = self.x + curve.b * self.z;
             let new_x = <F as FieldOps>::square(&<F as FieldOps>::square(&temp_x));
             let xz = self.x * self.z;
             let new_z = <F as FieldOps>::square(&xz);
-            Self{ x: new_x, z: new_z }
+            Self { x: new_x, z: new_z }
         }
-
     }
 
     /// Differential addition. Given (in projective form `(X:Z)`):
@@ -225,8 +228,7 @@ impl<F: FieldOps + Copy> KummerPoint<F> {
             let new_z = diff.x * <F as FieldOps>::square(&(u - v));
 
             Self { x: new_x, z: new_z }
-        }
-        else {
+        } else {
             let x1z2 = self.x * other.z;
             let x2z1 = other.x * self.z;
             let sum_squared = <F as FieldOps>::square(&(x1z2 + x2z1));

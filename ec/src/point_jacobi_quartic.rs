@@ -2,17 +2,17 @@
 //!
 //! We use the affine model
 //!
-//! ```text
-//! y² = d x⁴ + 2 a x² + 1
-//! ```
+//! $$
+//! y^2 = d x^4 + 2 a x^2 + 1
+//! $$
 //!
-//! with neutral element `(0, 1)` and negation `-(x, y) = (-x, y)`. The
-//! doubling formulas are taken from equations (9) and (10) in
-//! *Jacobi Quartic Curves Revisited*; the general addition uses the affine
+//! with neutral element $(0, 1)$ and negation $-(x, y) = (-x, y)$.
+//! The doubling formulas are taken from equations (9) and (10) in
+//! *Jacobi Quartic Curves Revisited*; the general addition uses affine
 //! formulas (1) and (2).
 //!
 //! Important: these are affine formulas. Like the existing Edwards code in this
-//! crate, they assume the denominators are invertible. For exceptional inputs
+//! crate, they assume denominators are invertible. For exceptional inputs
 //! where the result leaves this affine chart, the code panics instead of trying
 //! to model the desingularized points at infinity.
 use core::fmt;
@@ -25,7 +25,9 @@ use fp::field_ops::FieldOps;
 /// An affine point `(x, y)` on a Jacobi quartic curve.
 #[derive(Debug, Clone, Copy)]
 pub struct JacobiQuarticPoint<F: FieldOps> {
+    /// The x coordinate of a point
     pub x: F,
+    /// The y coordiante of a point
     pub y: F,
 }
 
@@ -57,22 +59,30 @@ impl<F: FieldOps> PartialEq for JacobiQuarticPoint<F> {
 impl<F: FieldOps> Eq for JacobiQuarticPoint<F> {}
 
 impl<F: FieldOps> JacobiQuarticPoint<F> {
+    /// Create a new point `(x,y)`
     pub fn new(x: F, y: F) -> Self {
         Self { x, y }
     }
 
     /// The neutral element `(0, 1)`.
     pub fn identity() -> Self {
-        Self { x: F::zero(), y: F::one() }
+        Self {
+            x: F::zero(),
+            y: F::one(),
+        }
     }
 
+    /// Checks if the point is the identity
     pub fn is_identity(&self) -> bool {
         self.x == F::zero() && self.y == F::one()
     }
 
     /// The affine order-2 point `(0, -1)`.
     pub fn order_two_point() -> Self {
-        Self { x: F::zero(), y: -F::one() }
+        Self {
+            x: F::zero(),
+            y: -F::one(),
+        }
     }
 }
 

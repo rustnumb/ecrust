@@ -1,10 +1,12 @@
-//! Generic extension field  Fp^M = Fp[x] / (f(x)).
+//! Generic extension field  $\mathbb{F}_{p^M} = \mathbb{F}_p\[x\] / (f(x))$.
 //!
 //! # Overview
 //!
-//! Given a prime p and a monic irreducible polynomial f of degree M over Fp,
-//! the extension field Fp^M = Fp[x]/(f(x)) is the set of polynomials of
-//! degree < M with coefficients in Fp, where arithmetic is done modulo f.
+//! Given a prime $p$ and a monic irreducible polynomial $f$ of degree
+//! $M$ over $\\mathbb{F}\_{p}$, the extension field $\mathbb{F}_{{p^M}} =
+//! \mathbb{F}_p\[x\] / (f(x))$ is the set of polynomials of degree
+//! $M$ with coefficients in $\mathbb{F}_p$, where arithmetic is done
+//! modulo $f$.
 //!
 //! This module provides a single generic type [`FpExt<MOD, LIMBS, M, P>`] that
 //! covers *any* such extension.  The irreducible polynomial is supplied via the
@@ -12,7 +14,7 @@
 //!
 //! # Representation
 //!
-//! An element `a ∈ Fp^M` is stored as exactly M base-field coefficients:
+//! An element $a \in \mathbb{F}_p^M$ is stored as exactly $M$ base-field coefficients:
 //!
 //! ```text
 //! coeffs = [a_0, a_1, ..., a_{M-1}]
@@ -21,18 +23,17 @@
 //!
 //! # Operations and costs
 //!
-//! | Operation   | Algorithm                        | Base-field cost    |
-//! |-------------|----------------------------------|--------------------|
-//! | Add / Sub   | Coefficient-wise                 | M  adds            |
-//! | Negate      | Coefficient-wise                 | M  negs            |
-//! | Double      | Coefficient-wise                 | M  doubles         |
-//! | Multiply    | Schoolbook + reduction mod f     | M^2 muls + M^2 adds  |
-//! | Square      | Same as multiply (self * self)   | M^2 muls + M^2 adds  |
-//! |
-//!      | Polynomial extended GCD          | O(M^2)              |
-//! | Frobenius   | self^p  via square-and-multiply  | O(M^2 log p)        |
-//! | Norm        | Product of M Galois conjugates   | O(M^3 log p)        |
-//! | Trace       | Sum of M Galois conjugates       | O(M^2 log p)        |
+//! | Operation   | Algorithm                        | Base-field cost          |
+//! |-------------|----------------------------------|--------------------------|
+//! | Add / Sub   | Coefficient-wise                 | $M$ adds                 |
+//! | Negate      | Coefficient-wise                 | $M$ negs                 |
+//! | Double      | Coefficient-wise                 | $M$ doubles              |
+//! | Multiply    | Schoolbook + reduction mod f     | $M^2$ muls + $M^2$ adds  |
+//! | Square      | Same as multiply (self * self)   | $M^2$ muls + $M^2$ adds  |
+//! |             | Polynomial extended GCD          | $O(M^2)$                 |
+//! | Frobenius   | self^p  via square-and-multiply  | $O(M^2 \log p)$          |
+//! | Norm        | Product of M Galois conjugates   | $O(M^3 \log p)$          |
+//! | Trace       | Sum of M Galois conjugates       | $O(M^2 log p)$           |
 
 use core::ops::{Add, Mul, Neg, Sub};
 use std::marker::PhantomData;
@@ -47,16 +48,16 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 // ===========================================================================
 
 /// Supplies the monic irreducible polynomial
-///   `f(x) = x^M + c_{M-1}x^{M-1} + ... + c_1x + c_0`
-/// that defines the extension  `Fp^M = Fp[x] / (f(x))`.
+/// $$f(x) = x^M + c_{M-1} x^{M-1} + ... + c_1 x + c_0$$
+/// that defines the extension  $\mathbb{F}_p^M = \mathbb{F}_p\[x\] / (f(x))$.
 ///
 /// # Convention
 ///
 /// `modulus()` returns the **non-leading** coefficients in ascending degree order:
 /// `[c_0, c_1, ..., c_{M-1}]`.
-/// The leading coefficient `1` (coefficient of `x^M`) is implicit.
+/// The leading coefficient 1 (coefficient of $x^M$) is implicit.
 ///
-/// # Example: f(x) = x^2 + 1 over F_19
+/// # Example: $f(x) = x^2 + 1$ over $\mathbb{F}_{19}$
 /// ```ignore
 /// struct MyPoly;
 /// impl IrreduciblePoly<Fp19Mod, 1, 2> for MyPoly {
@@ -66,7 +67,7 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 /// }
 /// ```
 ///
-/// # Example: f(x) = x^3 − 2 over F_19  (i.e. x^3 + 17 since −2 \equiv 17 mod 19)
+/// # Example: $f(x) = x^3 − 2$ over $\mathbb{F}_{19}$  (i.e. $x^3 + 17$ since $−2 \equiv 17 \mod 19$)
 /// ```ignore
 /// struct MyCubicPoly;
 /// impl IrreduciblePoly<Fp19Mod, 1, 3> for MyCubicPoly {
@@ -93,21 +94,12 @@ implement for a new field
 
 /// Supplies the constants for Tonelli--Shanks algorithm.
 ///
-/// # Conventions
+/// The `usize` constant `N` in the trait definition should be chosen
+/// so that $p^M$ fits inside a `Uint<N>`. Required constants are
+/// listed below all are derived by writing $p^M - 1 = 2^S T$ for some
+/// odd $T$.
 ///
-/// The input value `N` (type: usize) in the definition of the trait should
-/// be chosen so that p^M fits in a UInt<N>. One should supply the following
-/// data:
-/// * `ORDER`: (p^M - 1) (type: UInt<N>)
-/// * `HALF_ORDER`: (p^M - 1) / 2 (type: UInt<N>)
-/// * `S`: So that (p^M - 1) = 2^S * T with T odd (type: u64)
-/// * `T`: So that (p^M - 1) = 2^S * T with T odd (type: UInt<N>)
-/// * `PROJENATOR_EXP`: (T - 1) / 2 (type: UInt<N>)
-/// * `TWOSM1`: 2^(S - 1) (type: UInt<N>)
-/// * `root_of_unity() -> [FpElement<MOD, LIMBS>; M]`: 2^S root of unity
-///   in FpM
-///
-/// # Example: F_(19^2)
+/// # Example: $\mathbb{F}_{19^2}$
 /// ```ignore
 /// impl TonelliShanksConstants<Fp19Mod, 1, 2, 1> for TSQuad {
 ///     // p^2 - 1
@@ -132,22 +124,25 @@ pub trait TonelliShanksConstants<MOD, const LIMBS: usize, const M: usize, const 
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
 {
-    // Write the order of the multiplicative group as
-    // (p^M - 1) = 2^S * T where T is odd
-    // Multiplicative group order p^M - 1
-    // p^M - 1
+    /// Multiplicative group order $p^M - 1$
     const ORDER: Uint<N>;
-    // (p^M - 1) / 2
+
+    /// Half mult group order $(p^M - 1) / 2$
     const HALF_ORDER: Uint<N>;
-    // Constant S
+
+    /// Write $p^M - 1 = 2^S T$ with $T$ odd
     const S: u64;
-    // Constant 2^(S - 1)
-    const TWOSM1: Uint<N>;
-    // Constant T
+
+    /// Write $p^M - 1 = 2^S T$ with $T$ odd
     const T: Uint<N>;
-    // Projenator exponent of the TS algorithm this is (T - 1) / 2
+
+    /// Constant $2^{S - 1}$
+    const TWOSM1: Uint<N>;
+
+    /// Projenator exponent of the TS algorithm this is $(T - 1) / 2$
     const PROJENATOR_EXP: Uint<N>;
-    // Root of unity TODO: implement in a way in which this is a const
+
+    /// $2^S$ root of unity
     fn root_of_unity() -> [FpElement<MOD, LIMBS>; M];
 }
 
@@ -155,7 +150,8 @@ where
 // FpExt — element of Fp^M
 // ===========================================================================
 
-/// An element of the extension field  `Fp^M = Fp[x] / (f(x))`.
+/// An element of the extension field $\mathbb{F}_{p^M} =
+/// \mathbb{F}_p\[x\] / (f(x))$.
 ///
 /// `P` is a zero-size marker type implementing [`IrreduciblePoly`].
 /// `M` is the extension degree (number of base-field coefficients stored).
@@ -519,13 +515,14 @@ where
     (quot, poly_normalize(rem))
 }
 
-/// Reduce polynomial `a` modulo the irreducible `f(x) = x^M + Σ modulus[j]x^j`.
+/// Reduce polynomial $a$ modulo the irreducible $f(x) = x^M + \sum_j c_j x^j$.
 ///
 /// Uses the substitution rule:
-///   `x^M \equiv −(modulus[0] + modulus[1]x + ... + modulus[M-1]x^{M-1})`
+/// $$x^M \equiv − (c_0 + c_1 x + ... + c_{M-1} x^{M-1})$$
 ///
-/// Sweeps from the highest degree of `a` down to `M`, eliminating one term
-/// per step.  Each step costs M multiplications and M additions in Fp.
+/// Sweeps from the highest degree of `a` down to `M`, eliminating one
+/// term per step.  Each step costs `M` multiplications and `M`
+/// additions in $\mathbb{F}_p$. Note that $c_i$ is `modulus[i]` below.
 fn poly_reduce<MOD, const LIMBS: usize, const M: usize>(
     a: Vec<FpElement<MOD, LIMBS>>,
     modulus: &[FpElement<MOD, LIMBS>; M],
@@ -684,7 +681,7 @@ where
 /// # Note
 ///
 /// Most of this is directly taken from the Fp case at
-/// https://github.com/SamFrengley/ff-sqrtratio/blob/8e5aa6f934f32d9b9cff56177d9943a2effcd390/ff_derive/src/lib.rs
+/// <https://github.com/SamFrengley/ff-sqrtratio/blob/8e5aa6f934f32d9b9cff56177d9943a2effcd390/ff_derive/src/lib.rs>
 /// under an MIT liscence.
 fn ts_loop<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS>(
     x: &mut FpExt<MOD, LIMBS, M, N, P, TSCONSTS>,
@@ -869,7 +866,7 @@ where
     /// Tonelli--Shanks squareroot algorithm
     ///
     /// Implementation of the Tonelli--Shanks square root algorithm. Requires
-    /// only a factorisation as $p^M - 1 = 2^K * N$ so can compute this at
+    /// only a factorisation as $p^M - 1 = 2^K N$ so can compute this at
     /// compile time by truncating zeros.
     ///
     /// # Arguments
@@ -905,6 +902,7 @@ where
     /// # Returns
     ///
     /// `(myinv, mysqrt)` which is `self.invert()` and `self.sqrt()`
+    /// (type: `CtOption<Self>`, `CtOption<Self>`)
     fn inverse_and_sqrt(&self) -> (CtOption<Self>, CtOption<Self>) {
         let is_invertible = !self.is_zero();
 
@@ -939,7 +937,7 @@ where
     ///
     /// Computes 1/sqrt(self) using the trick from Mike Scott's
     /// "Tricks of the trade" article Section 2
-    /// https://eprint.iacr.org/2020/1497
+    /// <https://eprint.iacr.org/2020/1497>
     ///
     /// # Arguments
     ///
@@ -947,7 +945,7 @@ where
     ///
     /// # Returns
     ///
-    /// The inverse of the squareroot of `self` (type: CtOption<Self>)
+    /// The inverse of the squareroot of `self` (type: `CtOption<Self>`)
     fn inv_sqrt(&self) -> CtOption<Self> {
         let (inv, sqrt) = self.inverse_and_sqrt();
         inv.and_then(|a| sqrt.map(|b| a * b))
@@ -957,14 +955,14 @@ where
     ///
     /// Computes `1/self` and `rhs.sqrt()` simulaineously using the
     /// trick from Mike Scott's "Tricks of the trade" article Section
-    /// 2 https://eprint.iacr.org/2020/1497
+    /// 2 <https://eprint.iacr.org/2020/1497>
     ///
     /// # Returns
     ///
     /// The inverse of `self` and square root fo `rhs`. Theq former is
     /// none if and only if `self` is nonzero and the latter is not
     /// none if and only if there exists a squareroot of `rhs` in FpM
-    /// (type: (CtOption<Self>, CtOption<self>))
+    /// (type: (`CtOption<Self>`, `CtOption<Self>`))
     fn invertme_sqrtother(&self, rhs: &Self) -> (CtOption<Self>, CtOption<Self>) {
         let is_invertible = !self.is_zero();
 
@@ -990,7 +988,7 @@ where
     ///
     /// Computes `sqrt(self/rhs)` in one exponentiation using the
     /// trick from Mike Scott's "Tricks of the trade" article Section
-    /// 2 https://eprint.iacr.org/2020/1497
+    /// 2 <https://eprint.iacr.org/2020/1497>
     ///
     /// # Arguments
     ///
@@ -1001,7 +999,7 @@ where
     ///
     /// The squareroot of the ratio `self/rhs` is not none if and only
     /// if `rhs` is invertible and the ratio has an FpM squareroot
-    /// (type: (CtOption<Self>, CtOption<self>))
+    /// (type: `CtOption<Self>`)
     fn sqrt_ratio(&self, rhs: &Self) -> CtOption<Self> {
         let x = self.mul(&self.mul(self)).mul(*rhs);
         let (myinv, mysqrt) = x.inverse_and_sqrt();

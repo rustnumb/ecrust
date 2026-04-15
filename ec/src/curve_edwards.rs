@@ -2,25 +2,31 @@
 //!
 //! # Odd characteristic
 //!
-//! ```text
-//! x² + y² = 1 + d·x²·y²
-//! ```
+//! The curve is given by
 //!
-//! Parameters: `d1 = 0` (unused), `d2 = d`.
-//! Identity: `(0, 1)`.  Complete when `d` is not a square.
+//! $$
+//! x^2 + y^2 = 1 + d x^2 y^2
+//! $$
 //!
-//! # Characteristic 2
+//! Parameters: $d_1 = 0$ (unused), $d_2 = d$.
+//! Identity: $(0, 1)$. Complete when $d$ is not a square.
 //!
-//! ```text
-//! d₁(x + y) + d₂(x² + y²) = xy + xy(x + y) + x²y²
-//! ```
+//! # Characteristic $2$
 //!
-//! Parameters: `d1`, `d2` with `d₁ ≠ 0`, `d₂ ≠ d₁² + d₁`.
-//! Identity: `(0, 0)`.  Complete when `Tr(d₂) = 1`.
+//! The curve is given by
 //!
-//! Reference (char 2): Bernstein–Lange–Rezaeian Farashahi,
-//!   "Binary Edwards Curves", 2008.
-//! Reference (odd char): <https://hyperelliptic.org/EFD/g1p/auto-edwards.html>
+//! $$
+//! d_1(x + y) + d_2(x^2 + y^2)
+//! = xy + xy(x + y) + x^2 y^2
+//! $$
+//!
+//! Parameters: $d_1, d_2$ with $d_1 \ne 0$, $d_2 \ne d_1^2 + d_1$.
+//! Identity: $(0, 0)$. Complete when $\mathrm{Tr}(d_2) = 1$.
+//!
+//! # References
+//!
+//! - Binary Edwards curves (characteristic $2$): Bernstein–Lange–Rezaeian Farashahi (2008)
+//! - Odd characteristic: <https://hyperelliptic.org/EFD/g1p/auto-edwards.html>
 
 use core::fmt;
 use fp::field_ops::{FieldOps, FieldRandom};
@@ -34,7 +40,9 @@ use crate::point_edwards::EdwardsPoint;
 /// In characteristic 2 both `d1` and `d2` are used.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EdwardsCurve<F: FieldOps> {
+    /// The invariant d1 in the equation
     pub d1: F,
+    /// The invariant d2 in the equation
     pub d2: F,
 }
 

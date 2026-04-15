@@ -15,3 +15,6 @@ rand = "0.10.1"
 [dev-dependencies]
 
 # Add test-only dependencies here as needed
+
+[package.metadata.docs.rs]
+rustdoc-args = [ "--html-in-header", "katex-header.html" ]

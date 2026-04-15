@@ -1,4 +1,4 @@
-// Generic finary fields F_{2^m} = F_2[x] / (f(x))
+//! Generic finary fields $F_{2^m} = F_2\[x\] / (f(x))$
 
 use crate::field_ops::{FieldOps, FieldRandom};
 use core::ops::{Add, Mul, Neg, Sub};
@@ -10,21 +10,25 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 // IrreduciblePoly — the only thing callers need to implement for a new field
 // ---------------------------------------------------------------------------
 
+/// An irreducible polynomial over $\mathbb{F}_2$.
 pub trait BinaryIrreducible<const LIMBS: usize>: 'static {
-    // Full polynomial bitmask, including the leading term x^m
+    /// Full polynomial bitmask, including the leading term x^m
     fn modulus() -> Uint<LIMBS>;
 
-    // Degree m of the irreducible polynomial
+    /// Degree m of the irreducible polynomial
     fn degree() -> usize;
 }
 
 // ---------------------------------------------------------------------------
 // F2Ext — element of F_{2^M}
 // ---------------------------------------------------------------------------
+
+/// An extension of $\mathbb{F}_2$ given by a polynomial `P`.
 pub struct F2Ext<const LIMBS: usize, P>
 where
     P: BinaryIrreducible<LIMBS>,
 {
+    /// The value of an element of $\mathbb{F}_{2^M}$
     pub value: Uint<LIMBS>,
     _phantom: PhantomData<P>,
 }
@@ -37,6 +41,7 @@ impl<const LIMBS: usize, P> F2Ext<LIMBS, P>
 where
     P: BinaryIrreducible<LIMBS>,
 {
+    /// Make an element from the limbs
     pub fn new(x: Uint<LIMBS>) -> Self {
         Self {
             value: reduce::<LIMBS, P>(x),
@@ -44,18 +49,22 @@ where
         }
     }
 
+    /// Make an element from a `u64`
     pub fn from_u64(x: u64) -> Self {
         Self::new(Uint::from(x))
     }
 
+    /// Make an element from a `Uint<LIMBS>`
     pub fn from_uint(x: Uint<LIMBS>) -> Self {
         Self::new(x)
     }
 
+    /// Get a `Unit<LIMBS>` from an element
     pub fn as_uint(&self) -> Uint<LIMBS> {
         self.value
     }
 
+    /// Get the degree of the field extension
     pub fn degree() -> usize {
         P::degree()
     }

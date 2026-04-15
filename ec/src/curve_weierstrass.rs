@@ -2,21 +2,21 @@
 //!
 //! # Equation
 //!
-//! The **general Weierstrass** equation over a field `F` is
+//! The **general Weierstrass** equation over a field $F$ is
 //!
-//! ```text
-//! y² + a₁xy + a₃y = x³ + a₂x² + a₄x + a₆
-//! ```
+//! $$
+//! y^2 + a_1 xy + a_3 y = x^3 + a_2 x^2 + a_4 x + a_6
+//! $$
 //!
-//! This form is valid in *any* characteristic, including characteristic 2.
+//! This form is valid in *any* characteristic, including characteristic $2$.
 //!
 //! # Short Weierstrass specialisation
 //!
-//! When `char(F) ≠ 2, 3` the curve can be brought to the simpler
+//! When $\mathrm{char}(F) \ne 2, 3$ the curve can be brought to the simpler
 //!
-//! ```text
-//! y² = x³ + ax + b          (a₁ = a₂ = a₃ = 0,  a₄ = a,  a₆ = b)
-//! ```
+//! $$
+//! y^2 = x^3 + ax + b \quad (a_1 = a_2 = a_3 = 0,\; a_4 = a,\; a_6 = b)
+//! $$
 //!
 //! via the convenience constructor [`WeierstrassCurve::new_short`].
 
@@ -26,20 +26,25 @@ use fp::field_ops::{FieldOps, FieldRandom};
 use crate::curve_ops::Curve;
 use crate::point_weierstrass::AffinePoint;
 
-/// An elliptic curve in general Weierstrass form over a field `F`.
+/// An elliptic curve in general Weierstrass form over a field $F$.
 ///
-/// ```text
-/// y² + a₁xy + a₃y = x³ + a₂x² + a₄x + a₆
-/// ```
+/// $$
+/// y^2 + a_1 xy + a_3 y = x^3 + a_2 x^2 + a_4 x + a_6
+/// $$
 ///
-/// All five coefficients are stored explicitly; the short Weierstrass case
-/// simply has `a1 = a2 = a3 = 0`.
+/// All five coefficients are stored explicitly; the short Weierstrass
+/// case simply has $a_1 = a_2 = a_3 = 0$.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WeierstrassCurve<F: FieldOps> {
+    /// a-invariants
     pub a1: F,
+    /// a-invariants
     pub a2: F,
+    /// a-invariants
     pub a3: F,
+    /// a-invariants
     pub a4: F,
+    /// a-invariants
     pub a6: F,
 }
 
@@ -70,23 +75,33 @@ impl<F: FieldOps + FieldRandom> WeierstrassCurve<F> {
     // Constructors
     // -------------------------------------------------------------------
 
-    /// Construct a curve from all five general Weierstrass coefficients.
+    /// Constructs a curve from the five general Weierstrass coefficients
+    /// $(a_1, a_2, a_3, a_4, a_6)$.
+    ///
+    /// The curve is required to be smooth, i.e. its discriminant $\Delta \ne 0$.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the curve is singular.
     pub fn new(a1: F, a2: F, a3: F, a4: F, a6: F) -> Self {
         assert!(Self::is_smooth(&a1, &a2, &a3, &a4, &a6));
 
-        Self {
-            a1,
-            a2,
-            a3,
-            a4,
-            a6
-        }
+        Self { a1, a2, a3, a4, a6 }
     }
 
-    /// Construct the **short Weierstrass** curve  `y² = x³ + ax + b`.
+    /// Constructs the **short Weierstrass** curve
     ///
-    /// Sets `a₁ = a₂ = a₃ = 0`,  `a₄ = a`,  `a₆ = b`.
-    /// Only valid when `char(F) ≠ 2, 3`.
+    /// $$
+    /// y^2 = x^3 + ax + b.
+    /// $$
+    ///
+    /// This sets $a_1 = a_2 = a_3 = 0$, $a_4 = a$, and $a_6 = b$.
+    ///
+    /// This form is only valid when $\mathrm{char}(F) \ne 2, 3$.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the characteristic is $\le 3$ or if the curve is singular.
     pub fn new_short(a: F, b: F) -> Self {
         assert!(F::characteristic()[0] > 3);
         assert!(Self::is_smooth(&F::zero(), &F::zero(), &F::zero(), &a, &b));
@@ -100,6 +115,11 @@ impl<F: FieldOps + FieldRandom> WeierstrassCurve<F> {
         }
     }
 
+    /// Returns `true` if and only if the curve defined by the given
+    /// $a$-invariants is smooth.
+    ///
+    /// This is equivalent to checking that the discriminant satisfies
+    /// $\Delta \ne 0$.
     pub fn is_smooth(a1: &F, a2: &F, a3: &F, a4: &F, a6: &F) -> bool {
         discriminant_from_coeffs::<F>(&a1, &a2, &a3, &a4, &a6) != F::zero()
     }
@@ -108,7 +128,7 @@ impl<F: FieldOps + FieldRandom> WeierstrassCurve<F> {
     // Invariants
     // -------------------------------------------------------------------
 
-    /// Return the five a-invariants `[a₁, a₂, a₃, a₄, a₆]`.
+    /// Returns the five $a$-invariants $[a_1, a_2, a_3, a_4, a_6]$.
     pub fn a_invariants(&self) -> [F; 5] {
         [
             self.a1.clone(),
@@ -119,7 +139,7 @@ impl<F: FieldOps + FieldRandom> WeierstrassCurve<F> {
         ]
     }
 
-    /// Return the four b-invariants `[b₂, b₄, b₆, b₈]`.
+    /// Returns the four $b$-invariants $[b_2, b_4, b_6, b_8]$.
     pub fn b_invariants(&self) -> [F; 4] {
         [self.b2(), self.b4(), self.b6(), self.b8()]
     }
@@ -128,11 +148,11 @@ impl<F: FieldOps + FieldRandom> WeierstrassCurve<F> {
     // Curve predicates
     // -------------------------------------------------------------------
 
-    /// Check whether the affine point `(x, y)` satisfies the curve equation.
+    /// Checks whether the affine point $(x, y)$ satisfies the curve equation.
     ///
-    /// ```text
-    /// y² + a₁xy + a₃y  ==  x³ + a₂x² + a₄x + a₆
-    /// ```
+    /// $$
+    /// y^2 + a_1 xy + a_3 y = x^3 + a_2 x^2 + a_4 x + a_6.
+    /// $$
     pub fn contains(&self, x: &F, y: &F) -> bool {
         let lhs = {
             let y2 = <F as FieldOps>::square(y);
@@ -205,11 +225,10 @@ fn b6_from_coeffs<F: FieldOps>(a3: &F, a6: &F) -> F {
     a3_sq + four_a6
 }
 
-
 /// `b₈ = a₁²a₆ + 4a₂a₆ − a₁a₃a₄ + a₂a₃² − a₄²`.
 fn b8_from_coeffs<F: FieldOps>(a1: &F, a2: &F, a3: &F, a4: &F, a6: &F) -> F {
     let a1sq_a6 = <F as FieldOps>::square(&a1) * *a6;
-    let four_a2_a6 = <F as FieldOps>::double(&<F as FieldOps>::double(&(*a2 * *a6) ));
+    let four_a2_a6 = <F as FieldOps>::double(&<F as FieldOps>::double(&(*a2 * *a6)));
     let a1_a3_a4 = *a1 * *a3 * *a4;
     let a2_a3sq = *a2 * <F as FieldOps>::square(&a3);
     let a4sq = <F as FieldOps>::square(&a4);
@@ -235,14 +254,14 @@ fn discriminant_from_coeffs<F: FieldOps>(a1: &F, a2: &F, a3: &F, a4: &F, a6: &F)
     let twentyseven = nine * three;
 
     // −b₂²b₈
-    let term1 = - <F as FieldOps>::square(&b2) * b8;
+    let term1 = -<F as FieldOps>::square(&b2) * b8;
 
     // −8b₄³
     let b4_cubed = <F as FieldOps>::square(&b4) * b4;
-    let term2 = - eight * b4_cubed;
+    let term2 = -eight * b4_cubed;
 
     // −27b₆²
-    let term3 = - twentyseven * <F as FieldOps>::square(&b6);
+    let term3 = -twentyseven * <F as FieldOps>::square(&b6);
 
     // 9b₂b₄b₆
     let term4 = nine * b2 * b4 * b6;
@@ -275,29 +294,42 @@ fn j_inv_from_coeffs<F: FieldOps>(a1: &F, a2: &F, a3: &F, a4: &F, a6: &F) -> F {
     c4_cubed * delta_inv
 }
 
-
 // -------------------------------------------------------------------
 // Invariants attached to the model
 // -------------------------------------------------------------------
 
 impl<F: FieldOps> WeierstrassCurve<F> {
+    /// Returns the invariant $b_2 = a_1^2 + 4a_2$.
     pub fn b2(&self) -> F {
         b2_from_coeffs::<F>(&self.a1, &self.a2)
     }
+
+    /// Returns the invariant $b_4 = a_1 a_3 + 2a_4$.
     pub fn b4(&self) -> F {
         b4_from_coeffs::<F>(&self.a1, &self.a3, &self.a4)
     }
+
+    /// Returns the invariant $b_6 = a_3^2 + 4a_6$.
     pub fn b6(&self) -> F {
         b6_from_coeffs::<F>(&self.a3, &self.a6)
     }
+
+    /// Returns the invariant
+    ///
+    /// $$
+    /// b_8 = a_1^2 a_6 + 4 a_2 a_6 - a_1 a_3 a_4 + a_2 a_3^2 - a_4^2.
+    /// $$
     pub fn b8(&self) -> F {
-        b8_from_coeffs::<F>(&self.a1, &self.a2, &self.a3, &self.a4, &self.a6)    
+        b8_from_coeffs::<F>(&self.a1, &self.a2, &self.a3, &self.a4, &self.a6)
     }
+
+    /// Returns the discriminant $\Delta$ of the curve.
+    ///
+    /// The curve is non-singular if and only if $\Delta \ne 0$.
     pub fn discriminant(&self) -> F {
         discriminant_from_coeffs::<F>(&self.a1, &self.a2, &self.a3, &self.a4, &self.a6)
     }
 }
-
 
 // -------------------------------------------------------------------
 // Curve predicates
@@ -307,6 +339,9 @@ impl<F: FieldOps + FieldRandom> Curve for WeierstrassCurve<F> {
     type BaseField = F;
     type Point = AffinePoint<F>;
 
+    /// Returns `true` if the given point lies on the curve.
+    ///
+    /// The point at infinity is always considered to be on the curve.
     fn is_on_curve(&self, point: &Self::Point) -> bool {
         if point.infinity {
             true
@@ -319,10 +354,15 @@ impl<F: FieldOps + FieldRandom> Curve for WeierstrassCurve<F> {
         WeierstrassCurve::random_point(self, rng)
     }
 
+    /// Returns the $j$-invariant of the curve.
+    ///
+    /// This is a complete invariant of elliptic curves over algebraically
+    /// closed fields up to isomorphism.
     fn j_invariant(&self) -> F {
         j_inv_from_coeffs(&self.a1, &self.a2, &self.a3, &self.a4, &self.a6)
     }
 
+    /// Returns the $a$-invariants as a vector.
     fn a_invariants(&self) -> Vec<Self::BaseField> {
         WeierstrassCurve::a_invariants(self).to_vec()
     }

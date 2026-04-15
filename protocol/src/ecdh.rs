@@ -1,13 +1,15 @@
 //! Elliptic-curve Diffie–Hellman helpers.
 
-use ec::point_ops::{PointOps};
+use ec::point_ops::PointOps;
 
 use crate::scalar::SecretScalar;
 
 /// Deterministic key pair built from a caller-supplied secret scalar.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct KeyPair<P, const LIMBS: usize> {
+    /// The secret key
     pub secret: SecretScalar<LIMBS>,
+    /// The public key
     pub public: P,
 }
 
