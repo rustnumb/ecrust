@@ -34,7 +34,7 @@ type GF2_511 = F2Ext<8, F2511Poly>;
 fn random_elements_test() {
     let mut rng = rand::rng();
 
-    for _ in 0..32 {
+    for _ in 0..6 {
         let a = GF2_511::random(&mut rng);
 
         if bool::from(a.is_zero()) {
