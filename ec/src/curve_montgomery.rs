@@ -4,19 +4,13 @@
 //!
 //! Given a field `F` of odd characteristic, a Montgomery curve over `F` is given by
 //!
-//! ```text
-//! B y² = x(x² + A x + 1)
-//! ```
-//!
-//! where `B ≠ 0`.
+//! $By^2 = x(x^2+ Ax + 1)$
+//! where $B \ne 0$.
 //!
 //! Given a binary field `F`, a Montgomery curve over `F` is given by
 //!
-//! ```text
-//! y² + xy = x(x² + A x + B²)
-//! ```
-//!
-//! where `B ≠ 0`.
+//! $y^2 + xy = x(x^2 + Ax + B^2)$
+//! where $B \neq 0$.
 //!
 //! # Representation choice
 //!
@@ -34,17 +28,15 @@
 //! additions and doublings, which is especially convenient for constant-time
 //! scalar multiplication.
 
-
-use fp::field_ops::FieldOps;
+use core::fmt;
+use fp::field_ops::{FieldOps, FieldRandom};
 
 use crate::curve_ops::Curve;
 use crate::point_montgomery::KummerPoint;
 
 /// A Montgomery curve
 ///
-/// ```text
-/// B y² = x(x² + A x + 1)
-/// ```
+/// $By^2 = x(x^2+ Ax + 1)$
 ///
 /// over a field `F`.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -53,6 +45,43 @@ pub struct MontgomeryCurve<F: FieldOps> {
     pub b: F,
 }
 
+
+impl<F> fmt::Display for MontgomeryCurve<F>
+where
+    F: FieldOps + fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if F::characteristic()[0] != 2 {
+            if f.alternate() {
+                write!(
+                    f,
+                    "MontgomeryCurve {{\n  By^2 = x(x^2 + Ax + 1)\n  A = {}\n  B = {}\n}}",
+                    self.a, self.b
+                )
+            } else {
+                write!(
+                    f,
+                    "By^2 = x(x^2 + Ax + 1) over (A={}, B={})",
+                    self.a, self.b
+                )
+            }
+        } else {
+            if f.alternate() {
+                write!(
+                    f,
+                    "MontgomeryCurve {{\n  y^2 + xy = x(x^2 + Ax + B^2)\n  A = {}\n  B = {}\n}}",
+                    self.a, self.b
+                )
+            } else {
+                write!(
+                    f,
+                    "y^2 + xy = x(x^2 + Ax + B^2) over (A={}, B={})",
+                    self.a, self.b
+                )
+            }
+        }
+    }
+}
 impl<F: FieldOps + Copy> MontgomeryCurve<F> {
     // -------------------------------------------------------------------
     // Constructor
@@ -75,7 +104,6 @@ impl<F: FieldOps + Copy> MontgomeryCurve<F> {
         }
     }
 
-
     // -------------------------------------------------------------------
     // Invariants and constants
     // -------------------------------------------------------------------
@@ -96,12 +124,27 @@ impl<F: FieldOps + Copy> MontgomeryCurve<F> {
     }
 }
 
+impl<F: FieldOps + Copy + FieldRandom> MontgomeryCurve<F> {
+    pub fn random_point(
+        &self,
+        rng: &mut (impl rand::CryptoRng + rand::Rng),
+    ) -> KummerPoint<F> {
+        loop {
+            let x = F::random(rng);
+            let p = KummerPoint::from_x(x);
+            if self.is_on_curve(&p) {
+                return p;
+            }
+        }
+    }
+}
+
 
 // -------------------------------------------------------------------
 // Curve predicates
 // -------------------------------------------------------------------
 
-impl<F: FieldOps + Copy> Curve for MontgomeryCurve<F> {
+impl<F: FieldOps + Copy+ FieldRandom> Curve for MontgomeryCurve<F> {
     type BaseField = F;
     type Point = KummerPoint<F>;
 
@@ -147,7 +190,7 @@ impl<F: FieldOps + Copy> Curve for MontgomeryCurve<F> {
     }
 
     fn random_point(&self, rng: &mut (impl rand::CryptoRng + rand::Rng)) -> Self::Point {
-        todo!()
+        MontgomeryCurve::random_point(self, rng)
     }
 
     fn j_invariant(&self) -> F {
