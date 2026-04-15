@@ -2,9 +2,6 @@
 //!
 //! Run with:  cargo run --bin demo
 //!
-//! Adjust the concrete type aliases at the top if your project already
-//! defines its own moduli / irreducible polynomials.
-
 use crypto_bigint::{const_prime_monty_params, Uint};
 
 
