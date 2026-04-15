@@ -3,6 +3,15 @@
 use std::ops::{Add, Mul, Neg, Sub};
 use subtle::{Choice, ConditionallySelectable, CtOption};
 
+/// Trait for generating cryptographically secure random field elements.
+///
+/// Separated from [`FieldOps`] so that downstream code that doesn't
+/// need randomness is free of the `rand` dependency.
+pub trait FieldRandom: Sized {
+    /// Sample a uniformly random element using a cryptographic RNG.
+    fn random(rng: &mut (impl rand::CryptoRng + rand::Rng)) -> Self;
+}
+
 pub trait FieldOps:
     Sized
     + Clone
@@ -218,6 +227,7 @@ pub trait FieldOps:
     fn sqrt_ratio(&self, rhs: &Self) -> CtOption<Self> {
         rhs.invert().and_then(|inv_rhs| self.mul(&inv_rhs).sqrt())
     }
+
 
     fn legendre(&self) -> i8;
     fn characteristic() -> Vec<u64>;
