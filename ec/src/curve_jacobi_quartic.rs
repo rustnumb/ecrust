@@ -76,7 +76,7 @@ impl<F: FieldOps> Curve for JacobiQuarticCurve<F> {
         self.contains(&point.x, &point.y)
     }
 
-    fn random_point(&self) -> Self::Point {
+    fn random_point(&self, rng: &mut (impl rand::CryptoRng + rand::Rng)) -> Self::Point {
         todo!()
     }
 

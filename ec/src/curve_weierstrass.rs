@@ -20,7 +20,7 @@
 //!
 //! via the convenience constructor [`WeierstrassCurve::new_short`].
 
-use fp::field_ops::FieldOps;
+use fp::field_ops::{FieldOps, FieldRandom};
 
 use crate::curve_ops::Curve;
 use crate::point_weierstrass::AffinePoint;
@@ -42,7 +42,7 @@ pub struct WeierstrassCurve<F: FieldOps> {
     pub a6: F,
 }
 
-impl<F: FieldOps> WeierstrassCurve<F> {
+impl<F: FieldOps + FieldRandom> WeierstrassCurve<F> {
     // -------------------------------------------------------------------
     // Constructors
     // -------------------------------------------------------------------
@@ -127,6 +127,33 @@ impl<F: FieldOps> WeierstrassCurve<F> {
         };
 
         lhs == rhs
+    }
+
+    pub fn random_point(&self, rng: &mut (impl rand::CryptoRng + rand::Rng)) -> AffinePoint<F>{
+        assert!(F::characteristic()[0] != 2, "random_point currently implemented for odd characteristic");
+
+        let two = <F as FieldOps>::double(&F::one());
+        let two_inv = two.invert().into_option().expect("2 must be invertible");
+
+        loop {
+            let x = F::random(rng);
+
+            let b = self.a1 * x + self.a3;
+            let x2 = <F as FieldOps>::square(&x);
+            let rhs = x * x2 + self.a2 * x2 + self.a4 * x + self.a6;
+
+            // Solve y^2 + b y = rhs via discriminant:
+            // disc = b^2 + 4 rhs
+            let disc = <F as FieldOps>::square(&b)
+                + <F as FieldOps>::double(&<F as FieldOps>::double(&rhs));
+
+            if let Some(sqrt_disc) = disc.sqrt().into_option() {
+                let y = (-b + sqrt_disc) * two_inv;
+                let p = AffinePoint::new(x, y);
+                debug_assert!(self.is_on_curve(&p));
+                return p;
+            }
+        }
     }
 }
 
@@ -253,7 +280,7 @@ impl<F: FieldOps> WeierstrassCurve<F> {
 // Curve predicates
 // -------------------------------------------------------------------
 
-impl<F: FieldOps> Curve for WeierstrassCurve<F> {
+impl<F: FieldOps + FieldRandom> Curve for WeierstrassCurve<F> {
     type BaseField = F;
     type Point = AffinePoint<F>;
 
@@ -265,8 +292,8 @@ impl<F: FieldOps> Curve for WeierstrassCurve<F> {
         }
     }
 
-    fn random_point(&self) -> Self::Point {
-        todo!()
+    fn random_point(&self, rng: &mut (impl rand::CryptoRng + rand::Rng)) -> Self::Point {
+        WeierstrassCurve::random_point(self, rng)
     }
 
     fn j_invariant(&self) -> F {

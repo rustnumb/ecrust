@@ -17,7 +17,7 @@
 //! ```
 //!
 
-use fp::field_ops::FieldOps;
+use fp::field_ops::{FieldOps, FieldRandom};
 
 use crate::curve_ops::Curve;
 use crate::curve_weierstrass::WeierstrassCurve;
@@ -29,7 +29,7 @@ pub struct JacobiIntersectionCurve<F: FieldOps> {
     pub a: F,
 }
 
-impl<F: FieldOps> JacobiIntersectionCurve<F> {
+impl<F: FieldOps + FieldRandom> JacobiIntersectionCurve<F> {
     /// Construct a Jacobi intersection from its parameter `a`.
     pub fn new(a: F) -> Self {
         assert!(F::characteristic()[0] != 2, "Jacobi intersections require char(F) != 2");
@@ -63,7 +63,7 @@ impl<F: FieldOps> JacobiIntersectionCurve<F> {
     }
 }
 
-impl<F: FieldOps> Curve for JacobiIntersectionCurve<F> {
+impl<F: FieldOps + FieldRandom> Curve for JacobiIntersectionCurve<F> {
     type BaseField = F;
     type Point = JacobiIntersectionPoint<F>;
 
@@ -71,7 +71,7 @@ impl<F: FieldOps> Curve for JacobiIntersectionCurve<F> {
         self.contains(&point.s, &point.c, &point.d)
     }
 
-    fn random_point(&self) -> Self::Point {
+    fn random_point(&self, rng: &mut (impl rand::CryptoRng + rand::Rng)) -> Self::Point {
         todo!()
     }
 

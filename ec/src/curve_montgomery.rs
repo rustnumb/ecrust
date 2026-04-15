@@ -146,7 +146,7 @@ impl<F: FieldOps + Copy> Curve for MontgomeryCurve<F> {
         }
     }
 
-    fn random_point(&self) -> Self::Point {
+    fn random_point(&self, rng: &mut (impl rand::CryptoRng + rand::Rng)) -> Self::Point {
         todo!()
     }
 
