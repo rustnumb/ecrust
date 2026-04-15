@@ -2,20 +2,20 @@
 //!
 //! # Equation
 //!
-//! ```text
-//! s² + c² = 1,
-//! a s² + d² = 1
-//! ```
+//! $$
+//! s^2 + c^2 = 1,
+//! \quad
+//! a s^2 + d^2 = 1
+//! $$
 //!
-//! over a field `F` of characteristic different from `2`.
+//! over a field $F$ with $\mathrm{char}(F) \ne 2$.
 //!
 //! The EFD records that this model is birationally equivalent to the Weierstrass
 //! curve
 //!
-//! ```text
-//! y² = x³ + (2-a)x² + (1-a)x.
-//! ```
-//!
+//! $$
+//! y^2 = x^3 + (2 - a)x^2 + (1 - a)x.
+//! $$
 
 use fp::field_ops::FieldOps;
 
@@ -24,15 +24,30 @@ use crate::curve_weierstrass::WeierstrassCurve;
 use crate::point_jacobi_intersection::JacobiIntersectionPoint;
 
 /// A Jacobi-intersection curve.
+///
+/// With the equation
+/// $$
+/// s^2 + c^2 = 1,
+/// \quad
+/// a s^2 + d^2 = 1
+/// $$
+/// or
+/// $$
+/// y^2 = x^3 + (2 - a)x^2 + (1 - a)x.
+/// $$
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct JacobiIntersectionCurve<F: FieldOps> {
+    /// The variable a in the definition of the curve
     pub a: F,
 }
 
 impl<F: FieldOps> JacobiIntersectionCurve<F> {
     /// Construct a Jacobi intersection from its parameter `a`.
     pub fn new(a: F) -> Self {
-        assert!(F::characteristic()[0] != 2, "Jacobi intersections require char(F) != 2");
+        assert!(
+            F::characteristic()[0] != 2,
+            "Jacobi intersections require char(F) != 2"
+        );
         assert!(Self::is_smooth(&a), "singular Jacobi intersection");
         Self { a }
     }
@@ -51,6 +66,8 @@ impl<F: FieldOps> JacobiIntersectionCurve<F> {
         s2 + c2 == F::one() && self.a * s2 + d2 == F::one()
     }
 
+    /// Returns the corresponding invariant `a` (not the a-invariants
+    /// of the Jacobian)
     pub fn a_invariants(&self) -> [F; 1] {
         [self.a]
     }
@@ -59,7 +76,13 @@ impl<F: FieldOps> JacobiIntersectionCurve<F> {
     /// `y² = x³ + (2-a)x² + (1-a)x`.
     pub fn to_weierstrass_curve(&self) -> WeierstrassCurve<F> {
         let two = <F as FieldOps>::double(&F::one());
-        WeierstrassCurve::new(F::zero(), two - self.a, F::zero(), F::one() - self.a, F::zero())
+        WeierstrassCurve::new(
+            F::zero(),
+            two - self.a,
+            F::zero(),
+            F::one() - self.a,
+            F::zero(),
+        )
     }
 }
 

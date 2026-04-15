@@ -12,3 +12,6 @@ subtle = "2.6"
 [dev-dependencies]
 crypto-bigint = { workspace = true }
 fp = { workspace = true }
+
+[package.metadata.docs.rs]
+rustdoc-args = [ "--html-in-header", "katex-header.html" ]

@@ -14,11 +14,19 @@ use subtle::ConditionallySelectable;
 /// need access to the curve parameters. The clean abstraction boundary is a
 /// method-based API taking `&Self::Curve` explicitly.
 pub trait PointOps: Clone + ConditionallySelectable {
+    /// The base field $\mathbb{F}_{p^M}$
     type BaseField: FieldOps;
+
+    /// The elliptic curve we're working on
     type Curve;
 
+    /// Returns the identity
     fn identity(curve: &Self::Curve) -> Self;
+
+    /// Returns true if and only if `self` is the identity
     fn is_identity(&self) -> bool;
+
+    /// Negate a point
     fn negate(&self, curve: &Self::Curve) -> Self;
 
     /// Scalar multiplication  `[k]P`  (variable-time double-and-add).
@@ -34,5 +42,6 @@ pub trait PointOps: Clone + ConditionallySelectable {
 /// Montgomery x-only points). Protocols that need addition (like ElGamal)
 /// should bound on `PointAdd` instead of plain `PointOps`.
 pub trait PointAdd: PointOps {
+    /// Add a pair of points
     fn add(&self, other: &Self, curve: &Self::Curve) -> Self;
 }

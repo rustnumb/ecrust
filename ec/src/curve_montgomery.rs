@@ -2,38 +2,37 @@
 //!
 //! # Equation
 //!
-//! Given a field `F` of odd characteristic, a Montgomery curve over `F` is given by
+//! Given a field $F$ of odd characteristic, a Montgomery curve over $F$ is given by
 //!
-//! ```text
-//! B y² = x(x² + A x + 1)
-//! ```
+//! $$
+//! B y^2 = x(x^2 + A x + 1)
+//! $$
 //!
-//! where `B ≠ 0`.
+//! where $B \ne 0$.
 //!
-//! Given a binary field `F`, a Montgomery curve over `F` is given by
+//! Given a binary field $F$, a Montgomery curve over $F$ is given by
 //!
-//! ```text
-//! y² + xy = x(x² + A x + B²)
-//! ```
+//! $$
+//! y^2 + xy = x(x^2 + A x + B^2)
+//! $$
 //!
-//! where `B ≠ 0`.
+//! where $B \ne 0$.
 //!
 //! # Representation choice
 //!
-//! In this module, the curve parameters are stored as the pair `(A, B)`.
+//! In this module, the curve parameters are stored as the pair $(A, B)$.
 //! The native point representation for arithmetic is **x-only projective**
 //! coordinates on the Kummer line, rather than full affine points.
 //!
 //! # Why x-only arithmetic?
 //!
 //! On a Montgomery curve, scalar multiplication can be implemented using only
-//! x-coordinates via the Montgomery ladder. This works on the Kummer quotient
-//! `E / {±1}`, where a point `P` and its inverse `-P` have the same image.
+//! $x$-coordinates via the Montgomery ladder. This works on the Kummer quotient
+//! $E / \{\pm 1\}$, where a point $P$ and its inverse $-P$ have the same image.
 //!
 //! The advantage is that the ladder uses a uniform sequence of differential
 //! additions and doublings, which is especially convenient for constant-time
 //! scalar multiplication.
-
 
 use fp::field_ops::FieldOps;
 
@@ -49,7 +48,9 @@ use crate::point_montgomery::KummerPoint;
 /// over a field `F`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MontgomeryCurve<F: FieldOps> {
+    /// The invariant $A$ in the equation of the montgomery curve
     pub a: F,
+    /// The invariant $B$ in the equation of the montgomery curve
     pub b: F,
 }
 
@@ -64,6 +65,7 @@ impl<F: FieldOps + Copy> MontgomeryCurve<F> {
         Self { a, b }
     }
 
+    /// True if and only if the curve is smooth
     pub fn is_smooth(a: &F, b: &F) -> bool {
         if F::characteristic()[0] != 2 {
             // In odd char, smoothness criterion is just b != 0 and a != 2, -2
@@ -74,7 +76,6 @@ impl<F: FieldOps + Copy> MontgomeryCurve<F> {
             !bool::from(b.is_zero())
         }
     }
-
 
     // -------------------------------------------------------------------
     // Invariants and constants
@@ -96,7 +97,6 @@ impl<F: FieldOps + Copy> MontgomeryCurve<F> {
     }
 }
 
-
 // -------------------------------------------------------------------
 // Curve predicates
 // -------------------------------------------------------------------
@@ -109,8 +109,7 @@ impl<F: FieldOps + Copy> Curve for MontgomeryCurve<F> {
     fn is_on_curve(&self, point: &Self::Point) -> bool {
         if point.is_identity() {
             true
-        }
-        else {
+        } else {
             // Normalise projective (X : Z) to affine x = X / Z.
             let z_inv = <F as FieldOps>::invert(&point.z);
             if bool::from(z_inv.is_none()) {
@@ -126,13 +125,11 @@ impl<F: FieldOps + Copy> Curve for MontgomeryCurve<F> {
                 let binv = <F as FieldOps>::invert(&self.b).unwrap();
                 let sum = xcubed + axsq + x;
                 <F as FieldOps>::legendre(&(sum * binv)) > -1i8
-            }
-            else {
+            } else {
                 if bool::from(x.is_zero()) {
                     // The point with x = 0 always lies on the curve.
                     true
-                }
-                else {
+                } else {
                     // If x != 0, set t = y/x, which gives the equation t^2 + t = x + a + b^2/x.
                     // So x is the x-coordinate of a point on the curve iff there is some t in F
                     // s.t. t^2 + t = x + a + b^2/x, which translates into
@@ -163,15 +160,16 @@ impl<F: FieldOps + Copy> Curve for MontgomeryCurve<F> {
             let asq_min_three = asq - three;
             let asq_min_three_cubed = asq_min_three * <F as FieldOps>::square(&asq_min_three);
 
-            let asq_min_four_inv = <F as FieldOps>::invert(&(asq - four)).into_option().expect("a should be different from 2, -2.");
+            let asq_min_four_inv = <F as FieldOps>::invert(&(asq - four))
+                .into_option()
+                .expect("a should be different from 2, -2.");
 
             twofivesix * asq_min_three_cubed * asq_min_four_inv
-        }
-        else {
+        } else {
             // The j-invariant of `y² + xy = x(x² + A x + B²)` is 1/b⁴
             assert!(!bool::from(self.b.is_zero()));
             let bsq = <F as FieldOps>::square(&self.b);
-            let bfourth = <F as FieldOps>::square(& bsq);
+            let bfourth = <F as FieldOps>::square(&bsq);
             <F as FieldOps>::invert(&bfourth).unwrap()
         }
     }

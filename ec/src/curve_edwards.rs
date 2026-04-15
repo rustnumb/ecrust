@@ -2,25 +2,31 @@
 //!
 //! # Odd characteristic
 //!
-//! ```text
-//! x² + y² = 1 + d·x²·y²
-//! ```
+//! The curve is given by
 //!
-//! Parameters: `d1 = 0` (unused), `d2 = d`.
-//! Identity: `(0, 1)`.  Complete when `d` is not a square.
+//! $$
+//! x^2 + y^2 = 1 + d x^2 y^2
+//! $$
 //!
-//! # Characteristic 2
+//! Parameters: $d_1 = 0$ (unused), $d_2 = d$.
+//! Identity: $(0, 1)$. Complete when $d$ is not a square.
 //!
-//! ```text
-//! d₁(x + y) + d₂(x² + y²) = xy + xy(x + y) + x²y²
-//! ```
+//! # Characteristic $2$
 //!
-//! Parameters: `d1`, `d2` with `d₁ ≠ 0`, `d₂ ≠ d₁² + d₁`.
-//! Identity: `(0, 0)`.  Complete when `Tr(d₂) = 1`.
+//! The curve is given by
 //!
-//! Reference (char 2): Bernstein–Lange–Rezaeian Farashahi,
-//!   "Binary Edwards Curves", 2008.
-//! Reference (odd char): <https://hyperelliptic.org/EFD/g1p/auto-edwards.html>
+//! $$
+//! d_1(x + y) + d_2(x^2 + y^2)
+//! = xy + xy(x + y) + x^2 y^2
+//! $$
+//!
+//! Parameters: $d_1, d_2$ with $d_1 \ne 0$, $d_2 \ne d_1^2 + d_1$.
+//! Identity: $(0, 0)$. Complete when $\mathrm{Tr}(d_2) = 1$.
+//!
+//! # References
+//!
+//! - Binary Edwards curves (characteristic $2$): Bernstein–Lange–Rezaeian Farashahi (2008)
+//! - Odd characteristic: <https://hyperelliptic.org/EFD/g1p/auto-edwards.html>
 
 use fp::field_ops::FieldOps;
 
@@ -33,7 +39,9 @@ use crate::point_edwards::EdwardsPoint;
 /// In characteristic 2 both `d1` and `d2` are used.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EdwardsCurve<F: FieldOps> {
+    /// The invariant d1 in the equation
     pub d1: F,
+    /// The invariant d2 in the equation
     pub d2: F,
 }
 
@@ -45,7 +53,10 @@ impl<F: FieldOps> EdwardsCurve<F> {
         assert!(F::characteristic()[0] != 2, "use new_binary() for char 2");
         assert!(d != F::zero(), "d must be nonzero");
         assert!(d != F::one(), "d must not be 1");
-        Self { d1: F::zero(), d2: d }
+        Self {
+            d1: F::zero(),
+            d2: d,
+        }
     }
 
     /// Construct a binary Edwards curve
@@ -113,15 +124,20 @@ impl<F: FieldOps> Curve for EdwardsCurve<F> {
             let omd4 = <F as FieldOps>::square(&omd2);
             let denom = d * omd4;
 
-            numer * denom.invert().into_option()
-                .expect("d(1-d)^4 must be invertible")
+            numer
+                * denom
+                    .invert()
+                    .into_option()
+                    .expect("d(1-d)^4 must be invertible")
         } else {
             // j = 1 / (d₁⁴ (d₁⁴ + d₁² + d₂²))
             let d1_sq = <F as FieldOps>::square(&self.d1);
             let d1_4 = <F as FieldOps>::square(&d1_sq);
             let d2_sq = <F as FieldOps>::square(&self.d2);
             let denom = d1_4 * (d1_4 + d1_sq + d2_sq);
-            denom.invert().into_option()
+            denom
+                .invert()
+                .into_option()
                 .expect("j-invariant denominator must be invertible")
         }
     }
