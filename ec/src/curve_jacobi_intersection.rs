@@ -90,6 +90,12 @@ impl<F: FieldOps + FieldRandom> JacobiIntersectionCurve<F> {
         [self.a]
     }
 
+    /// Sample a random affine point on this Jacobi-intersection curve using the
+    /// provided RNG.
+    ///
+    /// The method repeatedly samples `s` and then solves the defining quadrics
+    /// for `c` and `d` by square-root extraction, returning a point
+    /// `(s, c, d)` on the curve.
     pub fn random_point(&self, rng: &mut (impl rand::CryptoRng + rand::Rng)) -> JacobiIntersectionPoint<F> {
         loop {
             let s = F::random(rng);

@@ -93,6 +93,11 @@ impl<F: FieldOps + FieldRandom> JacobiQuarticCurve<F> {
         JacobiQuarticPoint::identity()
     }
 
+    /// Sample a random affine point on this Jacobi quartic using the provided RNG.
+    ///
+    /// The method repeatedly samples `x`, evaluates the right-hand side of the
+    /// quartic equation, and returns `(x, y)` when that value is a square in the
+    /// base field.
     pub fn random_point(&self, rng: &mut (impl rand::CryptoRng + rand::Rng)) -> JacobiQuarticPoint<F> {
         loop {
             let x = F::random(rng);

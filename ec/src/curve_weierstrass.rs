@@ -172,6 +172,11 @@ impl<F: FieldOps + FieldRandom> WeierstrassCurve<F> {
         lhs == rhs
     }
 
+    /// Sample a random affine point on this curve using the provided RNG.
+    ///
+    /// This currently uses a square-root-based construction and is implemented
+    /// only for odd characteristic. It returns a finite affine point `P` such
+    /// that `self.is_on_curve(&P)` holds.
     pub fn random_point(&self, rng: &mut (impl rand::CryptoRng + rand::Rng)) -> AffinePoint<F>{
         assert!(F::characteristic()[0] != 2, "random_point currently implemented for odd characteristic");
 

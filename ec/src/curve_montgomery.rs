@@ -134,6 +134,11 @@ impl<F: FieldOps + Copy> MontgomeryCurve<F> {
 }
 
 impl<F: FieldOps + Copy + FieldRandom> MontgomeryCurve<F> {
+    /// Sample a random Kummer/x-line point on this curve using the provided RNG.
+    ///
+    /// The method repeatedly samples an affine `x`-coordinate and returns the
+    /// corresponding projective Kummer point `(x:1)` once it represents a valid
+    /// point on the curve.
     pub fn random_point(
         &self,
         rng: &mut (impl rand::CryptoRng + rand::Rng),
