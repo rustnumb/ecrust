@@ -1,4 +1,3 @@
-// #![deny(missing_docs)]
 //! Base prime-field element $\mathbb{F}_p = \mathbb{Z} / p\mathbb{Z}$
 //! backed by `crypto-bigint`.
 

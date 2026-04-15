@@ -1,4 +1,3 @@
-#![deny(missing_docs)]
 //! Generic extension field  $\mathbb{F}_{p^M} = \mathbb{F}_p\[x\] / (f(x))$.
 //!
 //! # Overview

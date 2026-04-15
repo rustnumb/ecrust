@@ -1,4 +1,3 @@
-// #![deny(missing_docs)]
 //! Core trait that every field element in the tower must implement.
 
 use std::ops::{Add, Mul, Neg, Sub};
