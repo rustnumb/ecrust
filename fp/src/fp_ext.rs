@@ -96,16 +96,16 @@ implement for a new field
 /// # Conventions
 ///
 /// The input value `N` (type: usize) in the definition of the trait should
-/// be chosen so that p^M fits in a UInt<N>. One should supply the following
+/// be chosen so that $p^M$ fits in a `UInt<N>`. One should supply the following
 /// data:
-/// * `ORDER`: (p^M - 1) (type: UInt<N>)
-/// * `HALF_ORDER`: (p^M - 1) / 2 (type: UInt<N>)
-/// * `S`: So that (p^M - 1) = 2^S * T with T odd (type: u64)
-/// * `T`: So that (p^M - 1) = 2^S * T with T odd (type: UInt<N>)
-/// * `PROJENATOR_EXP`: (T - 1) / 2 (type: UInt<N>)
-/// * `TWOSM1`: 2^(S - 1) (type: UInt<N>)
-/// * `root_of_unity() -> [FpElement<MOD, LIMBS>; M]`: 2^S root of unity
-///   in FpM
+/// * `ORDER`: $p^M - 1$ (type: `UInt<N>`)
+/// * `HALF_ORDER`: $(p^M - 1) / 2$ (type: `UInt<N>`)
+/// * `S`: So that $p^M - 1 = 2^S * T$ with $T$ odd (type: `u64`)
+/// * `T`: So that $p^M - 1 = 2^S * T$ with $T$ odd (type: `UInt<N>`)
+/// * `PROJENATOR_EXP`: $(T - 1) / 2$ (type: `UInt<N>`)
+/// * `TWOSM1`: $2^(S - 1)$ (type: `UInt<N>`)
+/// * `root_of_unity() -> [FpElement<MOD, LIMBS>; M]`: $2^S$ root of unity
+///   in $\mathbb{F}_{p^M}$.
 ///
 /// # Example: F_(19^2)
 /// ```ignore
@@ -922,7 +922,7 @@ where
     /// The inverse of `self` and square root fo `rhs`. Theq former is
     /// none if and only if `self` is nonzero and the latter is not
     /// none if and only if there exists a squareroot of `rhs` in FpM
-    /// (type: (CtOption<Self>, CtOption<self>))
+    /// (type: (`CtOption<Self>`, `CtOption<Self>`))
     fn invertme_sqrtother(&self, rhs: &Self) -> (CtOption<Self>, CtOption<Self>) {
         let is_invertible = !self.is_zero();
 
@@ -948,7 +948,7 @@ where
     ///
     /// Computes `sqrt(self/rhs)` in one exponentiation using the
     /// trick from Mike Scott's "Tricks of the trade" article Section
-    /// 2 https://eprint.iacr.org/2020/1497
+    /// 2 <https://eprint.iacr.org/2020/1497>
     ///
     /// # Arguments
     ///
