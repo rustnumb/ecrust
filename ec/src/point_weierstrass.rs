@@ -20,8 +20,7 @@
 // WARNING: SOME OF THE FUNCTIONS BELOW USE BRANCHES DEPENDING
 // ON WHETHER A POINT IS AT INFINITY OR NOT!!!!
 
-
-
+use core::fmt;
 //use std::os::unix::raw::ino_t;
 //use crypto_bigint::modular::ConstMontyForm;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
@@ -55,6 +54,25 @@ where
             (true, false)  => false,
             (false, true)  => false,
             (false, false) => self.x == other.x && self.y == other.y,
+        }
+    }
+}
+
+impl<F> fmt::Display for AffinePoint<F>
+where
+    F: FieldOps + fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.infinity {
+            if f.alternate() {
+                write!(f, "AffinePoint {{ O }}")
+            } else {
+                write!(f, "O")
+            }
+        } else if f.alternate() {
+            write!(f, "AffinePoint {{ x = {}, y = {} }}", self.x, self.y)
+        } else {
+            write!(f, "({}, {})", self.x, self.y)
         }
     }
 }

@@ -20,6 +20,7 @@
 //!
 //! via the convenience constructor [`WeierstrassCurve::new_short`].
 
+use core::fmt;
 use fp::field_ops::{FieldOps, FieldRandom};
 
 use crate::curve_ops::Curve;
@@ -40,6 +41,28 @@ pub struct WeierstrassCurve<F: FieldOps> {
     pub a3: F,
     pub a4: F,
     pub a6: F,
+}
+
+
+impl<F> fmt::Display for WeierstrassCurve<F>
+where
+    F: FieldOps + fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if f.alternate() {
+            write!(
+                f,
+                "WeierstrassCurve {{\n  y^2 + ({})xy + ({})y = x^3 + ({})x^2 + ({})x + ({})\n}}",
+                self.a1, self.a3, self.a2, self.a4, self.a6
+            )
+        } else {
+            write!(
+                f,
+                "y^2 + ({})xy + ({})y = x^3 + ({})x^2 + ({})x + ({})",
+                self.a1, self.a3, self.a2, self.a4, self.a6
+            )
+        }
+    }
 }
 
 impl<F: FieldOps + FieldRandom> WeierstrassCurve<F> {
