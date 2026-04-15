@@ -1,6 +1,6 @@
 //! Base binary field element F2 = Z / 2Z
 
-use crate::field_ops::FieldOps;
+use crate::field_ops::{FieldOps, FieldRandom};
 use core::ops::{Add, Mul, Neg, Sub};
 use crypto_bigint::Uint;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
@@ -178,5 +178,26 @@ impl FieldOps for F2Element {
     }
     fn degree() -> u32 {
         1
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Pretty Display
+// ---------------------------------------------------------------------------
+
+impl std::fmt::Display for F2Element {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_u8())
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Cryptographically secure random sampling
+// ---------------------------------------------------------------------------
+
+impl FieldRandom for F2Element {
+    fn random(rng: &mut (impl rand::CryptoRng + rand::Rng)) -> Self {
+        let bit = (rng.next_u32() & 1) as u64;
+        Self::from_u64(bit)
     }
 }

@@ -1,5 +1,5 @@
 use crypto_bigint::{const_prime_monty_params, Uint};
-use fp::field_ops::FieldOps;
+use fp::field_ops::{FieldOps, FieldRandom};
 use fp::fp_element::FpElement;
 use fp::fp_ext::{FpExt, IrreduciblePoly, TonelliShanksConstants}; // ← was missing IrreduciblePoly
 use rand::RngExt;
@@ -32,11 +32,69 @@ impl TonelliShanksConstants<Fp19Mod, 1, 2, 1> for TSQuad {
 
 type F19_2 = FpExt<Fp19Mod, 1, 2, 1, QuadPoly, TSQuad>;
 
+
+
 fn fp(n: u64) -> Fp19 {
     Fp19::from_u64(n)
 }
 fn el(a: u64, b: u64) -> F19_2 {
     F19_2::new([fp(a), fp(b)])
+}
+
+// -------------------------
+// Random Elements
+// ------------------------
+const_prime_monty_params!(Fp97283Mod, Uint<1>, "0000000000017C03", 1);
+
+type Fp97283 = FpElement<Fp97283Mod, 1>;
+
+struct Poly97283Cubic;
+struct TS97283Cubic;
+
+impl IrreduciblePoly<Fp97283Mod, 1, 3> for Poly97283Cubic {
+    fn modulus() -> [FpElement<Fp97283Mod, 1>; 3] {
+        // x^3 + x + 1
+        [
+            Fp97283::from_u64(1),
+            Fp97283::from_u64(1),
+            Fp97283::from_u64(0),
+        ]
+    }
+}
+
+impl TonelliShanksConstants<Fp97283Mod, 1, 3, 1> for TS97283Cubic {
+    // p^3 - 1 = 920684569564186 = 2 * 460342284782093
+    const ORDER: Uint<1> = Uint::<1>::from_u64(920_684_569_564_186);
+    const HALF_ORDER: Uint<1> = Uint::<1>::from_u64(460_342_284_782_093);
+    const S: u64 = 1;
+    const T: Uint<1> = Uint::<1>::from_u64(460_342_284_782_093);
+    const PROJENATOR_EXP: Uint<1> = Uint::<1>::from_u64(230_171_142_391_046);
+    const TWOSM1: Uint<1> = Uint::<1>::from_u64(1);
+
+    fn root_of_unity() -> [FpElement<Fp97283Mod, 1>; 3] {
+        [Fp97283::one(), Fp97283::zero(), Fp97283::zero()]
+    }
+}
+
+type Fp97283_3 = FpExt<Fp97283Mod, 1, 3, 1, Poly97283Cubic, TS97283Cubic>;
+
+
+#[test]
+fn random_elements_test() {
+    let mut rng = rand::rng();
+
+    for _ in 0..32 {
+        let a = Fp97283_3::random(&mut rng);
+
+        if bool::from(a.is_zero()) {
+            continue;
+        }
+
+        let a_inv = a.invert().unwrap();
+        let prod = a_inv * a;
+
+        assert!(bool::from(prod.is_one()));
+    }
 }
 
 // -----------------------------------------------------------------------
@@ -617,3 +675,5 @@ fn sqrtratio_nr_cubic() {
     let mysqrt = a.sqrt_ratio(&b);
     assert!(bool::from(mysqrt.is_none()));
 }
+
+

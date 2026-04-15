@@ -292,7 +292,7 @@ where
 {
     /// Sample a uniformly random element of Fp using a CSPRNG.
     ///
-    /// Internally uses `crypto_bigint::RandomMod` to get a value in `[0, p)`.
+    /// Internally uses `crypto_bigint::RandomMod::random_mod_vartime` to get a value in `[0, p)`.
     fn random(rng: &mut (impl rand::CryptoRng + rand::Rng)) -> Self {
         // Recover the modulus p the same way `characteristic()` does.
         let minus_one = ConstMontyForm::<MOD, LIMBS>::ZERO - ConstMontyForm::<MOD, LIMBS>::ONE;

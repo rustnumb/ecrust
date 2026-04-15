@@ -37,7 +37,7 @@
 use core::ops::{Add, Mul, Neg, Sub};
 use std::marker::PhantomData;
 
-use crate::field_ops::FieldOps;
+use crate::field_ops::{FieldOps, FieldRandom};
 use crate::fp_element::FpElement;
 use crypto_bigint::{modular::ConstPrimeMontyParams, Uint};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
@@ -271,6 +271,48 @@ where
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "FpExt{:?}", self.coeffs.as_ref())
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Pretty Display — polynomial form over Fp
+// ---------------------------------------------------------------------------
+//
+// Shows the element as  `a_0 + a_1·x + a_2·x² + ...`  with zero
+// coefficients suppressed.  The zero element prints as `0`.
+
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS> std::fmt::Display
+    for FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
+where
+    MOD: ConstPrimeMontyParams<LIMBS>,
+    P: IrreduciblePoly<MOD, LIMBS, M>,
+    TSCONSTS: TonelliShanksConstants<MOD, LIMBS, M, N>,
+    FpElement<MOD, LIMBS>: std::fmt::Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut terms = Vec::new();
+
+        for (i, coeff) in self.coeffs.iter().enumerate() {
+            if bool::from(coeff.is_zero()) {
+                continue;
+            }
+
+            let is_one = bool::from(coeff.is_one());
+
+            match i {
+                0 => terms.push(format!("{coeff}")),
+                1 if is_one => terms.push("x".to_string()),
+                1 => terms.push(format!("{coeff}*x")),
+                _ if is_one => terms.push(format!("x^{i}")),
+                _ => terms.push(format!("{coeff}*x^{i}")),
+            }
+        }
+
+        if terms.is_empty() {
+            write!(f, "0")
+        } else {
+            write!(f, "{}", terms.join(" + "))
+        }
     }
 }
 
@@ -1008,5 +1050,24 @@ where
     /// Degree of Fp^M over the prime subfield Fp.
     fn degree() -> u32 {
         M as u32
+    }
+}
+
+// ===========================================================================
+// Cryptographically secure random sampling
+// ===========================================================================
+
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS> FieldRandom
+    for FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
+where
+    MOD: ConstPrimeMontyParams<LIMBS>,
+    P: IrreduciblePoly<MOD, LIMBS, M>,
+    TSCONSTS: TonelliShanksConstants<MOD, LIMBS, M, N>,
+{
+    /// Sample a uniformly random element of Fp^M by drawing each
+    /// coefficient independently from Fp.
+    fn random(rng: &mut (impl rand::CryptoRng + rand::Rng)) -> Self {
+        let coeffs = std::array::from_fn(|_| FpElement::<MOD, LIMBS>::random(rng));
+        Self::new(coeffs)
     }
 }
