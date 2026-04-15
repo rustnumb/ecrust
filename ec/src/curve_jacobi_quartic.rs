@@ -1,10 +1,8 @@
 //! Elliptic curve definition in (extended) Jacobi quartic form.
 //!
 //! # Equation
-//!
-//! ```text
-//! y² = d x⁴ + 2 a x² + 1
-//! ```
+//
+//! $y^2 = d x^4 + 2 a x^2 + 1$
 //!
 //! over a field `F` of characteristic different from `2`.
 //!
@@ -12,24 +10,43 @@
 //! *Jacobi Quartic Curves Revisited* (2009), which treats the more general
 //! “extended Jacobi quartic” family with arbitrary `a` and `d` satisfying
 //! `d(a²-d) ≠ 0`.
-
-use fp::field_ops::FieldOps;
+use core::fmt;
+use fp::field_ops::{FieldOps, FieldRandom};
 
 use crate::curve_ops::Curve;
 use crate::point_jacobi_quartic::JacobiQuarticPoint;
 
 /// A Jacobi quartic curve
 ///
-/// ```text
-/// y² = d x⁴ + 2 a x² + 1
-/// ```
+/// $y^2 = d x^4 + 2 a x^2 + 1$
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct JacobiQuarticCurve<F: FieldOps> {
     pub a: F,
     pub d: F,
 }
 
-impl<F: FieldOps> JacobiQuarticCurve<F> {
+impl<F> fmt::Display for JacobiQuarticCurve<F>
+where
+    F: FieldOps + fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if f.alternate() {
+            write!(
+                f,
+                "JacobiQuarticCurve {{\n  y^2 = d x^4 + 2 a x^2 + 1\n  a = {}\n  d = {}\n}}",
+                self.a, self.d
+            )
+        } else {
+            write!(
+                f,
+                "y^2 = ({})x^4 + 2({})x^2 + 1",
+                self.d, self.a
+            )
+        }
+    }
+}
+
+impl<F: FieldOps + FieldRandom> JacobiQuarticCurve<F> {
     /// Construct a Jacobi quartic curve from `(a, d)`.
     pub fn new(a: F, d: F) -> Self {
         assert!(F::characteristic()[0] != 2, "Jacobi quartics require char(F) != 2");
@@ -38,7 +55,7 @@ impl<F: FieldOps> JacobiQuarticCurve<F> {
     }
 
     /// Smoothness criterion from the discriminant
-    /// `Δ = 256 d (a² - d)² ≠ 0`.
+    /// $\delta = 256d(a^2 - d)^2 \neq 0$.
     pub fn is_smooth(a: &F, d: &F) -> bool {
         if bool::from(d.is_zero()) {
             return false;
@@ -47,7 +64,7 @@ impl<F: FieldOps> JacobiQuarticCurve<F> {
         a2 != *d
     }
 
-    /// Check whether `(x, y)` lies on `y² = d x⁴ + 2 a x² + 1`.
+    /// Check whether `(x, y)` lies on  $y^2 = d x^4 + 2 a x^2 + 1$.
     pub fn contains(&self, x: &F, y: &F) -> bool {
         let x2 = <F as FieldOps>::square(x);
         let x4 = <F as FieldOps>::square(&x2);
@@ -66,9 +83,27 @@ impl<F: FieldOps> JacobiQuarticCurve<F> {
     pub fn neutral_point(&self) -> JacobiQuarticPoint<F> {
         JacobiQuarticPoint::identity()
     }
+
+    pub fn random_point(&self, rng: &mut (impl rand::CryptoRng + rand::Rng)) -> JacobiQuarticPoint<F> {
+        loop {
+            let x = F::random(rng);
+            let x2 = <F as FieldOps>::square(&x);
+            let x4 = <F as FieldOps>::square(&x2);
+            let rhs = self.d * x4
+                + <F as FieldOps>::double(&F::one()) * self.a * x2
+                + F::one();
+
+            if let Some(y) = rhs.sqrt().into_option() {
+                let p = JacobiQuarticPoint::new(x, y);
+                debug_assert!(self.is_on_curve(&p));
+                return p;
+            }
+        }
+
+    }
 }
 
-impl<F: FieldOps> Curve for JacobiQuarticCurve<F> {
+impl<F: FieldOps+ FieldRandom> Curve for JacobiQuarticCurve<F> {
     type BaseField = F;
     type Point = JacobiQuarticPoint<F>;
 
@@ -77,14 +112,11 @@ impl<F: FieldOps> Curve for JacobiQuarticCurve<F> {
     }
 
     fn random_point(&self, rng: &mut (impl rand::CryptoRng + rand::Rng)) -> Self::Point {
-        todo!()
+        JacobiQuarticCurve::random_point(self, rng)
     }
 
     /// The paper gives
-    ///
-    /// ```text
-    /// j = 64 d^{-1} (a²-d)^{-2} (a²+3d)³.
-    /// ```
+    /// $ j = 64 d^{-1}(a^2-d)^{-2}(a^2+3d)^{3}$
     ///
     fn j_invariant(&self) -> F {
         let a2 = <F as FieldOps>::square(&self.a);

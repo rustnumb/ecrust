@@ -16,7 +16,7 @@
 //! y² = x³ + (2-a)x² + (1-a)x.
 //! ```
 //!
-
+use core::fmt;
 use fp::field_ops::{FieldOps, FieldRandom};
 
 use crate::curve_ops::Curve;
@@ -27,6 +27,23 @@ use crate::point_jacobi_intersection::JacobiIntersectionPoint;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct JacobiIntersectionCurve<F: FieldOps> {
     pub a: F,
+}
+
+impl<F> fmt::Display for JacobiIntersectionCurve<F>
+where
+    F: FieldOps + fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if f.alternate() {
+            write!(
+                f,
+                "JacobiIntersectionCurve {{\n  s^2 + c^2 = 1\n  a s^2 + d^2 = 1\n  a = {}\n}}",
+                self.a
+            )
+        } else {
+            write!(f, "s^2 + c^2 = 1, {} s^2 + d^2 = 1", self.a)
+        }
+    }
 }
 
 impl<F: FieldOps + FieldRandom> JacobiIntersectionCurve<F> {
@@ -55,8 +72,24 @@ impl<F: FieldOps + FieldRandom> JacobiIntersectionCurve<F> {
         [self.a]
     }
 
+    pub fn random_point(&self, rng: &mut (impl rand::CryptoRng + rand::Rng)) -> JacobiIntersectionPoint<F> {
+        loop {
+            let s = F::random(rng);
+            let s2 = <F as FieldOps>::square(&s);
+
+            let c2 = F::one() - s2;
+            let d2 = F::one() - self.a * s2;
+
+            if let (Some(c), Some(d)) = (c2.sqrt().into_option(), d2.sqrt().into_option()) {
+                let p = JacobiIntersectionPoint::new(s, c, d);
+                debug_assert!(self.is_on_curve(&p));
+                return p;
+            }
+        }
+    }
+
     /// Birationally equivalent Weierstrass model
-    /// `y² = x³ + (2-a)x² + (1-a)x`.
+    /// $y^2 = x^3 + (2-a)x^2 + (1-a)x$.
     pub fn to_weierstrass_curve(&self) -> WeierstrassCurve<F> {
         let two = <F as FieldOps>::double(&F::one());
         WeierstrassCurve::new(F::zero(), two - self.a, F::zero(), F::one() - self.a, F::zero())
@@ -72,7 +105,7 @@ impl<F: FieldOps + FieldRandom> Curve for JacobiIntersectionCurve<F> {
     }
 
     fn random_point(&self, rng: &mut (impl rand::CryptoRng + rand::Rng)) -> Self::Point {
-        todo!()
+        JacobiIntersectionCurve::random_point(self, rng)
     }
 
     fn j_invariant(&self) -> F {

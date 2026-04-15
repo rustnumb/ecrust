@@ -22,7 +22,8 @@
 //!   "Binary Edwards Curves", 2008.
 //! Reference (odd char): <https://hyperelliptic.org/EFD/g1p/auto-edwards.html>
 
-use fp::field_ops::FieldOps;
+use core::fmt;
+use fp::field_ops::{FieldOps, FieldRandom};
 
 use crate::curve_ops::Curve;
 use crate::point_edwards::EdwardsPoint;
@@ -37,7 +38,40 @@ pub struct EdwardsCurve<F: FieldOps> {
     pub d2: F,
 }
 
-impl<F: FieldOps> EdwardsCurve<F> {
+impl<F> fmt::Display for EdwardsCurve<F>
+where
+    F: FieldOps + fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if F::characteristic()[0] != 2 {
+            if f.alternate() {
+                write!(
+                    f,
+                    "EdwardsCurve {{\n  x^2 + y^2 = 1 + d x^2 y^2\n  d = {}\n}}",
+                    self.d2
+                )
+            } else {
+                write!(f, "x^2 + y^2 = 1 + ({})x^2y^2", self.d2)
+            }
+        } else {
+            if f.alternate() {
+                write!(
+                    f,
+                    "EdwardsCurve {{\n  d1(x+y) + d2(x^2+y^2) = xy + xy(x+y) + x^2y^2\n  d1 = {}\n  d2 = {}\n}}",
+                    self.d1, self.d2
+                )
+            } else {
+                write!(
+                    f,
+                    "{}(x+y) + {}(x^2+y^2) = xy + xy(x+y) + x^2y^2",
+                    self.d1, self.d2
+                )
+            }
+        }
+    }
+}
+
+impl<F: FieldOps + FieldRandom> EdwardsCurve<F> {
     /// Construct an odd-characteristic Edwards curve `x² + y² = 1 + d·x²·y²`.
     ///
     /// Stores `d` as `d2`; `d1` is set to zero (unused).
@@ -45,7 +79,10 @@ impl<F: FieldOps> EdwardsCurve<F> {
         assert!(F::characteristic()[0] != 2, "use new_binary() for char 2");
         assert!(d != F::zero(), "d must be nonzero");
         assert!(d != F::one(), "d must not be 1");
-        Self { d1: F::zero(), d2: d }
+        Self {
+            d1: F::zero(),
+            d2: d,
+        }
     }
 
     /// Construct a binary Edwards curve
@@ -79,9 +116,34 @@ impl<F: FieldOps> EdwardsCurve<F> {
             self.d1 * xpy + self.d2 * (x2 + y2) == xy + xy * xpy + x2 * y2
         }
     }
+
+    pub fn random_point(&self, rng: &mut (impl rand::CryptoRng + rand::Rng)) -> EdwardsPoint<F> {
+        assert!(
+            F::characteristic()[0] != 2,
+            "random_point currently implemented only for odd characteristic"
+        );
+
+        loop {
+            let x = F::random(rng);
+            let x2 = <F as FieldOps>::square(&x);
+            let denom = F::one() - self.d2 * x2;
+
+            if bool::from(denom.is_zero()) {
+                continue;
+            }
+
+            let rhs = (F::one() - x2) * denom.invert().unwrap();
+
+            if let Some(y) = rhs.sqrt().into_option() {
+                let p = EdwardsPoint::new(x, y);
+                debug_assert!(self.is_on_curve(&p));
+                return p;
+            }
+        }
+    }
 }
 
-impl<F: FieldOps> Curve for EdwardsCurve<F> {
+impl<F: FieldOps + FieldRandom> Curve for EdwardsCurve<F> {
     type BaseField = F;
     type Point = EdwardsPoint<F>;
 
@@ -90,7 +152,7 @@ impl<F: FieldOps> Curve for EdwardsCurve<F> {
     }
 
     fn random_point(&self, rng: &mut (impl rand::CryptoRng + rand::Rng)) -> Self::Point {
-        todo!()
+       EdwardsCurve::random_point(self, rng)
     }
 
     fn j_invariant(&self) -> F {
@@ -113,15 +175,20 @@ impl<F: FieldOps> Curve for EdwardsCurve<F> {
             let omd4 = <F as FieldOps>::square(&omd2);
             let denom = d * omd4;
 
-            numer * denom.invert().into_option()
-                .expect("d(1-d)^4 must be invertible")
+            numer
+                * denom
+                    .invert()
+                    .into_option()
+                    .expect("d(1-d)^4 must be invertible")
         } else {
             // j = 1 / (d₁⁴ (d₁⁴ + d₁² + d₂²))
             let d1_sq = <F as FieldOps>::square(&self.d1);
             let d1_4 = <F as FieldOps>::square(&d1_sq);
             let d2_sq = <F as FieldOps>::square(&self.d2);
             let denom = d1_4 * (d1_4 + d1_sq + d2_sq);
-            denom.invert().into_option()
+            denom
+                .invert()
+                .into_option()
                 .expect("j-invariant denominator must be invertible")
         }
     }
