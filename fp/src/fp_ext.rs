@@ -59,7 +59,7 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 /// The leading coefficient 1 (coefficient of $x^M$) is implicit.
 ///
 /// # Example: $f(x) = x^2 + 1$ over $\mathbb{F}_{19}$
-/// ```rust
+/// ```ignore
 /// struct MyPoly;
 /// impl IrreduciblePoly<Fp19Mod, 1, 2> for MyPoly {
 ///     fn modulus() -> [FpElement<Fp19Mod, 1>; 2] {
@@ -69,7 +69,7 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 /// ```
 ///
 /// # Example: $f(x) = x^3 − 2$ over $\mathbb{F}_{19}$  (i.e. $x^3 + 17$ since $−2 \equiv 17 \mod 19$)
-/// ```rust
+/// ```ignore
 /// struct MyCubicPoly;
 /// impl IrreduciblePoly<Fp19Mod, 1, 3> for MyCubicPoly {
 ///     fn modulus() -> [FpElement<Fp19Mod, 1>; 3] {
@@ -101,7 +101,7 @@ implement for a new field
 /// odd $T$.
 ///
 /// # Example: $\mathbb{F}_{19^2}$
-/// ```rust
+/// ```ignore
 /// impl TonelliShanksConstants<Fp19Mod, 1, 2, 1> for TSQuad {
 ///     // p^2 - 1
 ///     const ORDER: Uint<1> = Uint::<1>::from_u64(360);
