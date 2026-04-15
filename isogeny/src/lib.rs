@@ -7,3 +7,4 @@
 
 pub mod isogeny;
 pub mod kernel;
+mod isogeny_ops;

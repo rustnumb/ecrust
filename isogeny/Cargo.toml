@@ -9,6 +9,7 @@ license.workspace = true
 fp            = { workspace = true }
 ec            = { workspace = true }
 crypto-bigint = { workspace = true }
+subtle = "2.6"
 
 [dev-dependencies]
 # Add test-only dependencies here as needed
