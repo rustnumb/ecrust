@@ -1,11 +1,12 @@
 //! Base prime-field element Fp = Z / pZ backed by `crypto-bigint`.
 
 use core::ops::{Add, Mul, Neg, Sub};
+use std::fmt;
 
-use crate::field_ops::FieldOps;
+use crate::field_ops::{FieldOps, FieldRandom};
 use crypto_bigint::{
     modular::{ConstMontyForm, ConstPrimeMontyParams},
-    Uint,
+    NonZero, RandomMod, Uint,
 };
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
@@ -258,5 +259,49 @@ where
 
     fn degree() -> u32 {
         1
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Pretty Display
+// ---------------------------------------------------------------------------
+
+impl<MOD, const LIMBS: usize> fmt::Display for FpElement<MOD, LIMBS>
+where
+    MOD: ConstPrimeMontyParams<LIMBS>,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let val = self.as_uint();
+        // For single-limb fields, show a compact decimal representation.
+        if LIMBS == 1 {
+            write!(f, "{}", val.to_words()[0])
+        } else {
+            // Multi-limb: show lower-case hex with 0x prefix.
+            write!(f, "0x{val:x}")
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Cryptographically secure random sampling
+// ---------------------------------------------------------------------------
+
+impl<MOD, const LIMBS: usize> FieldRandom for FpElement<MOD, LIMBS>
+where
+    MOD: ConstPrimeMontyParams<LIMBS>,
+{
+    /// Sample a uniformly random element of Fp using a CSPRNG.
+    ///
+    /// Internally uses `crypto_bigint::RandomMod` to get a value in `[0, p)`.
+    fn random(rng: &mut (impl rand::CryptoRng + rand::Rng)) -> Self {
+        // Recover the modulus p the same way `characteristic()` does.
+        let minus_one = ConstMontyForm::<MOD, LIMBS>::ZERO - ConstMontyForm::<MOD, LIMBS>::ONE;
+        let p_minus_1: Uint<LIMBS> = minus_one.retrieve();
+        let p = p_minus_1.wrapping_add(&Uint::<LIMBS>::ONE);
+
+        // `random_mod` returns a uniform value in [0, p).
+        let modulus = NonZero::new(p).expect("prime modulus must be nonzero");
+        let val = Uint::<LIMBS>::random_mod_vartime(rng, &modulus);
+        Self::from_uint(val)
     }
 }
