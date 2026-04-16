@@ -10,11 +10,6 @@ pub trait FieldOps:
     + Eq
     + Default
     + ConditionallySelectable
-where
-    for<'a, 'b> &'a Self: Add<&'b Self, Output = Self>,
-    for<'a, 'b> &'a Self: Sub<&'b Self, Output = Self>,
-    for<'a, 'b> &'a Self: Mul<&'b Self, Output = Self>,
-    for<'a> &'a Self: Neg<Output = Self>,
 {
     fn zero() -> Self;
     fn one() -> Self;
@@ -221,4 +216,93 @@ where
     fn legendre(&self) -> i8;
     fn characteristic() -> Vec<u64>;
     fn degree() -> u32;
+}
+
+
+// -------------------------------------------------------------------
+// Macros for using operator overloads on referenced values
+// -------------------------------------------------------------------
+
+/// For inherent impls like:
+///
+/// ref_field_impl! {
+///     impl<F> WeierstrassCurve<F> {
+///         ...
+///     }
+/// }
+#[macro_export]
+macro_rules! ref_field_impl {
+    (impl<$F:ident> $Ty:ty { $($body:tt)* }) => {
+        impl<$F> $Ty
+        where
+            $F: $crate::field_ops::FieldOps,
+            for<'a, 'b> &'a $F: std::ops::Add<&'b $F, Output = $F>,
+            for<'a, 'b> &'a $F: std::ops::Sub<&'b $F, Output = $F>,
+            for<'a, 'b> &'a $F: std::ops::Mul<&'b $F, Output = $F>,
+            for<'a> &'a $F: std::ops::Neg<Output = $F>,
+        {
+            $($body)*
+        }
+    };
+}
+
+/// For trait impls like:
+///
+/// ref_field_trait_impl! {
+///     impl<F> Curve for WeierstrassCurve<F> {
+///         ...
+///     }
+/// }
+#[macro_export]
+macro_rules! ref_field_trait_impl {
+    (impl<$F:ident> $Trait:ident for $Ty:ty { $($body:tt)* }) => {
+        impl<$F> $Trait for $Ty
+        where
+            $F: $crate::field_ops::FieldOps,
+            for<'a, 'b> &'a $F: std::ops::Add<&'b $F, Output = $F>,
+            for<'a, 'b> &'a $F: std::ops::Sub<&'b $F, Output = $F>,
+            for<'a, 'b> &'a $F: std::ops::Mul<&'b $F, Output = $F>,
+            for<'a> &'a $F: std::ops::Neg<Output = $F>,
+        {
+            $($body)*
+        }
+    };
+}
+
+/// For free functions like:
+///
+/// ref_field_fn! {
+///     fn b2_from_coeffs<F>(a1: &F, a2: &F) -> F {
+///         ...
+///     }
+/// }
+#[macro_export]
+macro_rules! ref_field_fn {
+    (fn $name:ident<$F:ident> ( $($args:tt)* ) -> $Ret:ty $body:block) => {
+        fn $name<$F>($($args)*) -> $Ret
+        where
+            $F: $crate::field_ops::FieldOps,
+            for<'a, 'b> &'a $F: std::ops::Add<&'b $F, Output = $F>,
+            for<'a, 'b> &'a $F: std::ops::Sub<&'b $F, Output = $F>,
+            for<'a, 'b> &'a $F: std::ops::Mul<&'b $F, Output = $F>,
+            for<'a> &'a $F: std::ops::Neg<Output = $F>,
+        $body
+    };
+}
+
+#[macro_export]
+macro_rules! ref_field_fns {
+    (
+        $(
+            $(#[$meta:meta])*
+            fn $name:ident<$F:ident> ( $($args:tt)* ) -> $Ret:ty $body:block
+        )*
+    ) => {
+        $(
+            $(#[$meta])*
+            $crate::ref_field_fn! {
+                fn $name<$F>($($args)*) -> $Ret $body
+            }
+        )*
+    };
 }

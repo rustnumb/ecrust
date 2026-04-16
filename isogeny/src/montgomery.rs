@@ -49,7 +49,7 @@ impl<F: FieldOps> MontgomeryIsogeny<F> {
     }
 
     fn new_codomain_helper(domain: & MontgomeryCurve<F>, xK: KummerPoint<F>) -> (F, F) {
-        todo!()
+        
     }
 }
 
