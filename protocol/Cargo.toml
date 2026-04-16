@@ -6,6 +6,10 @@ edition.workspace = true
 description = "Cryptographic protocols built on top of the ecrust field and elliptic-curve layers"
 license.workspace = true
 
+[lib]
+name = "protocol"
+path = "src/lib.rs"
+
 [dependencies]
 ec = { workspace = true }
 subtle = "2.6"

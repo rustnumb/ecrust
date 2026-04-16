@@ -5,6 +5,10 @@ edition.workspace = true
 description = "Elliptic curve group operations for the ecrust library"
 license.workspace = true
 
+[lib]
+name = "ec"
+path = "src/lib.rs"
+
 [dependencies]
 fp           = { workspace = true }
 crypto-bigint = { workspace = true }

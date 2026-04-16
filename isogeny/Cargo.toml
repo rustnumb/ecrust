@@ -6,6 +6,10 @@ edition.workspace = true
 description = "Isogeny computations for the ecrust library"
 license.workspace = true
 
+[lib]
+name = "isogeny"
+path = "src/lib.rs"
+
 [dependencies]
 fp            = { workspace = true }
 ec            = { workspace = true }

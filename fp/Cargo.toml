@@ -16,6 +16,10 @@ categories.workspace = true
 readme.workspace = true
 exclude.workspace = true
 
+[lib]
+name = "fp"
+path = "src/lib.rs"
+
 [dependencies]
 crypto-bigint = { workspace = true, features = ["subtle"] }
 subtle = "2.6"
