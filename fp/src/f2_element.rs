@@ -1,6 +1,8 @@
 //! Base binary field element $\mathbb{F}_2 = \mathbb{Z} /
 //! 2\mathbb{Z}$
 
+
+use crate::field_ops::FieldFromRepr;
 use crate::field_ops::{FieldOps, FieldRandom};
 use core::ops::{Add, Mul, Neg, Sub};
 use crypto_bigint::Uint;
@@ -134,6 +136,9 @@ impl FieldOps for F2Element {
         Self::ONE
     }
 
+    fn from_u64(x: u64) -> Self {
+        Self::from_u64(x)
+    }
     fn is_zero(&self) -> Choice {
         Self::ct_eq(self, &Self::zero())
     }
@@ -208,5 +213,15 @@ impl FieldRandom for F2Element {
     fn random(rng: &mut (impl rand::CryptoRng + rand::Rng)) -> Self {
         let bit = (rng.next_u32() & 1) as u64;
         Self::from_u64(bit)
+    }
+}
+
+
+
+impl FieldFromRepr for F2Element {
+    type Repr = Uint<1>;
+
+    fn from_repr(x: Self::Repr) -> Self {
+        Self::new(x)
     }
 }

@@ -275,4 +275,12 @@ pub trait FieldOps:
 
     /// Returns the extension degree of the field.
     fn degree() -> u32;
+
+    fn from_u64(x: u64) -> Self;
+
+}
+
+pub trait FieldFromRepr: FieldOps {
+    type Repr;
+    fn from_repr(x: Self::Repr) -> Self;
 }
