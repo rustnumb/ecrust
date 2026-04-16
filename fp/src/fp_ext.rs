@@ -8,18 +8,19 @@
 //! $M$ with coefficients in $\mathbb{F}_p$, where arithmetic is done
 //! modulo $f$.
 //!
-//! This module provides a single generic type [`FpExt<MOD, LIMBS, M, P>`] that
-//! covers *any* such extension.  The irreducible polynomial is supplied via the
-//! zero-size marker trait [`IrreduciblePoly`].
+//! This module provides a single generic type [`FpExt<MOD, LIMBS, M,
+//! N, P, TSCONTS>`] that covers *any* such extension.  The
+//! irreducible polynomial is supplied via the zero-size marker trait
+//! [`IrreduciblePoly`].
 //!
 //! # Representation
 //!
-//! An element $a \in \mathbb{F}_p^M$ is stored as exactly $M$ base-field coefficients:
-//!
-//! ```text
-//! coeffs = [a_0, a_1, ..., a_{M-1}]
-//!        ↔  a_0 + a_1x + ... + a_{M-1}x^{M-1}
-//! ```
+//! An element $a \in \mathbb{F}\_{p^M}$ is stored as exactly $M$
+//! base-field coefficients so that `coeffs = [a_0, a_1, ...,
+//! a_{M-1}]` cooresponds to
+//! $$
+//! a_0 + a_1 x + ... + a_{M-1}x^{M-1} \pmod{ f(x) }
+//! $$
 //!
 //! # Operations and costs
 //!
@@ -30,10 +31,10 @@
 //! | Double      | Coefficient-wise                 | $M$ doubles              |
 //! | Multiply    | Schoolbook + reduction mod f     | $M^2$ muls + $M^2$ adds  |
 //! | Square      | Same as multiply (self * self)   | $M^2$ muls + $M^2$ adds  |
-//! |             | Polynomial extended GCD          | $O(M^2)$                 |
+//! | Invert      | Polynomial extended GCD          | $O(M^2)$                 |
 //! | Frobenius   | self^p  via square-and-multiply  | $O(M^2 \log p)$          |
 //! | Norm        | Product of M Galois conjugates   | $O(M^3 \log p)$          |
-//! | Trace       | Sum of M Galois conjugates       | $O(M^2 log p)$           |
+//! | Trace       | Sum of M Galois conjugates       | $O(M^2 \log p)$          |
 
 use core::ops::{Add, Mul, Neg, Sub};
 use std::marker::PhantomData;
@@ -57,18 +58,35 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 /// `[c_0, c_1, ..., c_{M-1}]`.
 /// The leading coefficient 1 (coefficient of $x^M$) is implicit.
 ///
-/// # Example: $f(x) = x^2 + 1$ over $\mathbb{F}_{19}$
-/// ```ignore
-/// struct MyPoly;
-/// impl IrreduciblePoly<Fp19Mod, 1, 2> for MyPoly {
+/// # Example: $\mathbb{F}_{19^2}$
+///
+/// The polynomial $f(x) = x^2 + 1$ is irreducible over $\mathbb{F}_{19}$.
+/// ```
+/// # use crypto_bigint::{const_prime_monty_params, Uint};
+/// # use fp::fp_element::FpElement;
+/// # use fp::field_ops::FieldOps;
+/// # use fp::fp_ext::{FpExt, IrreduciblePoly, TonelliShanksConstants};
+/// const_prime_monty_params!(Fp19Mod, Uint<1>, "0000000000000013", 2);
+/// type Fp19 = FpElement<Fp19Mod, 1>;
+/// struct MyQuadPoly;
+/// impl IrreduciblePoly<Fp19Mod, 1, 2> for MyQuadPoly {
 ///     fn modulus() -> [FpElement<Fp19Mod, 1>; 2] {
-///         [FpElement::one(), FpElement::zero()]  // c_0=1, c_1=0 \to x^2+1
+///         // f(x) = x^2 + 0x + 1 -> [1, 0]
+///         [FpElement::one(), FpElement::zero()]
 ///     }
 /// }
 /// ```
 ///
-/// # Example: $f(x) = x^3 − 2$ over $\mathbb{F}_{19}$  (i.e. $x^3 + 17$ since $−2 \equiv 17 \mod 19$)
-/// ```ignore
+/// # Example: $\mathbb{F}_{19^3}$
+///
+/// Note that $f(x) = x^3 + 17$ is irreducible over $\mathbb{F}_{19}$.
+/// ```
+/// # use crypto_bigint::{const_prime_monty_params, Uint};
+/// # use fp::fp_element::FpElement;
+/// # use fp::field_ops::FieldOps;
+/// # use fp::fp_ext::{FpExt, IrreduciblePoly, TonelliShanksConstants};
+/// const_prime_monty_params!(Fp19Mod, Uint<1>, "0000000000000013", 2);
+/// type Fp19 = FpElement<Fp19Mod, 1>;
 /// struct MyCubicPoly;
 /// impl IrreduciblePoly<Fp19Mod, 1, 3> for MyCubicPoly {
 ///     fn modulus() -> [FpElement<Fp19Mod, 1>; 3] {
@@ -100,7 +118,14 @@ implement for a new field
 /// odd $T$.
 ///
 /// # Example: $\mathbb{F}_{19^2}$
-/// ```ignore
+/// Note that we have a factorisation $19^2 - 1 = 2^3 \cdot 45$
+/// ```
+/// # use crypto_bigint::{const_prime_monty_params, Uint};
+/// # use fp::fp_element::FpElement;
+/// # use fp::fp_ext::{FpExt, IrreduciblePoly, TonelliShanksConstants};
+/// const_prime_monty_params!(Fp19Mod, Uint<1>, "0000000000000013", 2);
+/// type Fp19 = FpElement<Fp19Mod, 1>;
+/// struct TSQuad;
 /// impl TonelliShanksConstants<Fp19Mod, 1, 2, 1> for TSQuad {
 ///     // p^2 - 1
 ///     const ORDER: Uint<1> = Uint::<1>::from_u64(360);
@@ -772,10 +797,11 @@ where
         }))
     }
 
-    /// Schoolbook multiplication followed by reduction modulo f(x).
+    /// Schoolbook multiplication followed by reduction modulo $f(x)$.
     ///
-    /// Product has degree ≤ 2M−2, then each high-degree term is replaced using
-    /// `x^M \equiv −Σ modulus[j]x^j` until all degrees are below M.
+    /// Product has degree $\leq 2M−2$, then each high-degree term is
+    /// replaced using $x^M \equiv −\sum_j \texttt{modulus}\[j\] x^j$
+    /// until all degrees are below $M$.
     fn mul(&self, rhs: &Self) -> Self {
         let product = poly_mul(&self.coeffs, &rhs.coeffs);
         Self::new(poly_reduce(product, &P::modulus()))
@@ -795,9 +821,9 @@ where
 
     /// Inversion via polynomial extended GCD.
     ///
-    /// Finds `s(x)` such that `self(x)s(x) \equiv 1  (mod f(x))` by computing
-    /// `gcd(self, f) = g` (a nonzero constant if self ≠ 0) and setting
-    /// `self⁻¹ = sg⁻¹ mod f`.
+    /// Finds $s$ such that $\texttt{self} \times s \equiv 1 \pmod{f}$
+    /// by computing $\gcd(\texttt{self}, f) = g$ (a nonzero constant
+    /// if `self` is nonzero) and then returning $s g^{-1} \pmod{f}$.
     fn invert(&self) -> CtOption<Self> {
         let is_invertible = !self.is_zero();
 
