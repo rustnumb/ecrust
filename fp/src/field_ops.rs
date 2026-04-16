@@ -276,11 +276,16 @@ pub trait FieldOps:
     /// Returns the extension degree of the field.
     fn degree() -> u32;
 
+    /// Convert u64 to the field.
     fn from_u64(x: u64) -> Self;
 
 }
-
+/// Trait for field types that can be constructed from a field-specific
+/// representation.
 pub trait FieldFromRepr: FieldOps {
+    /// The representation type accepted by this field.
     type Repr;
+
+    /// Constructs a field element from the given representation.
     fn from_repr(x: Self::Repr) -> Self;
 }
