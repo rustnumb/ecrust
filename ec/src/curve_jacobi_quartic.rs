@@ -13,8 +13,8 @@
 //! “extended Jacobi quartic” family with arbitrary `a` and `d` satisfying
 //! `d(a²-d) ≠ 0`.
 
+use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 use fp::field_ops::FieldOps;
-
 use crate::curve_ops::Curve;
 use crate::point_jacobi_quartic::JacobiQuarticPoint;
 
@@ -23,7 +23,7 @@ use crate::point_jacobi_quartic::JacobiQuarticPoint;
 /// ```text
 /// y² = d x⁴ + 2 a x² + 1
 /// ```
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub struct JacobiQuarticCurve<F: FieldOps> {
     pub a: F,
     pub d: F,
@@ -113,4 +113,43 @@ impl<F: FieldOps> Curve for JacobiQuarticCurve<F> {
     fn a_invariants(&self) -> Vec<Self::BaseField> {
         JacobiQuarticCurve::a_invariants(self).to_vec()
     }
+}
+
+
+
+// ---------------------------------------------------------------------------
+// Constant-time functionalities
+// ---------------------------------------------------------------------------
+
+impl<F> ConditionallySelectable for JacobiQuarticCurve<F>
+where
+    F: FieldOps + Copy,
+{
+    fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
+        Self{
+            a: F::conditional_select(& a.a, &b.a, choice),
+            d: F::conditional_select(& a.d, &b.d, choice),
+        }
+    }
+
+    fn conditional_assign(&mut self, other: &Self, choice: Choice) {
+        F::conditional_assign(&mut self.a, &other.a, choice);
+        F::conditional_assign(&mut self.d, &other.d, choice);
+    }
+
+    fn conditional_swap(a: &mut Self, b: &mut Self, choice: Choice) {
+        F::conditional_swap(&mut a.a, &mut b.a, choice);
+        F::conditional_swap(&mut a.d, &mut b.d, choice);
+    }
+}
+
+impl<F> ConstantTimeEq for JacobiQuarticCurve<F>
+where
+    F: FieldOps + Copy + ConstantTimeEq,
+{
+    fn ct_eq(&self, other: &Self) -> Choice {
+        self.a.ct_eq(&other.a) & self.d.ct_eq(&other.d)
+    }
+
+    fn ct_ne(&self, other: &Self) -> Choice { !self.ct_eq(other) }
 }

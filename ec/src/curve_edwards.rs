@@ -22,6 +22,7 @@
 //!   "Binary Edwards Curves", 2008.
 //! Reference (odd char): <https://hyperelliptic.org/EFD/g1p/auto-edwards.html>
 
+use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 use fp::field_ops::FieldOps;
 
 use crate::curve_ops::Curve;
@@ -31,7 +32,7 @@ use crate::point_edwards::EdwardsPoint;
 ///
 /// In odd characteristic only `d2` is used (the parameter `d`).
 /// In characteristic 2 both `d1` and `d2` are used.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub struct EdwardsCurve<F: FieldOps> {
     pub d1: F,
     pub d2: F,
@@ -133,4 +134,43 @@ impl<F: FieldOps> Curve for EdwardsCurve<F> {
             vec![self.d1, self.d2]
         }
     }
+}
+
+
+
+// ---------------------------------------------------------------------------
+// Constant-time functionalities
+// ---------------------------------------------------------------------------
+
+impl<F> ConditionallySelectable for EdwardsCurve<F>
+where
+    F: FieldOps + Copy,
+{
+    fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
+        Self{
+            d1: F::conditional_select(& a.d1, &b.d1, choice),
+            d2: F::conditional_select(& a.d2, &b.d2, choice),
+        }
+    }
+
+    fn conditional_assign(&mut self, other: &Self, choice: Choice) {
+        F::conditional_assign(&mut self.d1, &other.d1, choice);
+        F::conditional_assign(&mut self.d2, &other.d2, choice);
+    }
+
+    fn conditional_swap(a: &mut Self, b: &mut Self, choice: Choice) {
+        F::conditional_swap(&mut a.d1, &mut b.d1, choice);
+        F::conditional_swap(&mut a.d2, &mut b.d2, choice);
+    }
+}
+
+impl<F> ConstantTimeEq for EdwardsCurve<F>
+where
+    F: FieldOps + Copy + ConstantTimeEq,
+{
+    fn ct_eq(&self, other: &Self) -> Choice {
+        self.d1.ct_eq(&other.d1) & self.d2.ct_eq(&other.d2)
+    }
+
+    fn ct_ne(&self, other: &Self) -> Choice { !self.ct_eq(other) }
 }

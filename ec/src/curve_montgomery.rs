@@ -34,9 +34,8 @@
 //! additions and doublings, which is especially convenient for constant-time
 //! scalar multiplication.
 
-
+use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 use fp::field_ops::FieldOps;
-
 use crate::curve_ops::Curve;
 use crate::point_montgomery::KummerPoint;
 
@@ -47,7 +46,7 @@ use crate::point_montgomery::KummerPoint;
 /// ```
 ///
 /// over a field `F`.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub struct MontgomeryCurve<F: FieldOps> {
     pub a: F,
     pub b: F,
@@ -180,3 +179,45 @@ impl<F: FieldOps + Copy> Curve for MontgomeryCurve<F> {
         MontgomeryCurve::a_invariants(self).to_vec()
     }
 }
+
+
+
+// ---------------------------------------------------------------------------
+// Constant-time functionalities
+// ---------------------------------------------------------------------------
+
+impl<F> ConditionallySelectable for MontgomeryCurve<F>
+where
+    F: FieldOps + Copy,
+{
+    fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
+        Self{
+            a: F::conditional_select(& a.a, &b.a, choice),
+            b: F::conditional_select(& a.b, &b.b, choice),
+        }
+    }
+
+    fn conditional_assign(&mut self, other: &Self, choice: Choice) {
+        F::conditional_assign(&mut self.a, &other.a, choice);
+        F::conditional_assign(&mut self.b, &other.b, choice);
+    }
+
+    fn conditional_swap(a: &mut Self, b: &mut Self, choice: Choice) {
+        F::conditional_swap(&mut a.a, &mut b.a, choice);
+        F::conditional_swap(&mut a.b, &mut b.b, choice);
+    }
+}
+
+impl<F> ConstantTimeEq for MontgomeryCurve<F>
+where
+    F: FieldOps + Copy + ConstantTimeEq,
+{
+    fn ct_eq(&self, other: &Self) -> Choice {
+        self.a.ct_eq(&other.a) & self.b.ct_eq(&other.b)
+    }
+
+    fn ct_ne(&self, other: &Self) -> Choice { !self.ct_eq(other) }
+}
+
+
+

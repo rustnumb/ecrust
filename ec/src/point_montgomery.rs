@@ -50,10 +50,7 @@ pub struct KummerPoint<F: FieldOps + Copy> {
 // Manual trait impls
 // ---------------------------------------------------------------------------
 
-impl<F: FieldOps> PartialEq for KummerPoint<F>
-where
-    F: FieldOps + ConstantTimeEq,
-{
+impl<F: FieldOps> PartialEq for KummerPoint<F> {
     /// Equality of projective x-line points.
     ///
     /// A standard criterion is cross-multiplication:

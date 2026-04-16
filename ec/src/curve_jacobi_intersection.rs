@@ -17,14 +17,14 @@
 //! ```
 //!
 
+use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 use fp::field_ops::FieldOps;
-
 use crate::curve_ops::Curve;
 use crate::curve_weierstrass::WeierstrassCurve;
 use crate::point_jacobi_intersection::JacobiIntersectionPoint;
 
 /// A Jacobi-intersection curve.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub struct JacobiIntersectionCurve<F: FieldOps> {
     pub a: F,
 }
@@ -82,4 +82,38 @@ impl<F: FieldOps> Curve for JacobiIntersectionCurve<F> {
     fn a_invariants(&self) -> Vec<Self::BaseField> {
         JacobiIntersectionCurve::a_invariants(self).to_vec()
     }
+}
+
+
+
+// ---------------------------------------------------------------------------
+// Constant-time functionalities
+// ---------------------------------------------------------------------------
+
+impl<F> ConditionallySelectable for JacobiIntersectionCurve<F>
+where
+    F: FieldOps + Copy,
+{
+    fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
+        Self{
+            a: F::conditional_select(& a.a, &b.a, choice)
+        }
+    }
+
+    fn conditional_assign(&mut self, other: &Self, choice: Choice) {
+        F::conditional_assign(&mut self.a, &other.a, choice);
+    }
+
+    fn conditional_swap(a: &mut Self, b: &mut Self, choice: Choice) {
+        F::conditional_swap(&mut a.a, &mut b.a, choice);
+    }
+}
+
+impl<F> ConstantTimeEq for JacobiIntersectionCurve<F>
+where
+    F: FieldOps + Copy + ConstantTimeEq,
+{
+    fn ct_eq(&self, other: &Self) -> Choice { self.a.ct_eq(&other.a) }
+
+    fn ct_ne(&self, other: &Self) -> Choice { !self.ct_eq(other) }
 }

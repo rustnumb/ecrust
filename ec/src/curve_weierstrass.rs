@@ -20,8 +20,8 @@
 //!
 //! via the convenience constructor [`WeierstrassCurve::new_short`].
 
+use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 use fp::field_ops::FieldOps;
-
 use crate::curve_ops::Curve;
 use crate::point_weierstrass::AffinePoint;
 
@@ -33,7 +33,7 @@ use crate::point_weierstrass::AffinePoint;
 ///
 /// All five coefficients are stored explicitly; the short Weierstrass case
 /// simply has `a1 = a2 = a3 = 0`.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub struct WeierstrassCurve<F: FieldOps> {
     pub a1: F,
     pub a2: F,
@@ -276,4 +276,56 @@ impl<F: FieldOps> Curve for WeierstrassCurve<F> {
     fn a_invariants(&self) -> Vec<Self::BaseField> {
         WeierstrassCurve::a_invariants(self).to_vec()
     }
+}
+
+
+
+// ---------------------------------------------------------------------------
+// Constant-time functionalities
+// ---------------------------------------------------------------------------
+
+impl<F> ConditionallySelectable for WeierstrassCurve<F>
+where
+    F: FieldOps + Copy,
+{
+    fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
+        Self{
+            a1: F::conditional_select(& a.a1, &b.a1, choice),
+            a2: F::conditional_select(& a.a2, &b.a2, choice),
+            a3: F::conditional_select(& a.a3, &b.a3, choice),
+            a4: F::conditional_select(& a.a4, &b.a4, choice),
+            a6: F::conditional_select(& a.a6, &b.a6, choice),
+        }
+    }
+
+    fn conditional_assign(&mut self, other: &Self, choice: Choice) {
+        F::conditional_assign(&mut self.a1, &other.a1, choice);
+        F::conditional_assign(&mut self.a2, &other.a2, choice);
+        F::conditional_assign(&mut self.a3, &other.a3, choice);
+        F::conditional_assign(&mut self.a4, &other.a4, choice);
+        F::conditional_assign(&mut self.a6, &other.a6, choice);
+    }
+
+    fn conditional_swap(a: &mut Self, b: &mut Self, choice: Choice) {
+        F::conditional_swap(&mut a.a1, &mut b.a1, choice);
+        F::conditional_swap(&mut a.a2, &mut b.a2, choice);
+        F::conditional_swap(&mut a.a3, &mut b.a3, choice);
+        F::conditional_swap(&mut a.a4, &mut b.a4, choice);
+        F::conditional_swap(&mut a.a6, &mut b.a6, choice);
+    }
+}
+
+impl<F> ConstantTimeEq for WeierstrassCurve<F>
+where
+    F: FieldOps + Copy + ConstantTimeEq,
+{
+    fn ct_eq(&self, other: &Self) -> Choice {
+        self.a1.ct_eq(&other.a1) &
+        self.a2.ct_eq(&other.a2) &
+        self.a3.ct_eq(&other.a3) &
+        self.a4.ct_eq(&other.a4) &
+        self.a6.ct_eq(&other.a6)
+    }
+
+    fn ct_ne(&self, other: &Self) -> Choice { !self.ct_eq(other) }
 }
