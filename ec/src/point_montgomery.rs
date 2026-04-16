@@ -33,6 +33,7 @@ use subtle::{Choice, CtOption, ConditionallySelectable, ConstantTimeEq};
 use crate::curve_montgomery::MontgomeryCurve;
 use crate::point_ops::PointOps;
 use fp::field_ops::FieldOps;
+use fp::{ref_field_impl, ref_field_trait_impl};
 
 /// A point on the Kummer line of a Montgomery curve, represented by `(X : Z)`.
 ///
@@ -50,54 +51,60 @@ pub struct KummerPoint<F: FieldOps + Copy> {
 // Manual trait impls
 // ---------------------------------------------------------------------------
 
-impl<F: FieldOps> PartialEq for KummerPoint<F> {
-    /// Equality of projective x-line points.
-    ///
-    /// A standard criterion is cross-multiplication:
-    /// ```text
-    /// X1 Z2 = X2 Z1.
-    /// ```
-    fn eq(&self, other: &Self) -> bool {
-        self.x * other.z == other.x * self.z
+ref_field_trait_impl! {
+    impl<F> PartialEq for KummerPoint<F> {
+        /// Equality of projective x-line points.
+        ///
+        /// A standard criterion is cross-multiplication:
+        /// ```text
+        /// X1 Z2 = X2 Z1.
+        /// ```
+        fn eq(&self, other: &Self) -> bool {
+            let lhs = &self.x * &other.z;
+            let rhs = &other.x * &self.z;
+            lhs == rhs
+        }
     }
 }
 
-impl<F: FieldOps> Eq for KummerPoint<F>
-where
-    F: FieldOps + ConstantTimeEq,
-{ }
+ref_field_trait_impl! {
+    impl<F> Eq for KummerPoint<F>
+    { }
+}
 
 // ---------------------------------------------------------------------------
 // Constructors
 // ---------------------------------------------------------------------------
 
-impl<F: FieldOps> KummerPoint<F> {
-    /// Construct a projective x-line point `(X : Z)` without validation.
-    pub fn new(x: F, z: F) -> Self {
-        assert!(!bool::from((x * z).is_zero()));
-        Self{ x, z }
-    }
+ref_field_impl! {
+    impl<F> KummerPoint<F> {
+        /// Construct a projective x-line point `(X : Z)` without validation.
+        pub fn new(x: F, z: F) -> Self {
+            assert!(!bool::from((&x * &z).is_zero()));
+            Self{ x, z }
+        }
 
-    /// Construct the finite x-line point corresponding to the affine
-    /// x-coordinate `x`, i.e. `(x : 1)`.
-    pub fn from_x(x: F) -> Self {
-        Self{ x, z: F::one() }
-    }
+        /// Construct the finite x-line point corresponding to the affine
+        /// x-coordinate `x`, i.e. `(x : 1)`.
+        pub fn from_x(x: F) -> Self {
+            Self{ x, z: F::one() }
+        }
 
-    /// The image of the identity point on the Kummer line.
-    pub fn identity() -> Self {
-        Self{ x: F::one(), z: F::zero()}
-    }
+        /// The image of the identity point on the Kummer line.
+        pub fn identity() -> Self {
+            Self{ x: F::one(), z: F::zero()}
+        }
 
-    /// Return `true` if this point is the image of identity.
-    pub fn is_identity(&self) -> bool {
-        bool::from(self.z.is_zero())
-    }
+        /// Return `true` if this point is the image of identity.
+        pub fn is_identity(&self) -> bool {
+            bool::from(self.z.is_zero())
+        }
 
-    /// Attempt to recover the affine x-coordinate (succeeds when Z != 0).
-    pub fn to_x(&self) -> CtOption<F> {
-        let z_inv = self.z.invert();
-        z_inv.map(|zinv| self.x * zinv)
+        /// Attempt to recover the affine x-coordinate (succeeds when Z != 0).
+        pub fn to_x(&self) -> CtOption<F> {
+            let z_inv = self.z.invert();
+            z_inv.map(|zinv| &self.x * &zinv)
+        }
     }
 }
 
@@ -130,19 +137,18 @@ where
 
 impl<F> ConstantTimeEq for KummerPoint<F>
 where
-    F: FieldOps + Copy + ConstantTimeEq,
+    F: FieldOps + ConstantTimeEq,
+    for<'a, 'b> &'a F: std::ops::Mul<&'b F, Output = F>,
 {
-    /// Constant-time projective equality test on the Kummer line.
-    /// ```text
-    /// X1 Z2  ?=  X2 Z1
-    /// ```
     fn ct_eq(&self, other: &Self) -> Choice {
-        let x1z2 = self.x * other.z;
-        let x2z1 = other.x * self.z;
-        x1z2.ct_eq(& x2z1)
+        let x1z2 = &self.x * &other.z;
+        let x2z1 = &other.x * &self.z;
+        x1z2.ct_eq(&x2z1)
     }
 
-    fn ct_ne(&self, other: &Self) -> Choice { !self.ct_eq(other) }
+    fn ct_ne(&self, other: &Self) -> Choice {
+        !self.ct_eq(other)
+    }
 }
 
 
@@ -150,103 +156,121 @@ where
 // X-only arithmetic
 // ---------------------------------------------------------------------------
 
-impl<F: FieldOps + Copy> KummerPoint<F> {
-    /// Point doubling on the Kummer line.
-    ///
-    /// Given `x(P)` in projective form `(X:Z)`, compute `x([2]P)`.
-    pub fn xdouble(&self, curve: &MontgomeryCurve<F>) -> Self {
-        if F::characteristic()[0] != 2 {
-            let sumsq = <F as FieldOps>::square(&(self.x + self.z));
-            let diffsq = <F as FieldOps>::square(&(self.x - self.z));
-            let fourxz = sumsq - diffsq;
-            let a24 = curve.a24();
+ref_field_impl! {
+    impl<F> KummerPoint<F> {
+        /// Point doubling on the Kummer line.
+        ///
+        /// Given `x(P)` in projective form `(X:Z)`, compute `x([2]P)`.
+        pub fn xdouble(&self, curve: &MontgomeryCurve<F>) -> Self {
+            if F::characteristic()[0] != 2 {
+                let sum = &self.x + &self.z;
+                let diff = &self.x - &self.z;
 
-            let new_z = fourxz * (diffsq + a24 * fourxz);
+                let sumsq = <F as FieldOps>::square(&sum);
+                let diffsq = <F as FieldOps>::square(&diff);
 
-            Self{ x: sumsq * diffsq, z: new_z }
-        }
-        else {
-            let temp_x = self.x + curve.b * self.z;
-            let new_x = <F as FieldOps>::square(&<F as FieldOps>::square(&temp_x));
-            let xz = self.x * self.z;
-            let new_z = <F as FieldOps>::square(&xz);
-            Self{ x: new_x, z: new_z }
-        }
+                let fourxz = &sumsq - &diffsq;
+                let a24 = curve.a24();
 
-    }
+                let tmp = &diffsq + &(&a24 * &fourxz);
+                let new_z = &fourxz * &tmp;
 
-    /// Differential addition. Given (in projective form `(X:Z)`):
-    ///
-    /// - `self = x(P)`,
-    /// - `other = x(Q)`,
-    /// - `diff = x(P - Q)`,
-    ///
-    /// compute `x(P + Q)`.
-    pub fn xadd(&self, other: &Self, diff: &Self) -> Self {
-        if F::characteristic()[0] != 2 {
-            let u = (self.x - self.z) * (other.x + other.z);
-            let v = (self.x + self.z) * (other.x - other.z);
+                Self {
+                    x: &sumsq * &diffsq,
+                    z: new_z,
+                }
+            } else {
+                let temp_x = &self.x + &(&curve.b * &self.z);
+                let sq1 = <F as FieldOps>::square(&temp_x);
+                let new_x = <F as FieldOps>::square(&sq1);
 
-            let new_x = diff.z * <F as FieldOps>::square(&(u + v));
-            let new_z = diff.x * <F as FieldOps>::square(&(u - v));
+                let xz = &self.x * &self.z;
+                let new_z = <F as FieldOps>::square(&xz);
 
-            Self { x: new_x, z: new_z }
-        }
-        else {
-            let x1z2 = self.x * other.z;
-            let x2z1 = other.x * self.z;
-            let sum_squared = <F as FieldOps>::square(&(x1z2 + x2z1));
-
-            let new_x = diff.x * sum_squared + diff.z * x1z2 * x2z1;
-            let new_z = diff.z * sum_squared;
-
-            Self { x: new_x, z: new_z }
-        }
-    }
-
-    /// Montgomery ladder for scalar multiplication.
-    ///
-    /// Given an x-line point `x(P)` and a scalar `k`, compute `x([k]P)`.
-    /// The scalar `k` is given as a slice of `u64` limbs in **little-endian**
-    /// order (same convention as `FieldOps::pow`).
-    pub fn scalar_mul(&self, k: &[u64], curve: &MontgomeryCurve<F>) -> Self {
-        if self.is_identity() || k.is_empty() {
-            return Self::identity();
-        }
-
-        // Ladder state:
-        // r0 = x([m]P)
-        // r1 = x([m+1]P)
-        let mut r0 = Self::identity();
-        let mut r1 = *self;
-
-        let mut swap = Choice::from(0u8);
-
-        for &limb in k.iter().rev() {
-            for bit in (0..64).rev() {
-                let ki = Choice::from(((limb >> bit) & 1) as u8);
-
-                // Swap exactly when the current bit differs from the previous one.
-                let do_swap = swap ^ ki;
-                Self::conditional_swap(&mut r0, &mut r1, do_swap);
-                swap = ki;
-
-                // After the swap, the invariant is arranged so that:
-                //   r0 <- [2]r0
-                //   r1 <- r0 + r1
-                // and x(r1 - r0) remains x(P).
-                let r0_dbl = r0.xdouble(curve);
-                let r0_plus_r1 = r0.xadd(&r1, self);
-
-                r0 = r0_dbl;
-                r1 = r0_plus_r1;
+                Self { x: new_x, z: new_z }
             }
         }
 
-        // Final swap to undo the last deferred permutation.
-        Self::conditional_swap(&mut r0, &mut r1, swap);
 
-        r0
+        /// Differential addition. Given (in projective form `(X:Z)`):
+        ///
+        /// - `self = x(P)`,
+        /// - `other = x(Q)`,
+        /// - `diff = x(P - Q)`,
+        ///
+        /// compute `x(P + Q)`.
+        pub fn xadd(&self, other: &Self, diff: &Self) -> Self {
+            if F::characteristic()[0] != 2 {
+                let u = &(&self.x - &self.z) * &(&other.x + &other.z);
+                let v = &(&self.x + &self.z) * &(&other.x - &other.z);
+
+                let upv = &u + &v;
+                let umv = &u - &v;
+
+                let new_x = &diff.z * &<F as FieldOps>::square(&upv);
+                let new_z = &diff.x * &<F as FieldOps>::square(&umv);
+
+                Self { x: new_x, z: new_z }
+            } else {
+                let x1z2 = &self.x * &other.z;
+                let x2z1 = &other.x * &self.z;
+
+                let sum = &x1z2 + &x2z1;
+                let sum_sq = <F as FieldOps>::square(&sum);
+
+                let prod = &x1z2 * &x2z1;
+
+                let new_x = &(&diff.x * &sum_sq) + &(&diff.z * &prod);
+                let new_z = &diff.z * &sum_sq;
+
+                Self { x: new_x, z: new_z }
+            }
+        }
+
+        /// Montgomery ladder for scalar multiplication.
+        ///
+        /// Given an x-line point `x(P)` and a scalar `k`, compute `x([k]P)`.
+        /// The scalar `k` is given as a slice of `u64` limbs in **little-endian**
+        /// order (same convention as `FieldOps::pow`).
+        pub fn scalar_mul(&self, k: &[u64], curve: &MontgomeryCurve<F>) -> Self {
+            if self.is_identity() || k.is_empty() {
+                return Self::identity();
+            }
+
+            // Ladder state:
+            // r0 = x([m]P)
+            // r1 = x([m+1]P)
+            let mut r0 = Self::identity();
+            let mut r1 = *self;
+
+            let mut swap = Choice::from(0u8);
+
+            for &limb in k.iter().rev() {
+                for bit in (0..64).rev() {
+                    let ki = Choice::from(((limb >> bit) & 1) as u8);
+
+                    // Swap exactly when the current bit differs from the previous one.
+                    let do_swap = swap ^ ki;
+                    Self::conditional_swap(&mut r0, &mut r1, do_swap);
+                    swap = ki;
+
+                    // After the swap, the invariant is arranged so that:
+                    //   r0 <- [2]r0
+                    //   r1 <- r0 + r1
+                    // and x(r1 - r0) remains x(P).
+                    let r0_dbl = r0.xdouble(curve);
+                    let r0_plus_r1 = r0.xadd(&r1, self);
+
+                    r0 = r0_dbl;
+                    r1 = r0_plus_r1;
+                }
+            }
+
+            // Final swap to undo the last deferred permutation.
+            Self::conditional_swap(&mut r0, &mut r1, swap);
+
+            r0
+        }
     }
 }
 
@@ -254,31 +278,30 @@ impl<F: FieldOps + Copy> KummerPoint<F> {
 // PointOps bridge
 // ---------------------------------------------------------------------------
 
-impl<F> PointOps for KummerPoint<F>
-where
-    F: FieldOps + Copy,
-{
-    type BaseField = F;
-    type Curve = MontgomeryCurve<F>;
+ref_field_trait_impl! {
+    impl<F> PointOps for KummerPoint<F> {
+        type BaseField = F;
+        type Curve = MontgomeryCurve<F>;
 
-    /// Return the identity image on the Kummer line.
-    fn identity(_curve: &Self::Curve) -> Self {
-        KummerPoint::<F>::identity()
-    }
+        /// Return the identity image on the Kummer line.
+        fn identity(_curve: &Self::Curve) -> Self {
+            KummerPoint::<F>::identity()
+        }
 
-    /// Return `true` if this is the identity image.
-    fn is_identity(&self) -> bool {
-        KummerPoint::<F>::is_identity(self)
-    }
+        /// Return `true` if this is the identity image.
+        fn is_identity(&self) -> bool {
+            KummerPoint::<F>::is_identity(self)
+        }
 
-    /// Negation is trivial on the Kummer line because `P` and `-P` have the
-    /// same image.
-    fn negate(&self, _curve: &Self::Curve) -> Self {
-        *self
-    }
+        /// Negation is trivial on the Kummer line because `P` and `-P` have the
+        /// same image.
+        fn negate(&self, _curve: &Self::Curve) -> Self {
+            *self
+        }
 
-    /// Scalar multiplication is naturally implemented by the Montgomery ladder.
-    fn scalar_mul(&self, k: &[u64], curve: &Self::Curve) -> Self {
-        KummerPoint::<F>::scalar_mul(self, k, curve)
+        /// Scalar multiplication is naturally implemented by the Montgomery ladder.
+        fn scalar_mul(&self, k: &[u64], curve: &Self::Curve) -> Self {
+            KummerPoint::<F>::scalar_mul(self, k, curve)
+        }
     }
 }

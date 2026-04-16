@@ -1,6 +1,5 @@
 //! Core trait that every field element in the tower must implement.
 
-use std::ops::{Add, Mul, Neg, Sub};
 use subtle::{Choice, ConditionallySelectable, CtOption};
 
 pub trait FieldOps:
@@ -256,6 +255,22 @@ macro_rules! ref_field_impl {
 #[macro_export]
 macro_rules! ref_field_trait_impl {
     (impl<$F:ident> $Trait:ident for $Ty:ty { $($body:tt)* }) => {
+        impl<$F> $Trait for $Ty
+        where
+            $F: $crate::field_ops::FieldOps,
+            for<'a, 'b> &'a $F: std::ops::Add<&'b $F, Output = $F>,
+            for<'a, 'b> &'a $F: std::ops::Sub<&'b $F, Output = $F>,
+            for<'a, 'b> &'a $F: std::ops::Mul<&'b $F, Output = $F>,
+            for<'a> &'a $F: std::ops::Neg<Output = $F>,
+        {
+            $($body)*
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! ref_field_trait_impl_path {
+    (impl<$F:ident> ($Trait:path) for $Ty:ty { $($body:tt)* }) => {
         impl<$F> $Trait for $Ty
         where
             $F: $crate::field_ops::FieldOps,
