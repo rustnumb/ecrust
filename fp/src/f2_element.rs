@@ -79,39 +79,47 @@ impl ConstantTimeEq for F2Element {
 // Operator overloads
 // ---------------------------------------------------------------------------
 
-impl Add for F2Element {
-    type Output = Self;
+impl<'a, 'b> Add<&'b F2Element>
+for &'a F2Element
+{
+    type Output = F2Element;
 
-    fn add(self, rhs: Self) -> Self {
-        Self::new(self.value ^ rhs.value)
+    fn add(self, rhs: &'b F2Element) -> Self::Output {
+        <F2Element as FieldOps>::add(self, rhs)
     }
 }
 
-impl Sub for F2Element {
-    type Output = Self;
+impl<'a, 'b> Sub<&'b F2Element>
+for &'a F2Element
+{
+    type Output = F2Element;
 
-    fn sub(self, rhs: Self) -> Self {
-        //subtraction = addition in F_2
-        Self::new(self.value ^ rhs.value)
+    fn sub(self, rhs: &'b F2Element) -> Self::Output {
+        <F2Element as FieldOps>::sub(self, rhs)
     }
 }
 
-impl Mul for F2Element {
-    type Output = Self;
 
-    fn mul(self, rhs: Self) -> Self {
-        Self::new(self.value & rhs.value)
+impl<'a, 'b> Mul<&'b F2Element>
+for &'a F2Element
+{
+    type Output = F2Element;
+
+    fn mul(self, rhs: &'b F2Element) -> Self::Output {
+        <F2Element as FieldOps>::mul(self, rhs)
     }
 }
 
-impl Neg for F2Element {
-    type Output = Self;
+impl<'a> Neg for &'a F2Element
+{
+    type Output = F2Element;
 
-    fn neg(self) -> Self {
-        // x = -x for any x in F_2
-        self
+    fn neg(self) -> Self::Output {
+        <F2Element as FieldOps>::negate(self)
     }
 }
+
+
 
 // ---------------------------------------------------------------------------
 // FieldOps implementation

@@ -571,57 +571,64 @@ where
 // Operator overloads (delegate to the FieldOps methods below)
 // ===========================================================================
 
-impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS> Add
-    for FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
+impl<'a, 'b, MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS>
+Add<&'b FpExt<MOD, LIMBS, M, N, P, TSCONSTS>>
+for &'a FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
     TSCONSTS: TonelliShanksConstants<MOD, LIMBS, M, N>,
 {
-    type Output = Self;
-    fn add(self, rhs: Self) -> Self {
-        FieldOps::add(&self, &rhs)
+    type Output = FpExt<MOD, LIMBS, M, N, P, TSCONSTS>;
+    fn add(self, rhs: &'b FpExt<MOD, LIMBS, M, N, P, TSCONSTS>) -> Self::Output {
+        <FpExt<MOD, LIMBS, M, N, P, TSCONSTS> as FieldOps>::add(self, rhs)
     }
 }
 
-impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS> Sub
-    for FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
+impl<'a, 'b, MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS>
+Sub<&'b FpExt<MOD, LIMBS, M, N, P, TSCONSTS>>
+for &'a FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
     TSCONSTS: TonelliShanksConstants<MOD, LIMBS, M, N>,
 {
-    type Output = Self;
-    fn sub(self, rhs: Self) -> Self {
-        FieldOps::sub(&self, &rhs)
+    type Output = FpExt<MOD, LIMBS, M, N, P, TSCONSTS>;
+    fn sub(self, rhs: &'b FpExt<MOD, LIMBS, M, N, P, TSCONSTS>) -> Self::Output {
+        <FpExt<MOD, LIMBS, M, N, P, TSCONSTS> as FieldOps>::sub(self, rhs)
     }
 }
 
-impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS> Mul
-    for FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
+impl<'a, 'b, MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS>
+Mul<&'b FpExt<MOD, LIMBS, M, N, P, TSCONSTS>>
+for &'a FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
     TSCONSTS: TonelliShanksConstants<MOD, LIMBS, M, N>,
 {
-    type Output = Self;
-    fn mul(self, rhs: Self) -> Self {
-        FieldOps::mul(&self, &rhs)
+    type Output = FpExt<MOD, LIMBS, M, N, P, TSCONSTS>;
+    fn mul(self, rhs: &'b FpExt<MOD, LIMBS, M, N, P, TSCONSTS>) -> Self::Output {
+        <FpExt<MOD, LIMBS, M, N, P, TSCONSTS> as FieldOps>::mul(self, rhs)
     }
 }
 
-impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS> Neg
-    for FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
+impl<'a, MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS>
+Neg
+for &'a FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
     TSCONSTS: TonelliShanksConstants<MOD, LIMBS, M, N>,
 {
-    type Output = Self;
-    fn neg(self) -> Self {
-        FieldOps::negate(&self)
+    type Output = FpExt<MOD, LIMBS, M, N, P, TSCONSTS>;
+    fn neg(self) -> Self::Output {
+        <FpExt<MOD, LIMBS, M, N, P, TSCONSTS> as FieldOps>::negate(self)
     }
 }
+
+
+
 
 // ===========================================================================
 // Helper functions for Tonelli-Shanks algorithm
@@ -653,8 +660,9 @@ fn ts_loop<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS>
     TSCONSTS: TonelliShanksConstants<MOD, LIMBS, M, N>,
 {
     let mut v = TSCONSTS::S as u32;
-    *x = x.mul(*w);
-    let mut b = x.mul(*w);
+    *x = &*x * w ;     // to take the prod of a &mut one has to dereference it (so it isn't mut anymore) and then reference to it
+    let mut b = &*x * w;
+        //x.mul(*w);
     let mut z = FpExt::new(TSCONSTS::root_of_unity());
 
     for max_v in (1..=TSCONSTS::S as u32).rev() {
@@ -674,10 +682,10 @@ fn ts_loop<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS>
             z = FpExt::conditional_select(&z, &new_z, j_less_than_v);
         }
 
-        let result = x.mul(z);
+        let result = &*x * &z;
         *x = FpExt::conditional_select(&result, x, b.ct_eq(&FpExt::one()));
         z = z.square();
-        b = b.mul(z);
+        b = &b * &z;
         v = k;
     }
 }
@@ -743,9 +751,9 @@ where
     }
 
     fn square(&self) -> Self {
-        // Calls our own FieldOps::mul, not Mul::mul (operator), to avoid the
-        // supertrait ambiguity documented in field_ops.rs.
-        <Self as FieldOps>::mul(self, self)
+        // Calls our own FieldOps::mul through the operator overload,
+        // not Mul::mul (operator), to avoid the supertrait ambiguity documented in field_ops.rs.
+        self * self
     }
 
     fn double(&self) -> Self {
@@ -803,7 +811,7 @@ where
         let mut result = self.clone();
         let mut conj = self.frobenius();
         for _ in 1..M {
-            result = <Self as FieldOps>::mul(&result, &conj);
+            result = &result * &conj;
             conj = conj.frobenius();
         }
         result
@@ -816,7 +824,7 @@ where
         let mut result = self.clone();
         let mut conj = self.frobenius();
         for _ in 1..M {
-            result = <Self as FieldOps>::add(&result, &conj);
+            result = &result + &conj;
             conj = conj.frobenius();
         }
         result
@@ -847,7 +855,7 @@ where
         ts_loop(&mut x, &w);
         CtOption::new(
             x,
-            x.mul(x).ct_eq(self), // Only return Some if it's the square root.
+            (<Self as FieldOps>::square(&x)).ct_eq(self), // Only return Some if it's the square root.
         )
     }
 
@@ -880,15 +888,19 @@ where
         let e1_limbs = e1.as_limbs().map(|limb| limb.0);
 
         // Compute x^(2^(S - 1) - 1) * (x * w^4)^(2^(S - 1))
-        let myinv = self
-            .pow_vartime(&e1_limbs)
-            .mul((self.mul(&w.pow_vartime(&[4 as u64]))).pow_vartime(&e0_limbs));
+        // pow_vartime?
+
+        let first_term = self.pow_vartime(&e1_limbs);
+        let xw4 = self * &w.pow_vartime(&[4 as u64]);
+        let second_term = xw4.pow_vartime(&e0_limbs);
+
+        let myinv = &first_term * &second_term;
 
         (
             CtOption::new(myinv, is_invertible),
             CtOption::new(
                 mysqrt,
-                mysqrt.mul(mysqrt).ct_eq(self), // Only return Some if it's the square root.
+                (&mysqrt * &mysqrt).ct_eq(self), // Only return Some if it's the square root.
             ),
         )
     }
@@ -908,7 +920,7 @@ where
     /// The inverse of the squareroot of `self` (type: CtOption<Self>)
     fn inv_sqrt(&self) -> CtOption<Self> {
         let (inv, sqrt) = self.inverse_and_sqrt();
-        inv.and_then(|a| sqrt.map(|b| a * b))
+        inv.and_then(|a| sqrt.map(|b| &a * &b))
     }
 
     /// Inverse of `self` and squareroot of `rhs` in 1 exponentiation
@@ -926,17 +938,18 @@ where
     fn invertme_sqrtother(&self, rhs: &Self) -> (CtOption<Self>, CtOption<Self>) {
         let is_invertible = !self.is_zero();
 
-        let x = self.mul(self).mul(*rhs);
+        let x = rhs * &(self * self);
+            //self.mul(self).mul(*rhs);
         let (myinv, mysqrt) = x.inverse_and_sqrt();
 
         let myinv_value = myinv.unwrap_or(Self::zero());
         let mysqrt_value = mysqrt.unwrap_or(Self::zero());
-        let inv_value = self.mul(rhs).mul(myinv_value);
-        let sqrt_value = inv_value.mul(mysqrt_value);
+        let inv_value = self * &(rhs * &myinv_value);
+        let sqrt_value = &inv_value  * &mysqrt_value;
 
         let inv_is_some = is_invertible & myinv.is_some();
 
-        let sqrt_is_some = inv_is_some & mysqrt.is_some() & (sqrt_value.mul(sqrt_value)).ct_eq(rhs);
+        let sqrt_is_some = inv_is_some & mysqrt.is_some() & (sqrt_value.square()).ct_eq(rhs);
 
         (
             CtOption::new(inv_value, inv_is_some),
@@ -961,16 +974,16 @@ where
     /// if `rhs` is invertible and the ratio has an FpM squareroot
     /// (type: (CtOption<Self>, CtOption<self>))
     fn sqrt_ratio(&self, rhs: &Self) -> CtOption<Self> {
-        let x = self.mul(&self.mul(self)).mul(*rhs);
+        let x = self * &(&(self.square()) * rhs);
         let (myinv, mysqrt) = x.inverse_and_sqrt();
 
         let myinv_value = myinv.unwrap_or(Self::zero());
         let mysqrt_value = mysqrt.unwrap_or(Self::zero());
-        let ans_value = self.mul(self).mul(myinv_value).mul(mysqrt_value);
+        let ans_value = &self.square() * &(&myinv_value * &mysqrt_value);
 
         let inv_is_some = myinv.is_some();
         let ans_is_some =
-            inv_is_some & mysqrt.is_some() & (mysqrt_value.mul(mysqrt_value)).ct_eq(&x);
+            inv_is_some & mysqrt.is_some() & (mysqrt_value.square()).ct_eq(&x);
 
         CtOption::new(ans_value, ans_is_some)
     }

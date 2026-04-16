@@ -46,7 +46,7 @@ fn add_mod_p() {
     // 17 + 5 = 22 \equiv 3  (mod 19)
     let a = F19::from_u64(17);
     let b = F19::from_u64(5);
-    assert_eq!((a + b).as_limbs()[0], 3);
+    assert_eq!((&a + &b).as_limbs()[0], 3);
 }
 
 #[test]
@@ -54,7 +54,7 @@ fn sub_mod_p() {
     // 3 − 7 = −4 \equiv 15  (mod 19)
     let a = F19::from_u64(3);
     let b = F19::from_u64(7);
-    assert_eq!((a - b).as_limbs()[0], 15);
+    assert_eq!((&a - &b).as_limbs()[0], 15);
 }
 
 #[test]
@@ -62,14 +62,14 @@ fn mul_mod_p() {
     // 7 x 8 = 56 \equiv 18  (mod 19)
     let a = F19::from_u64(7);
     let b = F19::from_u64(8);
-    assert_eq!((a * b).as_limbs()[0], 18);
+    assert_eq!((&a * &b).as_limbs()[0], 18);
 }
 
 #[test]
 fn neg_mod_p() {
     // −3 \equiv 16  (mod 19)
     let a = F19::from_u64(3);
-    assert_eq!((-a).as_limbs()[0], 16);
+    assert_eq!((-&a).as_limbs()[0], 16);
 }
 
 #[test]
@@ -91,7 +91,7 @@ fn inv_works() {
     // 7 × 7^-1 \equiv 1  (mod 19)
     let a   = F19::from_u64(7);
     let inv = a.invert().unwrap();
-    assert_eq!((a * inv).as_limbs()[0], 1);
+    assert_eq!((&a * &inv).as_limbs()[0], 1);
 }
 
 #[test]
@@ -129,5 +129,5 @@ fn sqrt_of_qr() {
     // √4 = 2  (mod 19)
     let four = F19::from_u64(4);
     let root = four.sqrt().expect("4 is a QR mod 19");
-    assert_eq!((root * root).as_limbs()[0], 4);
+    assert_eq!((&root * &root).as_limbs()[0], 4);
 }

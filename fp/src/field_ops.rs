@@ -8,14 +8,13 @@ pub trait FieldOps:
     + Clone
     + PartialEq
     + Eq
-    + Add<Output = Self>
-    + Sub<Output = Self>
-    + Mul<Output = Self>
-    + Neg<Output = Self>
     + Default
     + ConditionallySelectable
-// const time impl will have the following trait too
-// + ConditionallySelectable
+where
+    for<'a, 'b> &'a Self: Add<&'b Self, Output = Self>,
+    for<'a, 'b> &'a Self: Sub<&'b Self, Output = Self>,
+    for<'a, 'b> &'a Self: Mul<&'b Self, Output = Self>,
+    for<'a> &'a Self: Neg<Output = Self>,
 {
     fn zero() -> Self;
     fn one() -> Self;

@@ -115,49 +115,51 @@ where
 // Operator overloads
 // ---------------------------------------------------------------------------
 
-impl<MOD, const LIMBS: usize> Add for FpElement<MOD, LIMBS>
+impl<'a, 'b, MOD, const LIMBS: usize> Add<&'b FpElement<MOD, LIMBS>>
+for &'a FpElement<MOD, LIMBS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
 {
-    type Output = Self;
-    fn add(self, rhs: Self) -> Self {
-        Self {
-            value: self.value + rhs.value,
-        }
+    type Output = FpElement<MOD, LIMBS>;
+
+    fn add(self, rhs: &'b FpElement<MOD, LIMBS>) -> Self::Output {
+        <FpElement<MOD, LIMBS> as FieldOps>::add(self, rhs)
     }
 }
 
-impl<MOD, const LIMBS: usize> Sub for FpElement<MOD, LIMBS>
+impl<'a, 'b, MOD, const LIMBS: usize> Sub<&'b FpElement<MOD, LIMBS>>
+for &'a FpElement<MOD, LIMBS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
 {
-    type Output = Self;
-    fn sub(self, rhs: Self) -> Self {
-        Self {
-            value: self.value - rhs.value,
-        }
+    type Output = FpElement<MOD, LIMBS>;
+
+    fn sub(self, rhs: &'b FpElement<MOD, LIMBS>) -> Self::Output {
+        <FpElement<MOD, LIMBS> as FieldOps>::sub(self, rhs)
     }
 }
 
-impl<MOD, const LIMBS: usize> Mul for FpElement<MOD, LIMBS>
+
+impl<'a, 'b, MOD, const LIMBS: usize> Mul<&'b FpElement<MOD, LIMBS>>
+for &'a FpElement<MOD, LIMBS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
 {
-    type Output = Self;
-    fn mul(self, rhs: Self) -> Self {
-        Self {
-            value: self.value * rhs.value,
-        }
+    type Output = FpElement<MOD, LIMBS>;
+
+    fn mul(self, rhs: &'b FpElement<MOD, LIMBS>) -> Self::Output {
+        <FpElement<MOD, LIMBS> as FieldOps>::mul(self, rhs)
     }
 }
 
-impl<MOD, const LIMBS: usize> Neg for FpElement<MOD, LIMBS>
+impl<'a, MOD, const LIMBS: usize> Neg for &'a FpElement<MOD, LIMBS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
 {
-    type Output = Self;
-    fn neg(self) -> Self {
-        Self { value: -self.value }
+    type Output = FpElement<MOD, LIMBS>;
+
+    fn neg(self) -> Self::Output {
+        <FpElement<MOD, LIMBS> as FieldOps>::negate(self)
     }
 }
 
