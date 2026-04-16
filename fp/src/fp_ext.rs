@@ -13,6 +13,62 @@
 //! irreducible polynomial is supplied via the zero-size marker trait
 //! [`IrreduciblePoly`].
 //!
+//! # Example
+//!
+//! ```
+//! use crypto_bigint::{const_prime_monty_params, Uint};
+//! use fp::field_ops::FieldOps;
+//! use fp::fp_element::FpElement;
+//! use fp::fp_ext::{FpExt, IrreduciblePoly, TonelliShanksConstants};
+//!
+//! /* Setup the underlying prime field */
+//! const_prime_monty_params!(Fp19Mod, Uint<1>, "0000000000000013", 2);
+//! type Fp19 = FpElement<Fp19Mod, 1>;
+//!
+//! fn fp(n: u64) -> Fp19 {
+//!    Fp19::from_u64(n)
+//! }
+//!
+//! /* Setput the irreducible polynomial */
+//! struct QuadPoly;
+//! impl IrreduciblePoly<Fp19Mod, 1, 2> for QuadPoly {
+//!     fn modulus() -> [Fp19; 2] {
+//!         [Fp19::one(), Fp19::zero()]
+//!     }
+//! }
+//!
+//! /* Setup the Tonelli--Shanks constants */
+//! struct TSQuad;
+//! impl TonelliShanksConstants<Fp19Mod, 1, 2, 1> for TSQuad {
+//!     // p^2 - 1
+//!     const ORDER: Uint<1> = Uint::<1>::from_u64(360);
+//!     // (p^2 - 1) / 2
+//!     const HALF_ORDER: Uint<1> = Uint::<1>::from_u64(180);
+//!     // p^2 - 1 = 2^S * T with T odd
+//!     const S: u64 = 3;
+//!     const T: Uint<1> = Uint::<1>::from_u64(45);
+//!     // (T - 1) / 2
+//!     const PROJENATOR_EXP: Uint<1> = Uint::<1>::from_u64(22);
+//!     // 2^(S - 1)
+//!     const TWOSM1: Uint<1> = Uint::<1>::from_u64(4);
+//!     // 2^S root of unity
+//!     fn root_of_unity() -> [FpElement<Fp19Mod, 1>; 2] {
+//!         [Fp19::from_u64(3), Fp19::from_u64(3)]
+//!     }
+//! }
+//!
+//! /* Define the extension field */
+//! type F19_2 = FpExt<Fp19Mod, 1, 2, 1, QuadPoly, TSQuad>;
+//!
+//! /* Some standard tests */
+//! let a = F19_2::new([fp(3), fp(2)]);
+//! let ainv = F19_2::new([fp(9), fp(13)]);
+//! let asquare = F19_2::new([fp(5), fp(12)]);
+//! assert_eq!(a.invert().unwrap(), ainv);
+//! assert_eq!(a.square(), asquare);
+//! assert_eq!(asquare.sqrt().unwrap().square(), asquare);
+//! ```
+//!
 //! # Representation
 //!
 //! An element $a \in \mathbb{F}\_{p^M}$ is stored as exactly $M$
@@ -144,6 +200,11 @@ implement for a new field
 ///     }
 /// }
 /// ```
+///
+/// # Todo
+///
+/// - [ ] Compute these constants at compile time to bury this from
+///   the end user.
 pub trait TonelliShanksConstants<MOD, const LIMBS: usize, const M: usize, const N: usize>:
     'static
 where
@@ -187,7 +248,8 @@ where
     P: IrreduciblePoly<MOD, LIMBS, M>,
     TSCONSTS: TonelliShanksConstants<MOD, LIMBS, M, N>,
 {
-    /// Coefficients in ascending degree: `coeffs[i]` = coefficient of `x^i`.
+    /// Coefficients in ascending degree, that is `coeffs[i]` is
+    /// the coefficient of $x^i$ (zero indexed).
     pub coeffs: [FpElement<MOD, LIMBS>; M],
     _phantom: PhantomData<P>,
     _order: PhantomData<TSCONSTS>,
@@ -213,14 +275,14 @@ where
         }
     }
 
-    /// Embed a base-field element as `a + 0x + ... + 0x^{M-1}`.
+    /// Embed a base-field element as $a + 0x + ... + 0x^{M-1}$.
     pub fn from_base(a: FpElement<MOD, LIMBS>) -> Self {
         let mut coeffs = std::array::from_fn(|_| FpElement::zero());
         coeffs[0] = a;
         Self::new(coeffs)
     }
 
-    /// Return the coefficient of `x^i`.
+    /// Return the coefficient of $x^i$.
     pub fn coeff(&self, i: usize) -> &FpElement<MOD, LIMBS> {
         &self.coeffs[i]
     }
@@ -298,10 +360,9 @@ where
 // ---------------------------------------------------------------------------
 // Pretty Display — polynomial form over Fp
 // ---------------------------------------------------------------------------
-//
-// Shows the element as  `a_0 + a_1·x + a_2·x² + ...`  with zero
-// coefficients suppressed.  The zero element prints as `0`.
 
+/// Shows the element as  $a_0 + a_1 x + a_2 x^2 + ...$  with zero
+/// coefficients suppressed.  The zero element prints as `0`.
 impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS> std::fmt::Display
     for FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
 where
