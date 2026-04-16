@@ -19,3 +19,6 @@ pub mod curve_jacobi_quartic;
 pub mod point_jacobi_quartic;
 pub mod curve_jacobi_intersection;
 pub mod point_jacobi_intersection;
+
+pub mod curve_hessian;
+pub mod point_hessian;

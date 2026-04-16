@@ -38,7 +38,7 @@ exclude = [
 
 [workspace.dependencies]
 # External
-crypto-bigint = "0.7.1"
+crypto-bigint = "0.7.3"
 rand = "0.10.1"
 
 # Internal
