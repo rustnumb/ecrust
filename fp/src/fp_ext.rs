@@ -95,7 +95,7 @@
 use core::ops::{Add, Mul, Neg, Sub};
 use std::marker::PhantomData;
 
-use crate::field_ops::{FieldOps, FieldRandom};
+use crate::field_ops::{FieldFromRepr, FieldOps, FieldRandom};
 use crate::fp_element::FpElement;
 use crypto_bigint::{modular::ConstPrimeMontyParams, Uint};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
@@ -830,6 +830,10 @@ where
         Self::new(c)
     }
 
+    fn from_u64(x: u64) -> Self {
+        Self::from_base(FpElement::<MOD, LIMBS>::from_u64(x))
+    }
+
     // --- Predicates ---------------------------------------------------------
 
     fn is_zero(&self) -> Choice {
@@ -1154,5 +1158,19 @@ where
     fn random(rng: &mut (impl rand::CryptoRng + rand::Rng)) -> Self {
         let coeffs = std::array::from_fn(|_| FpElement::<MOD, LIMBS>::random(rng));
         Self::new(coeffs)
+    }
+}
+
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS>
+FieldFromRepr for FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
+where
+    MOD: ConstPrimeMontyParams<LIMBS>,
+    P: IrreduciblePoly<MOD, LIMBS, M>,
+    TSCONSTS: TonelliShanksConstants<MOD, LIMBS, M, N>,
+{
+    type Repr = [FpElement<MOD, LIMBS>; M];
+
+    fn from_repr(x: Self::Repr) -> Self {
+        Self::new(x)
     }
 }

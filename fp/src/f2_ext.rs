@@ -1,6 +1,6 @@
 //! Generic finary fields $F_{2^m} = F_2\[x\] / (f(x))$
 
-use crate::field_ops::{FieldOps, FieldRandom};
+use crate::field_ops::{FieldFromRepr, FieldOps, FieldRandom};
 use core::ops::{Add, Mul, Neg, Sub};
 use crypto_bigint::Uint;
 use std::marker::PhantomData;
@@ -405,6 +405,8 @@ where
         Self::from_uint(Uint::<LIMBS>::ONE)
     }
 
+    fn from_u64(x: u64) -> Self { Self::from_u64(x)  }
+
     fn is_zero(&self) -> Choice {
         Self::ct_eq(self, &Self::zero())
     }
@@ -491,6 +493,7 @@ where
     fn degree() -> u32 {
         P::degree() as u32
     }
+
 }
 
 // ---------------------------------------------------------------------------
@@ -527,5 +530,17 @@ where
         }
 
         Self::new(Uint::from_words(words))
+    }
+}
+
+
+impl<const LIMBS: usize, P> FieldFromRepr for F2Ext<LIMBS, P>
+where
+    P: BinaryIrreducible<LIMBS>,
+{
+    type Repr = Uint<LIMBS>;
+
+    fn from_repr(x: Self::Repr) -> Self {
+        Self::from_uint(x)
     }
 }

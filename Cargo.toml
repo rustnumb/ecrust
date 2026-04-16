@@ -1,3 +1,4 @@
+
 [workspace]
 members = [
     "fp",
@@ -17,10 +18,27 @@ resolver = "2"
 version = "0.1.0"
 edition = "2024"
 license = "Apache-2.0"
+name = "ecRust-lib"
+rust-version = "1.70.0"  # Minimum Rust version required
+authors = ["Gustavo Banegas <gustavo.souza-banegas@inria.fr>", "Martin Azon <martin.azon-y-trell@inria.fr>", "Sam Frengley <samuel.frengley@inria.fr>"]
+description = "A Rust library for finite-field arithmetic, elliptic-curve operations, isogeny scaffolding, and higher-level elliptic-curve protocols."
+documentation = "https://docs.rs/ecRust-lib"
+homepage = "https://github.com/rustnumb/ecrust"
+repository = "https://github.com/rustnumb/ecrust"
+readme = "README.md"
+keywords = ["elliptic", "curves", "isogeny", "finite", "fields"]
+categories = ["development-tools", "no-std"]
+exclude = [
+    ".github/",
+    "tests/fixtures/",
+    "*.log",
+    "Cargo.lock",
+]
+
 
 [workspace.dependencies]
 # External
-crypto-bigint = "0.7.1"
+crypto-bigint = "0.7.3"
 rand = "0.10.1"
 
 # Internal
