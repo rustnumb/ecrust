@@ -1,4 +1,3 @@
-#![doc = include_str!("../../katex-header.html")]
 //! Finite field arithmetic for the `ecrust` library.
 //!
 //! # Module layout
