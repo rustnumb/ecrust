@@ -1,5 +1,6 @@
+# protocol/Cargo.toml
 [package]
-name        = "protocol"
+name = "ecrust-protocol"
 version.workspace = true
 edition.workspace = true
 description = "Cryptographic protocols built on top of the ecrust field and elliptic-curve layers"
@@ -14,4 +15,4 @@ crypto-bigint = { workspace = true }
 fp = { workspace = true }
 
 [package.metadata.docs.rs]
-rustdoc-args = [ "--html-in-header", "katex-header.html" ]
+rustdoc-args = ["--html-in-header", "katex-header.html"]

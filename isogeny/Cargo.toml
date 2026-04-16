@@ -1,5 +1,6 @@
+# isogeny/Cargo.toml
 [package]
-name        = "isogeny"
+name = "ecrust-isogeny"
 version.workspace = true
 edition.workspace = true
 description = "Isogeny computations for the ecrust library"

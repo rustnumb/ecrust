@@ -19,7 +19,7 @@ version = "0.1.0"
 edition = "2024"
 license = "Apache-2.0"
 name = "ecRust-lib"
-rust-version = "1.70.0"  # Minimum Rust version required
+rust-version = "1.85.0"  # Minimum Rust version required
 authors = ["Gustavo Banegas <gustavo.souza-banegas@inria.fr>", "Martin Azon <martin.azon-y-trell@inria.fr>", "Sam Frengley <samuel.frengley@inria.fr>"]
 description = "A Rust library for finite-field arithmetic, elliptic-curve operations, isogeny scaffolding, and higher-level elliptic-curve protocols."
 documentation = "https://docs.rs/ecRust-lib"
@@ -42,6 +42,7 @@ crypto-bigint = "0.7.3"
 rand = "0.10.1"
 
 # Internal
-fp       = { path = "fp",       version = "0.1.0" }
-ec       = { path = "ec",       version = "0.1.0" }
-protocol = { path = "protocol", version = "0.1.0" }
+fp = { path = "fp", package = "ecrust-fp", version = "0.1.0" }
+ec = { path = "ec", package = "ecrust-ec", version = "0.1.0" }
+isogeny = { path = "isogeny", package = "ecrust-isogeny", version = "0.1.0" }
+protocol = { path = "protocol", package = "ecrust-protocol", version = "0.1.0" }
