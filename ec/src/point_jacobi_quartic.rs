@@ -58,13 +58,13 @@ impl<F: FieldOps> PartialEq for JacobiQuarticPoint<F> {
 }
 
 impl<F: FieldOps> Eq for JacobiQuarticPoint<F> {}
+
 ref_field_impl! {
     impl<F> JacobiQuarticPoint<F> {
         pub fn new(x: F, y: F) -> Self {
             Self { x, y }
         }
 
-<<<<<<< HEAD
         /// The neutral element `(0, 1)`.
         pub fn identity() -> Self {
             Self {
@@ -84,32 +84,6 @@ ref_field_impl! {
                 x: F::zero(),
                 y: - &one,
             }
-=======
-impl<F: FieldOps> JacobiQuarticPoint<F> {
-    /// Create a new point `(x,y)`
-    pub fn new(x: F, y: F) -> Self {
-        Self { x, y }
-    }
-
-    /// The neutral element `(0, 1)`.
-    pub fn identity() -> Self {
-        Self {
-            x: F::zero(),
-            y: F::one(),
-        }
-    }
-
-    /// Checks if the point is the identity
-    pub fn is_identity(&self) -> bool {
-        self.x == F::zero() && self.y == F::one()
-    }
-
-    /// The affine order-2 point `(0, -1)`.
-    pub fn order_two_point() -> Self {
-        Self {
-            x: F::zero(),
-            y: -F::one(),
->>>>>>> origin/main
         }
     }
 }
