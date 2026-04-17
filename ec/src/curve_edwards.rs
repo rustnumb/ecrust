@@ -28,14 +28,10 @@
 //! - Binary Edwards curves (characteristic $2$): Bernstein–Lange–Rezaeian Farashahi (2008)
 //! - Odd characteristic: <https://hyperelliptic.org/EFD/g1p/auto-edwards.html>
 
-<<<<<<< HEAD
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
-use fp::field_ops::FieldOps;
 use fp::{ref_field_impl, ref_field_trait_impl};
-=======
 use core::fmt;
 use fp::field_ops::{FieldOps, FieldRandom};
->>>>>>> origin/main
 
 use crate::curve_ops::Curve;
 use crate::point_edwards::EdwardsPoint;
@@ -52,19 +48,7 @@ pub struct EdwardsCurve<F: FieldOps> {
     pub d2: F,
 }
 
-<<<<<<< HEAD
-ref_field_impl! {
-    impl<F> EdwardsCurve<F> {
-        /// Construct an odd-characteristic Edwards curve `x² + y² = 1 + d·x²·y²`.
-        ///
-        /// Stores `d` as `d2`; `d1` is set to zero (unused).
-        pub fn new(d: F) -> Self {
-            assert!(F::characteristic()[0] != 2, "use new_binary() for char 2");
-            assert!(d != F::zero(), "d must be nonzero");
-            assert!(d != F::one(), "d must not be 1");
-            Self { d1: F::zero(), d2: d }
-        }
-=======
+
 impl<F> fmt::Display for EdwardsCurve<F>
 where
     F: FieldOps + fmt::Display,
@@ -98,20 +82,18 @@ where
     }
 }
 
-impl<F: FieldOps + FieldRandom> EdwardsCurve<F> {
-    /// Construct an odd-characteristic Edwards curve `x² + y² = 1 + d·x²·y²`.
-    ///
-    /// Stores `d` as `d2`; `d1` is set to zero (unused).
-    pub fn new(d: F) -> Self {
-        assert!(F::characteristic()[0] != 2, "use new_binary() for char 2");
-        assert!(d != F::zero(), "d must be nonzero");
-        assert!(d != F::one(), "d must not be 1");
-        Self {
-            d1: F::zero(),
-            d2: d,
+
+ref_field_impl! {
+    impl<F: FieldOps + FieldRandom> EdwardsCurve<F> {
+        /// Construct an odd-characteristic Edwards curve `x² + y² = 1 + d·x²·y²`.
+        ///
+        /// Stores `d` as `d2`; `d1` is set to zero (unused).
+        pub fn new(d: F) -> Self {
+            assert!(F::characteristic()[0] != 2, "use new_binary() for char 2");
+            assert!(d != F::zero(), "d must be nonzero");
+            assert!(d != F::one(), "d must not be 1");
+            Self { d1: F::zero(), d2: d }
         }
-    }
->>>>>>> origin/main
 
         /// Construct a binary Edwards curve
         /// `d₁(x+y) + d₂(x²+y²) = xy + xy(x+y) + x²y²`.
@@ -166,61 +148,72 @@ impl<F: FieldOps + FieldRandom> EdwardsCurve<F> {
                 lhs == rhs
             }
         }
-    }
 
-    /// Sample a random affine point on this Edwards curve using the provided RNG.
-    ///
-    /// This currently uses a square-root-based construction and is implemented
-    /// only for odd characteristic. It returns a point `P` such that
-    /// `self.is_on_curve(&P)` holds.
-    pub fn random_point(&self, rng: &mut (impl rand::CryptoRng + rand::Rng)) -> EdwardsPoint<F> {
-        assert!(
-            F::characteristic()[0] != 2,
-            "random_point currently implemented only for odd characteristic"
-        );
+        /// Sample a random affine point on this Edwards curve using the provided RNG.
+        ///
+        /// This currently uses a square-root-based construction and is implemented
+        /// only for odd characteristic. It returns a point `P` such that
+        /// `self.is_on_curve(&P)` holds.
+        pub fn random_point(&self, rng: &mut (impl rand::CryptoRng + rand::Rng)) -> EdwardsPoint<F> {
+            assert!(
+                F::characteristic()[0] != 2,
+                "random_point currently implemented only for odd characteristic"
+            );
 
-        loop {
-            let x = F::random(rng);
-            let x2 = <F as FieldOps>::square(&x);
-            let denom = F::one() - self.d2 * x2;
+            loop {
+                let x = F::random(rng);
+                let x2 = <F as FieldOps>::square(&x);
+                let denom = &F::one() - &(&self.d2 * &x2);
 
-            if bool::from(denom.is_zero()) {
-                continue;
-            }
+                if bool::from(denom.is_zero()) {
+                    continue;
+                }
 
-            let rhs = (F::one() - x2) * denom.invert().unwrap();
+                let rhs = &(&F::one() - &x2) * &denom.invert().unwrap();
 
-            if let Some(y) = rhs.sqrt().into_option() {
-                let p = EdwardsPoint::new(x, y);
-                debug_assert!(self.is_on_curve(&p));
-                return p;
+                if let Some(y) = rhs.sqrt().into_option() {
+                    let p = EdwardsPoint::new(x, y);
+                    debug_assert!(self.is_on_curve(&p));
+                    return p;
+                }
             }
         }
     }
 }
 
-<<<<<<< HEAD
-ref_field_trait_impl! {
-    impl<F> Curve for EdwardsCurve<F> {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ref_field_trait_impl!{
+    impl<F: FieldOps + FieldRandom> Curve for EdwardsCurve<F> {
         type BaseField = F;
         type Point = EdwardsPoint<F>;
 
         fn is_on_curve(&self, point: &Self::Point) -> bool {
             self.contains(&point.x, &point.y)
-=======
-impl<F: FieldOps + FieldRandom> Curve for EdwardsCurve<F> {
-    type BaseField = F;
-    type Point = EdwardsPoint<F>;
+        }
 
-    fn is_on_curve(&self, point: &Self::Point) -> bool {
-        self.contains(&point.x, &point.y)
-    }
+        fn random_point(&self, rng: &mut (impl rand::CryptoRng + rand::Rng)) -> Self::Point {
+           EdwardsCurve::random_point(self, rng)
+        }
 
-    fn random_point(&self, rng: &mut (impl rand::CryptoRng + rand::Rng)) -> Self::Point {
-       EdwardsCurve::random_point(self, rng)
-    }
-
-    fn j_invariant(&self) -> F {
+        fn j_invariant(&self) -> F {
         if F::characteristic()[0] != 2 {
             // j = 16(1 + 14d + d²)³ / (d(1 − d)⁴)
             let d = self.d2;
@@ -228,20 +221,20 @@ impl<F: FieldOps + FieldRandom> Curve for EdwardsCurve<F> {
             let two = <F as FieldOps>::double(&F::one());
             let four = <F as FieldOps>::double(&two);
             let eight = <F as FieldOps>::double(&four);
-            let fourteen = eight + four + two;
+            let fourteen = &eight + &(&four + &two);
             let sixteen = <F as FieldOps>::double(&eight);
 
-            let inner = F::one() + fourteen * d + d2;
-            let inner_cubed = inner * <F as FieldOps>::square(&inner);
-            let numer = sixteen * inner_cubed;
+            let inner = &F::one() + &(&(&fourteen * &d) + &d2);
+            let inner_cubed = &inner * &<F as FieldOps>::square(&inner);
+            let numer = &sixteen * &inner_cubed;
 
-            let one_minus_d = F::one() - d;
+            let one_minus_d = &F::one() - &d;
             let omd2 = <F as FieldOps>::square(&one_minus_d);
             let omd4 = <F as FieldOps>::square(&omd2);
-            let denom = d * omd4;
+            let denom = &d * &omd4;
 
-            numer
-                * denom
+            &numer
+                * &denom
                     .invert()
                     .into_option()
                     .expect("d(1-d)^4 must be invertible")
@@ -250,73 +243,24 @@ impl<F: FieldOps + FieldRandom> Curve for EdwardsCurve<F> {
             let d1_sq = <F as FieldOps>::square(&self.d1);
             let d1_4 = <F as FieldOps>::square(&d1_sq);
             let d2_sq = <F as FieldOps>::square(&self.d2);
-            let denom = d1_4 * (d1_4 + d1_sq + d2_sq);
+            let denom = &d1_4 * &(&d1_4 + &(&d1_sq + &d2_sq));
             denom
                 .invert()
                 .into_option()
                 .expect("j-invariant denominator must be invertible")
->>>>>>> origin/main
-        }
-
-        fn random_point(&self) -> Self::Point {
-            todo!()
-        }
-
-        fn j_invariant(&self) -> F {
-            if F::characteristic()[0] != 2 {
-                // j = 16(1 + 14d + d²)³ / (d(1 − d)⁴)
-                let d_sq = <F as FieldOps>::square(&self.d2);
-
-                let one = F::one();
-                let two = <F as FieldOps>::double(&one);
-                let four = <F as FieldOps>::double(&two);
-                let eight = <F as FieldOps>::double(&four);
-                let fourteen_tmp = &eight + &four;
-                let fourteen = &fourteen_tmp + &two;
-                let sixteen = <F as FieldOps>::double(&eight);
-
-                let fourteen_d = &fourteen * &self.d2;
-                let inner_tmp = &one + &fourteen_d;
-                let inner = &inner_tmp + &d_sq;
-                let inner_sq = <F as FieldOps>::square(&inner);
-                let inner_cubed = &inner * &inner_sq;
-                let numer = &sixteen * &inner_cubed;
-
-                let one_minus_d = &one - &self.d2;
-                let omd2 = <F as FieldOps>::square(&one_minus_d);
-                let omd4 = <F as FieldOps>::square(&omd2);
-                let denom = &self.d2 * &omd4;
-
-                let denom_inv = <F as FieldOps>::invert(&denom)
-                    .into_option()
-                    .expect("d(1-d)^4 must be invertible");
-
-                &numer * &denom_inv
-            } else {
-                // j = 1 / (d₁⁴ (d₁⁴ + d₁² + d₂²))
-                let d1_sq = <F as FieldOps>::square(&self.d1);
-                let d1_4 = <F as FieldOps>::square(&d1_sq);
-                let d2_sq = <F as FieldOps>::square(&self.d2);
-
-                let inner_tmp = &d1_4 + &d1_sq;
-                let inner = &inner_tmp + &d2_sq;
-                let denom = &d1_4 * &inner;
-
-                <F as FieldOps>::invert(&denom)
-                    .into_option()
-                    .expect("j-invariant denominator must be invertible")
             }
         }
 
         fn a_invariants(&self) -> Vec<Self::BaseField> {
             if F::characteristic()[0] != 2 {
-                vec![self.d2.clone()]
+                vec![self.d2]
             } else {
-                vec![self.d1.clone(), self.d2.clone()]
+                vec![self.d1, self.d2]
             }
         }
     }
 }
+
 
 // ---------------------------------------------------------------------------
 // Constant-time functionalities
