@@ -13,12 +13,9 @@ use subtle::ConditionallySelectable;
 /// (`Add`, `Sub`, `Mul`, `Neg`) because point addition and negation usually
 /// need access to the curve parameters. The clean abstraction boundary is a
 /// method-based API taking `&Self::Curve` explicitly.
-<<<<<<< HEAD
+///
 pub trait PointOps: Clone  + ConditionallySelectable {
-=======
-pub trait PointOps: Clone + ConditionallySelectable {
     /// The base field $\mathbb{F}_{p^M}$
->>>>>>> origin/main
     type BaseField: FieldOps;
 
     /// The elliptic curve we're working on
