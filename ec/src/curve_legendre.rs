@@ -51,6 +51,7 @@ use fp::field_ops::{FieldOps, FieldRandom};
 
 use crate::curve_ops::Curve;
 use crate::point_legendre::LegendrePoint;
+use crate::curve_weierstrass::WeierstrassCurve;
 
 /// A Legendre elliptic curve over a field `F`.
 ///
@@ -176,6 +177,90 @@ impl<F: FieldOps + FieldRandom> LegendreCurve<F> {
             self.lambda,
             F::zero(),
         ]
+    }
+
+    /// Returns the same curve written in general Weierstrass form.
+    ///
+    /// The Legendre equation
+    ///
+    /// `y² = x(x-1)(x-λ)`
+    ///
+    /// expands to
+    ///
+    /// `y² = x³ - (1+λ)x² + λx`,
+    ///
+    /// so the corresponding Weierstrass coefficients are
+    ///
+    /// `[a1, a2, a3, a4, a6] = [0, -(1+λ), 0, λ, 0]`.
+    pub fn to_weierstrass(&self) -> WeierstrassCurve<F> {
+        WeierstrassCurve::new(
+            F::zero(),
+            -(F::one() + self.lambda),
+            F::zero(),
+            self.lambda,
+            F::zero(),
+        )
+    }
+
+    /// Returns a short Weierstrass model isomorphic to this Legendre curve.
+    ///
+    /// Over fields of characteristic different from `2` and `3`, the change of
+    /// variables
+    ///
+    /// `x = X + (1+λ)/3`, `y = Y`
+    ///
+    /// transforms
+    ///
+    /// `y² = x³ - (1+λ)x² + λx`
+    ///
+    /// into
+    ///
+    /// `Y² = X³ + AX + B`
+    ///
+    /// where
+    ///
+    /// `A = -(λ² - λ + 1)/3`
+    ///
+    /// `B = -((λ + 1)(λ - 2)(2λ - 1))/27`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the characteristic is `<= 3`, or if the curve is singular.
+    pub fn to_short_weierstrass(&self) -> WeierstrassCurve<F> {
+        assert!(
+            !self.is_singular(),
+            "cannot convert a singular Legendre curve to short Weierstrass form"
+        );
+        assert!(
+            F::characteristic()[0] > 3,
+            "short Weierstrass conversion requires characteristic != 2, 3"
+        );
+
+        let two = F::from_u64(2);
+        let three = F::from_u64(3);
+        let twenty_seven = F::from_u64(27);
+
+        let three_inv = three
+            .invert()
+            .into_option()
+            .expect("3 must be invertible in characteristic != 3");
+
+        let twenty_seven_inv = twenty_seven
+            .invert()
+            .into_option()
+            .expect("27 must be invertible in characteristic != 3");
+
+        let lambda_sq = <F as FieldOps>::square(&self.lambda);
+
+        let a = -(lambda_sq - self.lambda + F::one()) * three_inv;
+
+        let b = -(
+            (self.lambda + F::one())
+                * (self.lambda - two)
+                * (two * self.lambda - F::one())
+        ) * twenty_seven_inv;
+
+        WeierstrassCurve::new_short(a, b)
     }
 }
 

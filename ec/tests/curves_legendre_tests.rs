@@ -83,3 +83,50 @@ fn legendre_curve_j_invariant_matches_closed_formula() {
 
     assert_eq!(c.j_invariant(), expected);
 }
+
+
+#[test]
+fn legendre_to_general_weierstrass_matches_a_invariants() {
+    let c = curve(); // e.g. λ = 3 over F_19
+    let w = c.to_weierstrass();
+
+    assert_eq!(w.a1, F19::zero());
+    assert_eq!(w.a2, -(F19::one() + c.lambda));
+    assert_eq!(w.a3, F19::zero());
+    assert_eq!(w.a4, c.lambda);
+    assert_eq!(w.a6, F19::zero());
+}
+
+#[test]
+fn legendre_to_general_weierstrass_preserves_j() {
+    let c = curve();
+    let w = c.to_weierstrass();
+
+    assert_eq!(c.j_invariant(), w.j_invariant());
+}
+
+#[test]
+fn legendre_to_short_weierstrass_preserves_j() {
+    let c = curve();
+    let w = c.to_short_weierstrass();
+
+    assert_eq!(c.j_invariant(), w.j_invariant());
+}
+
+#[test]
+fn legendre_short_weierstrass_coordinate_shift_works() {
+    let c = curve();
+    let w = c.to_short_weierstrass();
+
+    let p = LegendrePoint::new(fp(2), fp(6));
+    assert!(c.is_on_curve(&p));
+
+    let three = fp(3);
+    let three_inv = three.invert().into_option().unwrap();
+    let shift = (F19::one() + c.lambda) * three_inv;
+
+    let xw = p.x - shift;
+    let yw = p.y;
+
+    assert!(w.contains(&xw, &yw));
+}
