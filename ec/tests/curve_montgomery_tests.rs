@@ -23,8 +23,10 @@ fn all_x_coords_montgomery_19(a: F19, b: F19) -> Vec<F19> {
 
     for xint in 0..19u64 {
         let x = fp(xint);
-        let rhs_num = x * (x * x + a * x + F19::one());
-        let rhs = rhs_num * F19::invert(&b).expect("b should be invertible mod 19");
+        let x2 = &x * &x;
+        let ax = &a * &x;
+        let rhs_num = &x * &(&x2 + &(&ax + &F19::one()));
+        let rhs = &rhs_num * &F19::invert(&b).expect("b should be invertible mod 19");
 
         let mut has_y = false;
         for y in 0..19u64 {
@@ -70,7 +72,7 @@ fn montgomery_curve_rejects_b_zero() {
 #[test]
 fn montgomery_curve_rejects_a_equal_plus_minus_two() {
     let two = fp(2);
-    let minus_two = -two;
+    let minus_two = -&two;
 
     assert!(!MontgomeryCurve::<F19>::is_smooth(&two, &fp(1)));
     assert!(!MontgomeryCurve::<F19>::is_smooth(&minus_two, &fp(1)));
@@ -81,7 +83,7 @@ fn montgomery_a24_matches_formula() {
     let c = MontgomeryCurve::new(fp(3), fp(5));
 
     let four_inv = fp(4).invert().unwrap();
-    let expected = (fp(3) + fp(2)) * four_inv;
+    let expected = &(&fp(3) + &fp(2)) * &four_inv;
 
     assert_eq!(c.a24(), expected);
 }
@@ -102,6 +104,7 @@ fn montgomery_rejects_some_non_points() {
 
     let all_x = all_x_coords_montgomery_19(fp(3), fp(5));
     for x in 0..19u64 {
+        println!("x = {}", x);
         let p = KummerPoint::from_x(fp(x));
         let expected = all_x.contains(&fp(x));
         assert_eq!(
@@ -119,9 +122,9 @@ fn montgomery_j_invariant_matches_formula() {
     let a = fp(3);
 
     let asq = a.square();
-    let num = fp(256) * (asq - fp(3)) * (asq - fp(3)).square();
-    let den_inv = (asq - fp(4)).invert().unwrap();
-    let expected = num * den_inv;
+    let num = &fp(256) * &(&(&asq - &fp(3)) * &(&asq - &fp(3)).square());
+    let den_inv = (&asq - &fp(4)).invert().unwrap();
+    let expected = &num * &den_inv;
 
     assert_eq!(c.j_invariant(), expected);
 }

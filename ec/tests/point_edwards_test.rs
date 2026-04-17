@@ -64,10 +64,10 @@ fn find_point_65537(curve: &EdwardsCurve<F65537>) -> Option<EdwardsPoint<F65537>
     for xv in 2u64..1000 {
         let x = fp65537(xv);
         let x2 = <F65537 as FieldOps>::square(&x);
-        let num = F65537::one() - x2;
-        let den = F65537::one() - d * x2;
+        let num = &F65537::one() - &x2;
+        let den = &F65537::one() - &(&d * &x2);
         if let Some(den_inv) = den.invert().into_option() {
-            let y2 = num * den_inv;
+            let y2 = &num * &den_inv;
             if let Some(y) = y2.sqrt().into_option() {
                 let p = EdwardsPoint::new(x, y);
                 if curve.is_on_curve(&p) {
@@ -439,9 +439,9 @@ fn gf16_scalar_mul_double() {
 fn gf16_w_double() {
     let c = binary_edwards_curve();
     for p in all_bin_edwards(&c) {
-        let w = p.x + p.y;
+        let w = &p.x + &p.y;
         let dbl = p.double(&c);
-        let w_expected = dbl.x + dbl.y;
+        let w_expected = &dbl.x + &dbl.y;
         let w_got = EdwardsPoint::<GF16>::w_double(&w, &c);
         assert_eq!(
             w_got, w_expected,
@@ -463,10 +463,10 @@ fn gf16_w_diff_add() {
         let diff = q.add(&p.negate(&c), &c);  // Q - P
         let sum = p.add(q, &c);                // P + Q
 
-        let w1 = diff.x + diff.y;
-        let w2 = p.x + p.y;
-        let w3 = q.x + q.y;
-        let w5_expected = sum.x + sum.y;
+        let w1 = &diff.x + &diff.y;
+        let w2 = &p.x + &p.y;
+        let w3 = &q.x + &q.y;
+        let w5_expected = &sum.x + &sum.y;
 
         let w5_got = EdwardsPoint::<GF16>::w_diff_add(&w1, &w2, &w3, &c);
         assert_eq!(w5_got, w5_expected);
