@@ -15,6 +15,7 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 use crate::curve_jacobi_intersection::JacobiIntersectionCurve;
 use crate::point_ops::{PointAdd, PointOps};
 use fp::field_ops::FieldOps;
+use fp::{ref_field_impl, ref_field_trait_impl};
 
 /// An affine point `(s, c, d)` on a Jacobi intersection.
 #[derive(Debug, Clone, Copy)]
@@ -39,7 +40,11 @@ impl<F: FieldOps> JacobiIntersectionPoint<F> {
 
     /// The neutral element `(0, 1, 1)`.
     pub fn identity() -> Self {
-        Self { s: F::zero(), c: F::one(), d: F::one() }
+        Self {
+            s: F::zero(),
+            c: F::one(),
+            d: F::one(),
+        }
     }
 
     pub fn is_identity(&self) -> bool {
@@ -85,98 +90,136 @@ where
     }
 }
 
-impl<F: FieldOps> JacobiIntersectionPoint<F> {
-    /// Negation: `-(s, c, d) = (-s, c, d)`.
-    pub fn negate(&self, _curve: &JacobiIntersectionCurve<F>) -> Self {
-        Self::new(-self.s, self.c, self.d)
-    }
-
-    /// Affine addition formulas from the EFD:
-    ///
-    /// ```text
-    /// s₃ = (c₂ s₁ d₂ + d₁ s₂ c₁)/(c₂² + (d₁ s₂)²)
-    /// c₃ = (c₂ c₁ - d₁ s₂ s₁ d₂)/(c₂² + (d₁ s₂)²)
-    /// d₃ = (d₁ d₂ - a s₁ c₁ s₂ c₂)/(c₂² + (d₁ s₂)²).
-    /// ```
-    ///
-    pub fn add(&self, other: &Self, curve: &JacobiIntersectionCurve<F>) -> Self {
-        let d1s2 = self.d * other.s;
-        let denom = <F as FieldOps>::square(&other.c) + <F as FieldOps>::square(&d1s2);
-        let denom_inv = denom.invert().into_option()
-            .expect("Jacobi-intersection addition denominator vanished");
-
-        let s3 = (other.c * self.s * other.d + self.d * other.s * self.c) * denom_inv;
-        let c3 = (other.c * self.c - self.d * other.s * self.s * other.d) * denom_inv;
-        let d3 = (self.d * other.d - curve.a * self.s * self.c * other.s * other.c) * denom_inv;
-
-        Self::new(s3, c3, d3)
-    }
-
-    /// Affine doubling formulas from the EFD:
-    ///
-    /// ```text
-    /// s₃ = 2c s d / (c² + (d s)²)
-    /// c₃ = (c² - d² s²) / (c² + (d s)²)
-    /// d₃ = (d² - a s² c²) / (c² + (d s)²).
-    /// ```
-    ///
-    pub fn double(&self, curve: &JacobiIntersectionCurve<F>) -> Self {
-        let ds = self.d * self.s;
-        let denom = <F as FieldOps>::square(&self.c) + <F as FieldOps>::square(&ds);
-        let denom_inv = denom.invert().into_option()
-            .expect("Jacobi-intersection doubling denominator vanished");
-
-        let two = <F as FieldOps>::double(&F::one());
-        let s_sq = <F as FieldOps>::square(&self.s);
-        let c_sq = <F as FieldOps>::square(&self.c);
-        let d_sq = <F as FieldOps>::square(&self.d);
-
-        let s3 = (two * self.c * self.s * self.d) * denom_inv;
-        let c3 = (c_sq - d_sq * s_sq) * denom_inv;
-        let d3 = (d_sq - curve.a * s_sq * c_sq) * denom_inv;
-
-        Self::new(s3, c3, d3)
-    }
-
-    pub fn scalar_mul(&self, k: &[u64], curve: &JacobiIntersectionCurve<F>) -> Self {
-        let mut result = Self::identity();
-
-        for &limb in k.iter().rev() {
-            for bit in (0..64).rev() {
-                let doubled = result.double(curve);
-                let added = doubled.add(self, curve);
-                let choice = Choice::from(((limb >> bit) & 1) as u8);
-                result = Self::conditional_select(&doubled, &added, choice);
-            }
+ref_field_impl! {
+    impl<F> JacobiIntersectionPoint<F> {
+        /// Negation: `-(s, c, d) = (-s, c, d)`.
+        pub fn negate(&self, _curve: &JacobiIntersectionCurve<F>) -> Self {
+            Self::new(-&self.s, self.c.clone(), self.d.clone())
         }
 
-        result
+        /// Affine addition formulas from the EFD:
+        ///
+        /// ```text
+        /// s₃ = (c₂ s₁ d₂ + d₁ s₂ c₁)/(c₂² + (d₁ s₂)²)
+        /// c₃ = (c₂ c₁ - d₁ s₂ s₁ d₂)/(c₂² + (d₁ s₂)²)
+        /// d₃ = (d₁ d₂ - a s₁ c₁ s₂ c₂)/(c₂² + (d₁ s₂)²).
+        /// ```
+        pub fn add(&self, other: &Self, curve: &JacobiIntersectionCurve<F>) -> Self {
+            let d1s2 = &self.d * &other.s;
+            let other_c_sq = <F as FieldOps>::square(&other.c);
+            let d1s2_sq = <F as FieldOps>::square(&d1s2);
+            let denom = &other_c_sq + &d1s2_sq;
+            let denom_inv = <F as FieldOps>::invert(&denom)
+                .into_option()
+                .expect("Jacobi-intersection addition denominator vanished");
+
+            let s_term1_tmp = &other.c * &self.s;
+            let s_term1 = &s_term1_tmp * &other.d;
+            let s_term2_tmp = &self.d * &other.s;
+            let s_term2 = &s_term2_tmp * &self.c;
+            let s_num = &s_term1 + &s_term2;
+            let s3 = &s_num * &denom_inv;
+
+            let c_term1 = &other.c * &self.c;
+            let c_term2_tmp1 = &self.d * &other.s;
+            let c_term2_tmp2 = &c_term2_tmp1 * &self.s;
+            let c_term2 = &c_term2_tmp2 * &other.d;
+            let c_num = &c_term1 - &c_term2;
+            let c3 = &c_num * &denom_inv;
+
+            let d_term1 = &self.d * &other.d;
+            let d_term2_tmp1 = &curve.a * &self.s;
+            let d_term2_tmp2 = &d_term2_tmp1 * &self.c;
+            let d_term2_tmp3 = &d_term2_tmp2 * &other.s;
+            let d_term2 = &d_term2_tmp3 * &other.c;
+            let d_num = &d_term1 - &d_term2;
+            let d3 = &d_num * &denom_inv;
+
+            Self::new(s3, c3, d3)
+        }
+
+        /// Affine doubling formulas from the EFD:
+        ///
+        /// ```text
+        /// s₃ = 2c s d / (c² + (d s)²)
+        /// c₃ = (c² - d² s²) / (c² + (d s)²)
+        /// d₃ = (d² - a s² c²) / (c² + (d s)²).
+        /// ```
+        pub fn double(&self, curve: &JacobiIntersectionCurve<F>) -> Self {
+            let ds = &self.d * &self.s;
+            let c_sq = <F as FieldOps>::square(&self.c);
+            let ds_sq = <F as FieldOps>::square(&ds);
+            let denom = &c_sq + &ds_sq;
+            let denom_inv = <F as FieldOps>::invert(&denom)
+                .into_option()
+                .expect("Jacobi-intersection doubling denominator vanished");
+
+            let one = F::one();
+            let two = <F as FieldOps>::double(&one);
+            let s_sq = <F as FieldOps>::square(&self.s);
+            let d_sq = <F as FieldOps>::square(&self.d);
+
+            let s3_tmp1 = &two * &self.c;
+            let s3_tmp2 = &s3_tmp1 * &self.s;
+            let s3_num = &s3_tmp2 * &self.d;
+            let s3 = &s3_num * &denom_inv;
+
+            let d_sq_s_sq = &d_sq * &s_sq;
+            let c3_num = &c_sq - &d_sq_s_sq;
+            let c3 = &c3_num * &denom_inv;
+
+            let s_sq_c_sq = &s_sq * &c_sq;
+            let a_s_sq_c_sq = &curve.a * &s_sq_c_sq;
+            let d3_num = &d_sq - &a_s_sq_c_sq;
+            let d3 = &d3_num * &denom_inv;
+
+            Self::new(s3, c3, d3)
+        }
+
+        pub fn scalar_mul(&self, k: &[u64], curve: &JacobiIntersectionCurve<F>) -> Self {
+            let mut result = Self::identity();
+
+            for &limb in k.iter().rev() {
+                for bit in (0..64).rev() {
+                    let doubled = result.double(curve);
+                    let added = doubled.add(self, curve);
+                    let choice = Choice::from(((limb >> bit) & 1) as u8);
+                    result = Self::conditional_select(&doubled, &added, choice);
+                }
+            }
+
+            result
+        }
     }
 }
 
-impl<F: FieldOps> PointOps for JacobiIntersectionPoint<F> {
-    type BaseField = F;
-    type Curve = JacobiIntersectionCurve<F>;
+ref_field_trait_impl! {
+    impl<F> PointOps for JacobiIntersectionPoint<F> {
+        type BaseField = F;
+        type Curve = JacobiIntersectionCurve<F>;
 
-    fn identity(_curve: &Self::Curve) -> Self {
-        JacobiIntersectionPoint::<F>::identity()
-    }
+        fn identity(_curve: &Self::Curve) -> Self {
+            JacobiIntersectionPoint::<F>::identity()
+        }
 
-    fn is_identity(&self) -> bool {
-        JacobiIntersectionPoint::<F>::is_identity(self)
-    }
+        fn is_identity(&self) -> bool {
+            JacobiIntersectionPoint::<F>::is_identity(self)
+        }
 
-    fn negate(&self, curve: &Self::Curve) -> Self {
-        JacobiIntersectionPoint::<F>::negate(self, curve)
-    }
+        fn negate(&self, curve: &Self::Curve) -> Self {
+            JacobiIntersectionPoint::<F>::negate(self, curve)
+        }
 
-    fn scalar_mul(&self, k: &[u64], curve: &Self::Curve) -> Self {
-        JacobiIntersectionPoint::<F>::scalar_mul(self, k, curve)
+        fn scalar_mul(&self, k: &[u64], curve: &Self::Curve) -> Self {
+            JacobiIntersectionPoint::<F>::scalar_mul(self, k, curve)
+        }
     }
 }
 
-impl<F: FieldOps> PointAdd for JacobiIntersectionPoint<F> {
-    fn add(&self, other: &Self, curve: &Self::Curve) -> Self {
-        JacobiIntersectionPoint::<F>::add(self, other, curve)
+ref_field_trait_impl! {
+    impl<F> PointAdd for JacobiIntersectionPoint<F> {
+        fn add(&self, other: &Self, curve: &Self::Curve) -> Self {
+            JacobiIntersectionPoint::<F>::add(self, other, curve)
+        }
     }
 }

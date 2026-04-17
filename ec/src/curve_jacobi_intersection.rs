@@ -19,6 +19,8 @@
 
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 use fp::field_ops::FieldOps;
+use fp::{ref_field_impl, ref_field_trait_impl};
+
 use crate::curve_ops::Curve;
 use crate::curve_weierstrass::WeierstrassCurve;
 use crate::point_jacobi_intersection::JacobiIntersectionPoint;
@@ -29,62 +31,75 @@ pub struct JacobiIntersectionCurve<F: FieldOps> {
     pub a: F,
 }
 
-impl<F: FieldOps> JacobiIntersectionCurve<F> {
-    /// Construct a Jacobi intersection from its parameter `a`.
-    pub fn new(a: F) -> Self {
-        assert!(F::characteristic()[0] != 2, "Jacobi intersections require char(F) != 2");
-        assert!(Self::is_smooth(&a), "singular Jacobi intersection");
-        Self { a }
-    }
+ref_field_impl! {
+    impl<F> JacobiIntersectionCurve<F> {
+        /// Construct a Jacobi intersection from its parameter `a`.
+        pub fn new(a: F) -> Self {
+            assert!(F::characteristic()[0] != 2, "Jacobi intersections require char(F) != 2");
+            assert!(Self::is_smooth(&a), "singular Jacobi intersection");
+            Self { a }
+        }
 
-    /// Smoothness requirement: `a != 0` and `a != 1`.
-    pub fn is_smooth(a: &F) -> bool {
-        *a != F::zero() && *a != F::one()
-    }
+        /// Smoothness requirement: `a != 0` and `a != 1`.
+        pub fn is_smooth(a: &F) -> bool {
+            let zero = F::zero();
+            let one = F::one();
+            a != &zero && a != &one
+        }
 
-    /// Check both defining quadrics.
-    pub fn contains(&self, s: &F, c: &F, d: &F) -> bool {
-        let s2 = <F as FieldOps>::square(s);
-        let c2 = <F as FieldOps>::square(c);
-        let d2 = <F as FieldOps>::square(d);
+        /// Check both defining quadrics.
+        pub fn contains(&self, s: &F, c: &F, d: &F) -> bool {
+            let s2 = <F as FieldOps>::square(s);
+            let c2 = <F as FieldOps>::square(c);
+            let d2 = <F as FieldOps>::square(d);
 
-        s2 + c2 == F::one() && self.a * s2 + d2 == F::one()
-    }
+            let lhs1 = &s2 + &c2;
+            let lhs2 = &(&self.a * &s2) + &d2;
+            let one = F::one();
 
-    pub fn a_invariants(&self) -> [F; 1] {
-        [self.a]
-    }
+            lhs1 == one && lhs2 == one
+        }
 
-    /// Birationally equivalent Weierstrass model
-    /// `y² = x³ + (2-a)x² + (1-a)x`.
-    pub fn to_weierstrass_curve(&self) -> WeierstrassCurve<F> {
-        let two = <F as FieldOps>::double(&F::one());
-        WeierstrassCurve::new(F::zero(), two - self.a, F::zero(), F::one() - self.a, F::zero())
-    }
-}
+        pub fn a_invariants(&self) -> [F; 1] {
+            [self.a.clone()]
+        }
 
-impl<F: FieldOps> Curve for JacobiIntersectionCurve<F> {
-    type BaseField = F;
-    type Point = JacobiIntersectionPoint<F>;
+        /// Birationally equivalent Weierstrass model
+        /// `y² = x³ + (2-a)x² + (1-a)x`.
+        pub fn to_weierstrass_curve(&self) -> WeierstrassCurve<F> {
+            let one = F::one();
+            let two = <F as FieldOps>::double(&one);
 
-    fn is_on_curve(&self, point: &Self::Point) -> bool {
-        self.contains(&point.s, &point.c, &point.d)
-    }
+            let a2 = &two - &self.a;
+            let a4 = &one - &self.a;
 
-    fn random_point(&self) -> Self::Point {
-        todo!()
-    }
-
-    fn j_invariant(&self) -> F {
-        self.to_weierstrass_curve().j_invariant()
-    }
-
-    fn a_invariants(&self) -> Vec<Self::BaseField> {
-        JacobiIntersectionCurve::a_invariants(self).to_vec()
+            WeierstrassCurve::new(F::zero(), a2, F::zero(), a4, F::zero())
+        }
     }
 }
 
+ref_field_trait_impl! {
+    impl<F> Curve for JacobiIntersectionCurve<F> {
+        type BaseField = F;
+        type Point = JacobiIntersectionPoint<F>;
 
+        fn is_on_curve(&self, point: &Self::Point) -> bool {
+            self.contains(&point.s, &point.c, &point.d)
+        }
+
+        fn random_point(&self) -> Self::Point {
+            todo!()
+        }
+
+        fn j_invariant(&self) -> F {
+            self.to_weierstrass_curve().j_invariant()
+        }
+
+        fn a_invariants(&self) -> Vec<Self::BaseField> {
+            JacobiIntersectionCurve::a_invariants(self).to_vec()
+        }
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Constant-time functionalities
@@ -95,8 +110,8 @@ where
     F: FieldOps + Copy,
 {
     fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
-        Self{
-            a: F::conditional_select(& a.a, &b.a, choice)
+        Self {
+            a: F::conditional_select(&a.a, &b.a, choice),
         }
     }
 
@@ -113,7 +128,11 @@ impl<F> ConstantTimeEq for JacobiIntersectionCurve<F>
 where
     F: FieldOps + Copy + ConstantTimeEq,
 {
-    fn ct_eq(&self, other: &Self) -> Choice { self.a.ct_eq(&other.a) }
+    fn ct_eq(&self, other: &Self) -> Choice {
+        self.a.ct_eq(&other.a)
+    }
 
-    fn ct_ne(&self, other: &Self) -> Choice { !self.ct_eq(other) }
+    fn ct_ne(&self, other: &Self) -> Choice {
+        !self.ct_eq(other)
+    }
 }
