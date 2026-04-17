@@ -1,12 +1,13 @@
-
 [workspace]
 members = [
+    "ecrust",
     "fp",
     "ec",
     "isogeny",
     "protocol",
 ]
 default-members = [
+    "ecrust",
     "fp",
     "ec",
     "isogeny",
@@ -18,16 +19,15 @@ resolver = "2"
 version = "0.1.0"
 edition = "2024"
 license = "Apache-2.0"
-name = "ecRust-lib"
-rust-version = "1.85.0"  # Minimum Rust version required
-authors = ["Gustavo Banegas <gustavo.souza-banegas@inria.fr>", "Martin Azon <martin.azon-y-trell@inria.fr>", "Sam Frengley <samuel.frengley@inria.fr>"]
-description = "A Rust library for finite-field arithmetic, elliptic-curve operations, isogeny scaffolding, and higher-level elliptic-curve protocols."
-documentation = "https://docs.rs/ecRust-lib"
+rust-version = "1.85"
+authors = [
+    "Gustavo Banegas <gustavo.souza-banegas@inria.fr>",
+    "Martin Azon <martin.azon-y-trell@inria.fr>",
+    "Sam Frengley <samuel.frengley@inria.fr>",
+]
 homepage = "https://github.com/rustnumb/ecrust"
 repository = "https://github.com/rustnumb/ecrust"
-readme = "README.md"
-keywords = ["elliptic", "curves", "isogeny", "finite", "fields"]
-categories = ["development-tools", "no-std"]
+keywords = ["cryptography", "elliptic-curve", "finite-field", "isogeny", "rust"]
 exclude = [
     ".github/",
     "tests/fixtures/",
@@ -35,14 +35,12 @@ exclude = [
     "Cargo.lock",
 ]
 
-
 [workspace.dependencies]
-# External
 crypto-bigint = "0.7.3"
 rand = "0.10.1"
+subtle = "2.6"
 
-# Internal
-fp = { path = "fp", package = "ecrust-fp", version = "0.1.0" }
-ec = { path = "ec", package = "ecrust-ec", version = "0.1.0" }
-isogeny = { path = "isogeny", package = "ecrust-isogeny", version = "0.1.0" }
+fp       = { path = "fp",       package = "ecrust-fp",       version = "0.1.0" }
+ec       = { path = "ec",       package = "ecrust-ec",       version = "0.1.0" }
+isogeny  = { path = "isogeny",  package = "ecrust-isogeny",  version = "0.1.0" }
 protocol = { path = "protocol", package = "ecrust-protocol", version = "0.1.0" }

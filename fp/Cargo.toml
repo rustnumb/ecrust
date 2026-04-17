@@ -3,18 +3,14 @@ name = "ecrust-fp"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Finite field arithmetic over Fp for the ecrust library"
-
-documentation.workspace = true
+rust-version.workspace = true
+authors.workspace = true
 homepage.workspace = true
 repository.workspace = true
-
-authors.workspace = true
-rust-version.workspace = true
 keywords.workspace = true
-categories.workspace = true
-readme.workspace = true
-exclude.workspace = true
+description = "Finite field arithmetic for the ecrust ecosystem."
+documentation = "https://docs.rs/ecrust-fp"
+readme = "README.md"
 
 [lib]
 name = "fp"
@@ -22,11 +18,11 @@ path = "src/lib.rs"
 
 [dependencies]
 crypto-bigint = { workspace = true, features = ["subtle"] }
-subtle = "2.6"
-rand = "0.10.1"
-
+subtle = { workspace = true }
+rand = { workspace = true }
 
 [dev-dependencies]
-rand = "0.10.1"
+rand = { workspace = true }
+
 [package.metadata.docs.rs]
 rustdoc-args = ["--html-in-header", "katex-header.html"]

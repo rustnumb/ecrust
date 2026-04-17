@@ -1,12 +1,22 @@
-# ecRust
+# ecrust
 
 <p align="center">
-  <img src="assets/ecrust_mascot_small.png" alt="ecRust mascot logo" width="420" />
+  <img src="assets/ecrust_mascot_small.png" alt="ecrust mascot logo" width="420" />
 </p>
 
-A Rust library for finite-field arithmetic, elliptic-curve operations, isogeny scaffolding, and higher-level elliptic-curve protocols.
+A Rust workspace for finite fields, elliptic curves, isogenies, and higher-level elliptic-curve protocols.
+
+## Published crates
 
 The project is organized as a layered set of crates:
+
+- `ecrust-fp` — finite-field arithmetic
+- `ecrust-ec` — elliptic-curve abstractions and point arithmetic
+- `ecrust-isogeny` — isogeny abstractions and scaffolding
+- `ecrust-protocol` — protocol-oriented building blocks
+- `ecrust` — umbrella crate re-exporting the full stack
+
+Conceptually, the stack looks like this:
 
 ```text
 protocol       ← ECDH / EC-ElGamal helpers built on curve points
@@ -20,49 +30,32 @@ fp             ← finite fields: Fp, Fp^m, F2, F2^m
 crypto-bigint  ← multi-precision integers / Montgomery arithmetic
 ```
 
-## Workspace crates
+## Recommended dependency choice
 
-### `fp`
-Finite-field arithmetic.
+If you are starting fresh, the simplest option is the umbrella crate:
 
-Main building blocks:
-- `FieldOps`: common trait implemented by field elements.
-- `FpElement<MOD, LIMBS>`: prime-field elements over `Fp`.
-- `FpExt<MOD, LIMBS, M, P>`: extension-field elements over `Fp^M`.
-- `F2Element`: the prime field `F2`.
-- `F2Ext<LIMBS, P>`: binary extension fields `F2^m`.
-- `IrreduciblePoly` / `BinaryIrreducible`: marker traits used to define extension fields.
+```toml
+[dependencies]
+ecrust = "0.1"
+```
 
-### `ec`
-Elliptic-curve abstractions and affine Weierstrass arithmetic.
+This lets you import modules as:
 
-Main building blocks:
-- `CurveOps`: generic curve-model trait.
-- `PointOps`: generic point/group API.
+```rust
+use ecrust::fp;
+use ecrust::ec;
+```
 
-### `isogeny`
-Kernel and isogeny structs.
-
-Current status:
-- `KernelSubgroup<C>` exists.
-- `Isogeny<C>` exists as the main abstraction.
-- evaluation formulas are still TODO.
-
-### `protocol`
-Small protocol layer on top of `ec`.
-
-Current modules:
-- `SecretScalar<LIMBS>`
-- `Ecdh`
-- `EcElGamal`
+If you want finer-grained dependencies, use the layer-specific crates directly. Each crate README shows the recommended `Cargo.toml` entry.
 
 ## Current status
 
-This workspace is usable for experiments and API exploration, with the following caveats:
-- `fp` is the most complete and best-tested layer.
-- `ec` supports affine Weierstrass arithmetic and scalar multiplication, but some methods still contain exceptional-case branching and should not yet be treated as hardened production code.
-- `isogeny` is currently scaffolding.
-- protocol examples are functional API examples, not production-ready constructions.
+The workspace is usable for experiments, API exploration, and teaching, with the following caveats:
+
+- `ecrust-fp` is currently the most complete layer.
+- `ecrust-ec` contains several curve models and point types, but parts of the arithmetic are still evolving.
+- `ecrust-isogeny` is scaffolding for future work.
+- `ecrust-protocol` provides useful building blocks, but should not yet be treated as production-grade cryptographic software.
 
 ## Build and test
 
@@ -71,92 +64,16 @@ cargo build --workspace
 cargo test --workspace
 ```
 
-## Quick start
-
-### 1. Instantiate a prime field (`FieldOps` via `FpElement`)
-
-```rust
-use crypto_bigint::{Uint, const_prime_monty_params};
-use fp::field_ops::FieldOps;
-use fp::fp_element::FpElement;
-
-const_prime_monty_params!(Fp19Mod, Uint<1>, "0000000000000013", 2);
-type F19 = FpElement<Fp19Mod, 1>;
-
-let a = F19::from_u64(7);
-let b = F19::from_u64(8);
-let c = a * b;
-assert_eq!(c.as_limbs()[0], 18); // 56 mod 19 = 18
-
-let inv = a.invert().into_option().unwrap();
-assert!((a * inv).is_one().into());
-```
-
-### 2. Instantiate an extension field (`FieldOps` via `FpExt`)
-
-```rust
-use fp::field_ops::FieldOps;
-use fp::fp_element::FpElement;
-use fp::fp_ext::{FpExt, IrreduciblePoly};
-
-struct QuadPoly;
-
-impl IrreduciblePoly<Fp19Mod, 1, 2> for QuadPoly {
-    fn modulus() -> [F19; 2] {
-        [F19::one(), F19::zero()] // x² + 1
-    }
-}
-
-struct TSQuad;
-impl TonelliShanksConstants<Fp19Mod, 1, 2, 1> for TSQuad {
-    // p^2 - 1
-    const ORDER: Uint<1> = Uint::<1>::from_u64(360);
-    // (p^2 - 1) / 2
-    const HALF_ORDER: Uint<1> = Uint::<1>::from_u64(180);
-    // p^2 - 1 = 2^S * T with T odd
-    const S: u64 = 3;
-    const T: Uint<1> = Uint::<1>::from_u64(45);
-    // (T - 1) / 2
-    const PROJENATOR_EXP: Uint<1> = Uint::<1>::from_u64(22);
-    // 2^(S - 1)
-    const TWOSM1: Uint<1> = Uint::<1>::from_u64(4);
-    // 2^S root of unity 
-    fn root_of_unity() -> [FpElement<Fp19Mod, 1>; 2] {
-        [Fp19::from_u64(3), Fp19::from_u64(3)]
-    }
-}
-
-type F19_2 = FpExt<Fp19Mod, 1, 2, 1, QuadPoly, TSQuad>;
-
-let x = F19_2::new([F19::from_u64(3), F19::from_u64(2)]); // 3 + 2u
-let y = x.invert().into_option().unwrap();
-assert!(FieldOps::mul(&x, &y).is_one().into());
-```
-
-### 3. Instantiate a curve (`Curve`) and a point (`PointOps`)
-
-```rust
-use ec::curve_weierstrass::WeierstrassCurve;
-use ec::point_weierstrass::AffinePoint;
-
-let curve = WeierstrassCurve::new_short(F19::from_u64(2), F19::from_u64(3));
-let p = AffinePoint::new(F19::from_u64(1), F19::from_u64(5));
-
-assert!(curve.contains(&p.x, &p.y));
-let q = p.double(&curve);
-let r = p.add(&q, &curve);
-let s = p.scalar_mul(&[5], &curve);
-```
-
 ## Examples and demos
 
-See [DEMO.md](DEMO.md) for several concrete examples showing how to instantiate the main traits and concrete types in this workspace:
+See [DEMO.md](DEMO.md) for concrete examples covering:
+
 - `FieldOps` with `FpElement`
 - `FieldOps` with `FpExt`
 - `FieldOps` with `F2Ext`
-- `Curve` / `PointOps` with `WeierstrassCurve` and `AffinePoint`
+- curve and point instantiation
 - `SecretScalar`, `Ecdh`, and `EcElGamal`
-- generic helper functions written against traits instead of concrete types
+- generic helper functions over traits
 
 ## Repository layout
 
@@ -165,36 +82,19 @@ ecrust/
 ├── Cargo.toml
 ├── README.md
 ├── DEMO.md
+├── ecrust/
+│   ├── Cargo.toml
+│   ├── README.md
+│   └── src/
 ├── fp/
-│   ├── src/
-│   │   ├── field_ops.rs
-│   │   ├── fp_element.rs
-│   │   ├── fp_ext.rs
-│   │   ├── f2_element.rs
-│   │   └── f2_ext.rs
-│   └── tests/
 ├── ec/
-│   ├── src/
-│   │   ├── curve_ops.rs
-│   │   ├── point_ops.rs
-│   │   ├── curve_weierstrass.rs
-│   │   └── point_weierstrass.rs
-│   └── tests/
 ├── isogeny/
-│   ├── src/
-│   │   ├── kernel.rs
-│   │   └── isogeny.rs
-│   └── tests/
 └── protocol/
-    ├── src/
-    │   ├── scalar.rs
-    │   ├── ecdh.rs
-    │   └── elgamal.rs
-    └── tests/
 ```
 
 ## Disclaimer
-Disclaimer. This software is *currently in an alpha stage*. We are actively working toward constant-time implementations across the project, but achieving this systematically remains an ongoing effort. At this stage, the code should be *treated as experimental*, and it must not be assumed to provide full side-channel resistance or production-grade security guarantees.
+
+This software is currently in **alpha**. We are actively working toward cleaner APIs and broader constant-time coverage, but the code should still be treated as experimental rather than production-hardened.
 
 ## Authors
 
@@ -204,4 +104,4 @@ Disclaimer. This software is *currently in an alpha stage*. We are actively work
 
 ## License
 
-Apache License 2.0. See [LICENSE](LICENSE).
+Apache-2.0. See [LICENSE](LICENSE).
