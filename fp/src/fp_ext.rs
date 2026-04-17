@@ -9,9 +9,9 @@
 //! modulo $f$.
 //!
 //! This module provides a single generic type [`FpExt<MOD, LIMBS, M,
-//! N, P, TSCONTS>`] that covers *any* such extension.  The
-//! irreducible polynomial is supplied via the zero-size marker trait
-//! [`IrreduciblePoly`].
+//! N, P, TSCONSTS>`](self::fp_ext::FpExt) that covers *any* such
+//! extension.  The irreducible polynomial is supplied via the
+//! zero-size marker trait [`IrreduciblePoly`](self::fp_ext::FpExt).
 //!
 //! # Example
 //!
@@ -1161,8 +1161,8 @@ where
     }
 }
 
-impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS>
-FieldFromRepr for FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS> FieldFromRepr
+    for FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
