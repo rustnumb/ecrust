@@ -1,4 +1,4 @@
-//! Generic finary fields $F_{2^m} = F_2\[x\] / (f(x))$
+//! Generic binary fields $\mathbb{F}\_{2^m} = \mathbb{F}\_2\[x\] / (f(x))$
 
 use crate::field_ops::{FieldFromRepr, FieldOps, FieldRandom};
 use core::ops::{Add, Mul, Neg, Sub};
@@ -145,7 +145,6 @@ where
         }
     }
 }
-
 
 // ---------------------------------------------------------------------------
 // CtOption functionalities
@@ -405,7 +404,9 @@ where
         Self::from_uint(Uint::<LIMBS>::ONE)
     }
 
-    fn from_u64(x: u64) -> Self { Self::from_u64(x)  }
+    fn from_u64(x: u64) -> Self {
+        Self::from_u64(x)
+    }
 
     fn is_zero(&self) -> Choice {
         Self::ct_eq(self, &Self::zero())
@@ -493,7 +494,6 @@ where
     fn degree() -> u32 {
         P::degree() as u32
     }
-
 }
 
 // ---------------------------------------------------------------------------
@@ -509,7 +509,6 @@ where
     /// Fills a `Uint<LIMBS>` with random bytes, masks to `m` bits,
     /// and wraps via `F2Ext::new` (which reduces mod the irreducible).
     fn random(rng: &mut (impl rand::CryptoRng + rand::Rng)) -> Self {
-
         let m = P::degree();
         let mut words = [0u64; LIMBS];
         for w in words.iter_mut() {
@@ -521,7 +520,10 @@ where
         let leftover = m % 64;
 
         // Zero out limbs beyond the ones we need.
-        for w in words.iter_mut().skip(full_limbs + if leftover > 0 { 1 } else { 0 }) {
+        for w in words
+            .iter_mut()
+            .skip(full_limbs + if leftover > 0 { 1 } else { 0 })
+        {
             *w = 0;
         }
         // Mask the partial top limb.
@@ -532,7 +534,6 @@ where
         Self::new(Uint::from_words(words))
     }
 }
-
 
 impl<const LIMBS: usize, P> FieldFromRepr for F2Ext<LIMBS, P>
 where

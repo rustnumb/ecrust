@@ -11,7 +11,7 @@
 
 /// Binary base field $\mathbb{F}_2$ and its arithmetic.
 pub mod f2_element;
-/// Binary extension fields $\mathbb{F}_{2^m}$ built from irreducible polynomials.
+/// Binary extension fields $\mathbb{F}\_{2^m}$ built from irreducible polynomials.
 pub mod f2_ext;
 /// Core field traits shared by prime and binary fields.
 pub mod field_ops;

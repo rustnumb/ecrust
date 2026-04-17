@@ -82,31 +82,40 @@ pub trait FieldOps:
 
     /// `self^exp` using square-and multiply (litte-endian bit order)
     ///
-    /// It is constant time for fixed `exp`
-    ///
     /// # Arguments
     ///
-    /// * `&self` - Finite field element (type: self)
+    /// * `&self` - Finite field element (type: `Self`)
     /// * `exp` - Exponent (type: &[u64])
     ///
     /// # Returns
     ///
-    /// `&self^exp` (type: Self)
+    /// `&self^exp` (type: `Self`)
     ///
-    /// # Why `<Self as FieldOps>::mul` instead of `result.mul(&base)`
+    /// # Warnings
     ///
-    /// `FieldOps` requires `Mul<Output = Self>` as a supertrait, so `Self`
-    /// exposes **two** methods named `mul`:
-    ///
-    ///   - `<Self as Mul>::mul(self, rhs: Self) -> Self`   ← operator, takes by value
-    ///   - `<Self as FieldOps>::mul(&self, rhs: &Self) -> Self` ← ours, takes by ref
-    ///
-    /// Writing `result.mul(&base)` triggers method resolution, which picks
-    /// `Mul::mul` (the operator) because it was declared first in the supertrait
-    /// list. `Mul::mul` expects `Self`, not `&Self` → E0308.
-    ///
-    /// Fully-qualified syntax `<Self as FieldOps>::mul(...)` bypasses method
-    /// resolution entirely and calls exactly the trait method we want.
+    /// This function is constant time only if two exponents `exp1`
+    /// and `exp2` are equal as [u64] (i.e., they are the same number
+    /// AND the same number of limbs)
+    //
+    // # Notes
+    //
+    // `<Self as FieldOps>::mul` is used instead of
+    // `result.mul(&base)` because `FieldOps` requires `Mul<Output =
+    // Self>` as a supertrait, so `Self` exposes **two** methods
+    // named `mul`:
+    //
+    //   - `<Self as Mul>::mul(self, rhs: Self) -> Self` ← operator,
+    //   takes by value - `<Self as FieldOps>::mul(&self, rhs: &Self)
+    //   -> Self` ← ours, takes by ref
+    //
+    // Writing `result.mul(&base)` triggers method resolution, which
+    // picks `Mul::mul` (the operator) because it was declared first
+    // in the supertrait list. `Mul::mul` expects `Self`, not `&Self`
+    // → E0308.
+    //
+    // Fully-qualified syntax `<Self as FieldOps>::mul(...)` bypasses
+    // method resolution entirely and calls exactly the trait method
+    // we want.
     fn pow_vartime(&self, exp: &[u64]) -> Self {
         let mut result = Self::one();
         let mut base = self.clone();
@@ -127,21 +136,21 @@ pub trait FieldOps:
     /// `self^pow` in constant time using a Montgomery ladder
     ///
     /// Uses a Montgomery ladder to compute `self^exp`
-    /// WARNING: Only constant time if the number of limbs of exp is
-    /// constant
     ///
     /// # Arguments
     ///
-    /// * `&self` - Element of $\mathbb{F}_p$ (type: self)
+    /// * `&self` - Element of $\mathbb{F}\_{p^M}$ (type: `Self`)
     /// * `exp` - Exponent (type: &[u64])
     ///
     /// # Returns
     ///
-    /// The value `self^pow` (type: Self)
+    /// The value `self^pow` (type: `Self`)
     ///
-    /// # Todo
+    /// # Warning
     ///
-    /// Use `subtle` and `conditional_swap` to make true constant time
+    /// This function is only constant time if the number of limbs of
+    /// `exp` is fixed (so `[1,0]` would run in different time to
+    /// `[1]`)
     fn pow(&self, exp: &[u64]) -> Self {
         let mut result = Self::one();
         let mut base = self.clone();
@@ -172,45 +181,38 @@ pub trait FieldOps:
         result
     }
 
-    /// compute the norm of `self` down to $\mathbb{F}_p$ (as an
+    /// Compute the norm of `self` down to $\mathbb{F}_p$ (as an
     /// element of type `Self`)
     fn norm(&self) -> Self;
 
-    /// compute the trace of `self` down to $\mathbb{F}_p$ (as an
+    /// Compute the trace of `self` down to $\mathbb{F}_p$ (as an
     /// element of type `Self`)
     fn trace(&self) -> Self;
 
     /// Returns a squareroot if it exists
     ///
-    /// Returns a squareroof of `self` if it exists in the finite
-    /// field $\mathbb{F}_{p^M}$. The return type is `CtOption<Self>`
-    /// and it is not none if and only if the squareroot exists. This
-    /// is an implementation fo the Tonelli--Shanks algorithm in the
-    /// multiplicative group $\mathbb{F}_{p^M}^*$
-    ///
     /// # Arguments
     ///
-    /// * `&self` - Element of $\mathbb{F}_{p^M}$ (type: self)
+    /// * `&self` - Element of $\mathbb{F}_{p^M}$ (type: `Self`)
     ///
     /// # Returns
     ///
-    /// The square root of `self` (type: `CtOption<Self>`)
+    /// * $\sqrt{\texttt{self}}$ which is not `none` if and only if
+    ///   the square root of `self` exists (type: `CtOption<Self>`)
     fn sqrt(&self) -> CtOption<Self>;
 
     /// Computes the inverse and square root of `self`
     ///
-    /// Computes simulaineously the inverse and square root of `self`.
-    ///
     /// # Arguments
     ///
-    /// * `&self` - Element of $\mathbb{F}_{p^M}$ (type: self)
+    /// * `&self` - Element of $\mathbb{F}_{p^M}$ (type: `Self`)
     ///
     /// # Returns
     ///
-    /// The inverse and square root of `self`. The former is none if
-    /// and only if nonzero and the latter is not none if and only if
-    /// there exists a squareroot in $\mathbb{F}_{p^M}$
-    /// (type: `(CtOption<Self>, CtOption<self>)`)
+    /// * `(inv, sqrt)` the inverse and the square root of `self`. The
+    ///   former is none if and only if nonzero and the latter is not
+    ///   none if and only if there exists a squareroot in
+    ///   $\mathbb{F}_{p^M}$ (type: `(CtOption<Self>, CtOption<self>)`)
     fn inverse_and_sqrt(&self) -> (CtOption<Self>, CtOption<Self>) {
         (self.invert(), self.sqrt())
     }
@@ -219,33 +221,31 @@ pub trait FieldOps:
     ///
     /// # Arguments
     ///
-    /// * `&self` - Element of $\mathbb{F}_{p^M}$ (type: self)
+    /// * `&self` - Element of $\mathbb{F}_{p^M}$ (type: `Self`)
     ///
     /// # Returns
     ///
-    /// The square root of the inverse of `self`. The former is not
-    /// none if and only if it is both nonzero there exists a
-    /// squareroot in $\mathbb{F}_{p^M}$ (type: `CtOption<self>`)
+    /// * $1 / \sqrt{\texttt{self}}$. The is not none if and only if
+    ///   `self` is both nonzero there exists a squareroot in
+    ///   $\mathbb{F}_{p^M}$ (type: `CtOption<self>`)
     fn inv_sqrt(&self) -> CtOption<Self> {
         self.sqrt().and_then(|s| s.invert())
     }
 
     /// Computes the inverse of `self` and square root of `rhs`
     ///
-    /// Computes simulaineously the inverse of `self` and square root
-    /// of `rhs`.
-    ///
     /// # Arguments
     ///
-    /// * `&self` - Element of $\mathbb{F}_{p^M}$ (type: self)
+    /// * `&self` - Element of $\mathbb{F}_{p^M}$ (type: `Self`)
     /// * `rhs` - Element of $\mathbb{F}_{p^M}$ (type: &Self)
     ///
     /// # Returns
     ///
-    /// The inverse of `self` and square root fo `rhs`. Theq former is
-    /// none if and only if `self` is nonzero and the latter is not
-    /// none if and only if there exists a squareroot of `rhs` in $\mathbb{F}_{p^M}$
-    /// (type: `(CtOption<Self>, CtOption<self>)`)
+    /// * `(inv, sqrt)` where `inv` is the inverse of `self` `sqrt` is
+    ///   the square root fo `rhs`. `inv` is `none` if and only if
+    ///   `self` is zero and the `sqrt` is not none if and only if
+    ///   there exists a squareroot of `rhs` in $\mathbb{F}_{p^M}$
+    ///   (type: `(CtOption<Self>, CtOption<self>)`)
     fn invertme_sqrtother(&self, rhs: &Self) -> (CtOption<Self>, CtOption<Self>) {
         (self.invert(), rhs.sqrt())
     }
@@ -254,14 +254,14 @@ pub trait FieldOps:
     ///
     /// # Arguments
     ///
-    /// * `&self` - Element of $\mathbb{F}_{p^M}$ (type: self)
-    /// * `rhs` - Element of $\mathbb{F}_{p^M}$ (type: &Self)
+    /// * `&self` - Element of $\mathbb{F}_{p^M}$ (type: `Self`)
+    /// * `rhs` - Element of $\mathbb{F}_{p^M}$ (type: `&Self`)
     ///
     /// # Returns
     ///
-    /// The squareroot of the ratio `self/rhs` is not none if and only
-    /// if `rhs` is invertible and the ratio has an $\mathbb{F}_{p^M}$ squareroot
-    /// (type: `(CtOption<Self>, CtOption<self>))`
+    /// * $\sqrt{\texttt{self} / \texttt{rhs}}$ which is not `none` if and only
+    ///   both `rhs` is invertible and the ratio has a rational squareroot
+    ///   (type: `(CtOption<Self>, CtOption<self>))`
     fn sqrt_ratio(&self, rhs: &Self) -> CtOption<Self> {
         rhs.invert().and_then(|inv_rhs| self.mul(&inv_rhs).sqrt())
     }
@@ -278,7 +278,6 @@ pub trait FieldOps:
 
     /// Convert u64 to the field.
     fn from_u64(x: u64) -> Self;
-
 }
 /// Trait for field types that can be constructed from a field-specific
 /// representation.

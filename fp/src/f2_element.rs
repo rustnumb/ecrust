@@ -1,7 +1,6 @@
 //! Base binary field element $\mathbb{F}_2 = \mathbb{Z} /
 //! 2\mathbb{Z}$
 
-
 use crate::field_ops::FieldFromRepr;
 use crate::field_ops::{FieldOps, FieldRandom};
 use core::ops::{Add, Mul, Neg, Sub};
@@ -215,8 +214,6 @@ impl FieldRandom for F2Element {
         Self::from_u64(bit)
     }
 }
-
-
 
 impl FieldFromRepr for F2Element {
     type Repr = Uint<1>;
