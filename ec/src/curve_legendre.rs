@@ -143,7 +143,7 @@ impl<F: FieldOps + FieldRandom> LegendreCurve<F> {
     /// $$
     /// 0,\,-(1+\lambda),\,0,\,\lambda,\,0.
     /// $$
-    pub fn j_invariants(&self) -> F {
+    pub fn j_invariant_model(&self) -> F {
         assert!(
             !self.is_singular(),
             "j-invariant is undefined for a singular Legendre curve"
@@ -304,7 +304,7 @@ impl<F: FieldOps + FieldRandom> Curve for LegendreCurve<F> {
     /// This is a complete invariant of elliptic curves over algebraically
     /// closed fields up to isomorphism.
     fn j_invariant(&self) -> F {
-        LegendreCurve::j_invariants(&self)
+        LegendreCurve::j_invariant_model(&self)
     }
 
     /// Returns the $a$-invariants as a vector.
