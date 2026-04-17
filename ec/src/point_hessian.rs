@@ -15,6 +15,7 @@
 //!
 //! - Farashahi--Joye, §2--§4 for the generalized Hessian model,
 //! - the EFD projective Hessian formulas for the ordinary Hessian case.
+//! - https://eprint.iacr.org/2026/334.pdf
 //!
 //! In particular:
 //!
