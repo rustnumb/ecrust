@@ -1,15 +1,26 @@
 [package]
-name        = "isogeny"
+name = "ecrust-isogeny"
 version.workspace = true
 edition.workspace = true
-description = "Isogeny computations for the ecrust library"
 license.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+keywords.workspace = true
+description = "Isogeny abstractions and scaffolding for the ecrust ecosystem."
+documentation = "https://docs.rs/ecrust-isogeny"
+readme = "README.md"
+
+[lib]
+name = "isogeny"
+path = "src/lib.rs"
 
 [dependencies]
-fp            = { workspace = true }
-ec            = { workspace = true }
+fp = { workspace = true }
+ec = { workspace = true }
 crypto-bigint = { workspace = true }
 subtle = "2.6"
 
-[dev-dependencies]
-# Add test-only dependencies here as needed
+[package.metadata.docs.rs]
+rustdoc-args = ["--html-in-header", "katex-header.html"]

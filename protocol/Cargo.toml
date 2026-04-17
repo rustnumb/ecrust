@@ -1,14 +1,28 @@
 [package]
-name        = "protocol"
+name = "ecrust-protocol"
 version.workspace = true
 edition.workspace = true
-description = "Cryptographic protocols built on top of the ecrust field and elliptic-curve layers"
 license.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+keywords.workspace = true
+description = "Protocol-oriented building blocks built on top of the ecrust field and curve crates."
+documentation = "https://docs.rs/ecrust-protocol"
+readme = "README.md"
+
+[lib]
+name = "protocol"
+path = "src/lib.rs"
 
 [dependencies]
 ec = { workspace = true }
-subtle = "2.6"
+subtle = { workspace = true }
 
 [dev-dependencies]
 crypto-bigint = { workspace = true }
 fp = { workspace = true }
+
+[package.metadata.docs.rs]
+rustdoc-args = ["--html-in-header", "katex-header.html"]

@@ -1,4 +1,4 @@
-use crypto_bigint::{Uint, const_prime_monty_params};
+use crypto_bigint::{const_prime_monty_params, Uint};
 use fp::field_ops::FieldOps;
 use fp::fp_element::FpElement;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
@@ -20,12 +20,13 @@ fn fq(n: u64) -> F59 {
     F59::from_u64(n)
 }
 
-
-
 fn curve() -> MontgomeryCurve<F19> {
     MontgomeryCurve::new(fp(3), fp(5))
 }
+<<<<<<< HEAD
 //fn curve2() -> MontgomeryCurve<F59> { MontgomeryCurve::new(fq(7), fq(1)) }
+=======
+>>>>>>> origin/main
 
 fn all_x_coords_montgomery_19(a: F19, b: F19) -> Vec<F19> {
     let mut xs = Vec::new();
@@ -131,7 +132,6 @@ fn conditional_swap_choice_true_swaps_both() {
     assert_eq!(q, KummerPoint::new(fp(1), fp(2)));
 }
 
-
 #[test]
 fn xdouble_of_curve_point_stays_on_curve() {
     let c = curve();
@@ -175,7 +175,7 @@ fn xdouble_concrete_values() {
         (fp(6), fp(1)),
         (fp(8), fp(1)),
         (fp(12), fp(1)),
-        (fp(18), fp(0))
+        (fp(18), fp(0)),
     ];
     for pair in pairs.iter() {
         let p = KummerPoint::from_x(pair.0);
@@ -238,7 +238,6 @@ fn xadd_concrete_values_bis() {
     }
 }
 
-
 #[test]
 fn scalar_mul_zero_is_identity() {
     let c = curve();
@@ -260,12 +259,13 @@ fn scalar_mul_two_matches_xdouble() {
     assert_eq!(p.scalar_mul(&[2], &c), p.xdouble(&c));
 }
 
-
 #[test]
 fn pointops_identity_matches_inherent_identity() {
-    assert_eq!(KummerPoint::<F19>::identity(), KummerPoint::<F19>::identity());
+    assert_eq!(
+        KummerPoint::<F19>::identity(),
+        KummerPoint::<F19>::identity()
+    );
 }
-
 
 #[test]
 fn negate_is_trivial_on_kummer_line() {

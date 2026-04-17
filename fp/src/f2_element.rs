@@ -1,10 +1,13 @@
-//! Base binary field element F2 = Z / 2Z
+//! Base binary field element $\mathbb{F}_2 = \mathbb{Z} /
+//! 2\mathbb{Z}$
 
-use crate::field_ops::FieldOps;
+use crate::field_ops::FieldFromRepr;
+use crate::field_ops::{FieldOps, FieldRandom};
 use core::ops::{Add, Mul, Neg, Sub};
 use crypto_bigint::Uint;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
+/// Element of the finite field $\mathbb{F}_2$
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct F2Element {
     pub(crate) value: Uint<1>,
@@ -15,27 +18,34 @@ pub struct F2Element {
 // ---------------------------------------------------------------------------
 
 impl F2Element {
+    /// The constant zero
     pub const ZERO: Self = Self {
         value: Uint::<1>::ZERO,
     };
+
+    /// The constant one
     pub const ONE: Self = Self {
         value: Uint::<1>::ONE,
     };
 
+    /// Create a new element of $\mathbb{F}_2$
     fn new(x: Uint<1>) -> Self {
         Self {
             value: x & Uint::<1>::ONE,
         }
     }
 
+    /// Create a new element of $\mathbb{F}_2$ from a `u64`
     pub fn from_u64(x: u64) -> Self {
         Self::new(Uint::from(x & 1))
     }
 
+    /// Get the `Uint<1>` from an element of $\mathbb{F}_2$
     pub fn value(&self) -> Uint<1> {
         self.value
     }
 
+    /// Get the `u8` from an element of $\mathbb{F}_2$
     pub fn as_u8(&self) -> u8 {
         self.value.to_words()[0] as u8
     }
@@ -133,6 +143,9 @@ impl FieldOps for F2Element {
         Self::ONE
     }
 
+    fn from_u64(x: u64) -> Self {
+        Self::from_u64(x)
+    }
     fn is_zero(&self) -> Choice {
         Self::ct_eq(self, &Self::zero())
     }
@@ -186,5 +199,34 @@ impl FieldOps for F2Element {
     }
     fn degree() -> u32 {
         1
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Pretty Display
+// ---------------------------------------------------------------------------
+
+impl std::fmt::Display for F2Element {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_u8())
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Cryptographically secure random sampling
+// ---------------------------------------------------------------------------
+
+impl FieldRandom for F2Element {
+    fn random(rng: &mut (impl rand::CryptoRng + rand::Rng)) -> Self {
+        let bit = (rng.next_u32() & 1) as u64;
+        Self::from_u64(bit)
+    }
+}
+
+impl FieldFromRepr for F2Element {
+    type Repr = Uint<1>;
+
+    fn from_repr(x: Self::Repr) -> Self {
+        Self::new(x)
     }
 }

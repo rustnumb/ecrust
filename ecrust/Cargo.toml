@@ -1,0 +1,29 @@
+[package]
+name = "ecrust"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+keywords.workspace = true
+description = "Umbrella crate re-exporting the ecrust field, curve, isogeny, and protocol crates."
+documentation = "https://docs.rs/ecrust"
+readme = "README.md"
+
+[dependencies]
+fp = { workspace = true, optional = true }
+ec = { workspace = true, optional = true }
+isogeny = { workspace = true, optional = true }
+protocol = { workspace = true, optional = true }
+
+[features]
+default = ["fp", "ec", "isogeny", "protocol"]
+fp = ["dep:fp"]
+ec = ["dep:ec", "fp"]
+isogeny = ["dep:isogeny", "ec"]
+protocol = ["dep:protocol", "ec"]
+
+[package.metadata.docs.rs]
+rustdoc-args = ["--html-in-header", "katex-header.html"]

@@ -1,15 +1,22 @@
-//! Base prime-field element Fp = Z / pZ backed by `crypto-bigint`.
+//! Base prime-field element $\mathbb{F}_p = \mathbb{Z} / p\mathbb{Z}$
+//! backed by `crypto-bigint`.
 
 use core::ops::{Add, Mul, Neg, Sub};
+use std::fmt;
 
-use crate::field_ops::FieldOps;
+use crate::field_ops::{FieldFromRepr, FieldOps, FieldRandom};
 use crypto_bigint::{
     modular::{ConstMontyForm, ConstPrimeMontyParams},
-    Uint,
+    NonZero, RandomMod, Uint,
 };
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
-/// An element of the prime field Fp = Z/pZ, stored in Montgomery form.
+/// An element of the prime field $\mathbb{F}_p =
+/// \mathbb{Z}/p\mathbb{Z}$, stored in Montgomery form.
+///
+/// The internal value uses `crypto-bigint`'s [`ConstMontyForm`], so arithmetic
+/// is performed in Montgomery representation while the public constructors and
+/// accessors accept and return canonical integers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FpElement<MOD, const LIMBS: usize>
 where
@@ -26,16 +33,43 @@ impl<MOD, const LIMBS: usize> FpElement<MOD, LIMBS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
 {
+    /// Goes from an `Uint<LIMBS>` to an element of $\mathbb{F}_p$
+    ///
+    /// # Arguments
+    ///
+    /// * `x` - An integer (type: `Uint<LIMBS>`)
+    ///
+    /// # Returns
+    ///
+    /// Element of $\mathbb{F}_p$ (type: `Self`)
     pub fn from_uint(x: Uint<LIMBS>) -> Self {
         Self {
             value: ConstMontyForm::<MOD, LIMBS>::new(&x),
         }
     }
 
+    /// Goes from an `[u64; LIMBS]` to an element of $\mathbb{F}_p$
+    ///
+    /// # Arguments
+    ///
+    /// * `words` - A vec of `u64` (type: `[u64; LIMBS]`)
+    ///
+    /// # Returns
+    ///
+    /// Element of $\mathbb{F}_p$ (type: `Self`)
     pub fn from_words(words: [u64; LIMBS]) -> Self {
         Self::from_uint(Uint::<LIMBS>::from_words(words))
     }
 
+    /// Goes from an `&[u64]` to an element of $\mathbb{F}_p$
+    ///
+    /// # Arguments
+    ///
+    /// * `limbs` - A vec of `u64` (type: `&[u64]`)
+    ///
+    /// # Returns
+    ///
+    /// Element of $\mathbb{F}_p$ (type: `Self`)
     pub fn from_limbs(limbs: &[u64]) -> Self {
         assert_eq!(limbs.len(), LIMBS, "wrong number of limbs");
         let mut words = [0u64; LIMBS];
@@ -43,22 +77,69 @@ where
         Self::from_words(words)
     }
 
+    /// Goes from an `u64` to an element of $\mathbb{F}_p$
+    ///
+    /// # Arguments
+    ///
+    /// * `val` - A `u64` int (type: `u64`)
+    ///
+    /// # Returns
+    ///
+    /// Element of $\mathbb{F}_p$ (type: `Self`)
     pub fn from_u64(val: u64) -> Self {
         Self::from_uint(Uint::<LIMBS>::from_u64(val))
     }
 
+    /// Goes from an element of $\mathbb{F}_p$ to the corresponding `Uint`
+    ///
+    /// # Arguments
+    ///
+    /// * `&self` - Element of $\mathbb{F}_p$ (type: `Self`)
+    ///
+    /// # Returns
+    ///
+    /// The corresponding `Uint` (type: `Uint<LIMBS>`)
     pub fn as_uint(&self) -> Uint<LIMBS> {
         self.value.retrieve()
     }
 
+    /// Goes from an element of $\mathbb{F}_p$ to the limbs
+    ///
+    /// # Arguments
+    ///
+    /// * `&self` - Element of $\mathbb{F}_p$ (type: `Self`)
+    ///
+    /// # Returns
+    ///
+    /// The limbs giving the integer (type: `[u64; LIMBS]`)
     pub fn as_limbs(&self) -> [u64; LIMBS] {
         self.value.retrieve().to_words()
     }
 
+    /// Gives a montgomery `Uint<LIMBS>` from an $\mathbb{F}_p$
+    /// element
+    ///
+    /// # Arguments
+    ///
+    /// * `&self` - Element of $\mathbb{F}_p$ (type: `Self`)
+    ///
+    /// # Returns
+    ///
+    /// Integer in montgomery from (type: `Uint<LIMBS>`)
     pub fn to_montgomery(&self) -> Uint<LIMBS> {
         self.value.to_montgomery()
     }
 
+    /// Gives an element of $\mathbb{F}_p$ from the Montgomery
+    /// representation.
+    ///
+    /// # Arguments
+    ///
+    /// * `mont` - The input montgomery value (type: `Uint<LIMBS>`)
+    ///
+    /// # Returns
+    ///
+    /// Corresponding element of $\mathbb{F}_p$ (type: `Self`)
     pub fn from_montgomery(mont: Uint<LIMBS>) -> Self {
         Self {
             value: ConstMontyForm::<MOD, LIMBS>::from_montgomery(mont),
@@ -182,6 +263,10 @@ where
         }
     }
 
+    fn from_u64(x: u64) -> Self {
+        Self::from_u64(x)
+    }
+
     fn is_zero(&self) -> Choice {
         Self::ct_eq(self, &Self::zero())
     }
@@ -236,22 +321,11 @@ where
         self.value.sqrt().map(|sqrt| Self { value: sqrt }).into()
     }
 
-    // TODO: Implement fast version
-    // fn inv_sqrt(&self) -> CtOption<Self> {
-    //
-    // }
-
     fn legendre(&self) -> i8 {
         i8::from(self.value.jacobi_symbol())
     }
 
     fn characteristic() -> Vec<u64> {
-        // We avoid accessing MOD::MODULUS directly because its location in
-        // the crypto-bigint trait hierarchy varies across versions.
-        //
-        // Arithmetic trick: in any field, −1 ≡ p−1 (mod p).
-        // Retrieving the Montgomery form of −1 gives p−1 as a plain Uint,
-        // so p = (p−1) + 1.  This uses only stable ConstMontyForm constants.
         let minus_one = ConstMontyForm::<MOD, LIMBS>::ZERO - ConstMontyForm::<MOD, LIMBS>::ONE;
         let p_minus_1: Uint<LIMBS> = minus_one.retrieve();
         let p = p_minus_1.wrapping_add(&Uint::<LIMBS>::ONE);
@@ -260,5 +334,53 @@ where
 
     fn degree() -> u32 {
         1
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Pretty Display
+// ---------------------------------------------------------------------------
+
+impl<MOD, const LIMBS: usize> fmt::Display for FpElement<MOD, LIMBS>
+where
+    MOD: ConstPrimeMontyParams<LIMBS>,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let val = self.as_uint();
+        if LIMBS == 1 {
+            write!(f, "{}", val.to_words()[0])
+        } else {
+            write!(f, "0x{val:x}")
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Cryptographically secure random sampling
+// ---------------------------------------------------------------------------
+
+impl<MOD, const LIMBS: usize> FieldRandom for FpElement<MOD, LIMBS>
+where
+    MOD: ConstPrimeMontyParams<LIMBS>,
+{
+    /// Sample a uniformly random element of Fp using a CSPRNG.
+    fn random(rng: &mut (impl rand::CryptoRng + rand::Rng)) -> Self {
+        let minus_one = ConstMontyForm::<MOD, LIMBS>::ZERO - ConstMontyForm::<MOD, LIMBS>::ONE;
+        let p_minus_1: Uint<LIMBS> = minus_one.retrieve();
+        let p = p_minus_1.wrapping_add(&Uint::<LIMBS>::ONE);
+        let modulus = NonZero::new(p).expect("prime modulus must be nonzero");
+        let val = Uint::<LIMBS>::random_mod_vartime(rng, &modulus);
+        Self::from_uint(val)
+    }
+}
+
+impl<MOD, const LIMBS: usize> FieldFromRepr for FpElement<MOD, LIMBS>
+where
+    MOD: ConstPrimeMontyParams<LIMBS>,
+{
+    type Repr = Uint<LIMBS>;
+
+    fn from_repr(x: Self::Repr) -> Self {
+        Self::from_uint(x)
     }
 }

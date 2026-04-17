@@ -1,5 +1,13 @@
 [workspace]
 members = [
+    "ecrust",
+    "fp",
+    "ec",
+    "isogeny",
+    "protocol",
+]
+default-members = [
+    "ecrust",
     "fp",
     "ec",
     "isogeny",
@@ -8,15 +16,31 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 license = "Apache-2.0"
+rust-version = "1.85"
+authors = [
+    "Gustavo Banegas <gustavo.souza-banegas@inria.fr>",
+    "Martin Azon <martin.azon-y-trell@inria.fr>",
+    "Sam Frengley <samuel.frengley@inria.fr>",
+]
+homepage = "https://github.com/rustnumb/ecrust"
+repository = "https://github.com/rustnumb/ecrust"
+keywords = ["cryptography", "elliptic-curve", "finite-field", "isogeny", "rust"]
+exclude = [
+    ".github/",
+    "tests/fixtures/",
+    "*.log",
+    "Cargo.lock",
+]
 
 [workspace.dependencies]
-# External
-crypto-bigint = "0.7.1"
+crypto-bigint = "0.7.3"
+rand = "0.10.1"
+subtle = "2.6"
 
-# Internal
-fp       = { path = "fp",       version = "0.1.0" }
-ec       = { path = "ec",       version = "0.1.0" }
-protocol = { path = "protocol", version = "0.1.0" }
+fp       = { path = "fp",       package = "ecrust-fp",       version = "0.1.1" }
+ec       = { path = "ec",       package = "ecrust-ec",       version = "0.1.1" }
+isogeny  = { path = "isogeny",  package = "ecrust-isogeny",  version = "0.1.1" }
+protocol = { path = "protocol", package = "ecrust-protocol", version = "0.1.1" }

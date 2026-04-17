@@ -1,6 +1,6 @@
-// Generic finary fields F_{2^m} = F_2[x] / (f(x))
+//! Generic binary fields $\mathbb{F}\_{2^m} = \mathbb{F}\_2\[x\] / (f(x))$
 
-use crate::field_ops::FieldOps;
+use crate::field_ops::{FieldFromRepr, FieldOps, FieldRandom};
 use core::ops::{Add, Mul, Neg, Sub};
 use crypto_bigint::Uint;
 use std::marker::PhantomData;
@@ -11,21 +11,25 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 // IrreduciblePoly — the only thing callers need to implement for a new field
 // ---------------------------------------------------------------------------
 
+/// An irreducible polynomial over $\mathbb{F}_2$.
 pub trait BinaryIrreducible<const LIMBS: usize>: 'static {
-    // Full polynomial bitmask, including the leading term x^m
+    /// Full polynomial bitmask, including the leading term x^m
     fn modulus() -> Uint<LIMBS>;
 
-    // Degree m of the irreducible polynomial
+    /// Degree m of the irreducible polynomial
     fn degree() -> usize;
 }
 
 // ---------------------------------------------------------------------------
 // F2Ext — element of F_{2^M}
 // ---------------------------------------------------------------------------
+
+/// An extension of $\mathbb{F}_2$ given by a polynomial `P`.
 pub struct F2Ext<const LIMBS: usize, P>
 where
     P: BinaryIrreducible<LIMBS>,
 {
+    /// The value of an element of $\mathbb{F}_{2^M}$
     pub value: Uint<LIMBS>,
     _phantom: PhantomData<P>,
 }
@@ -38,6 +42,7 @@ impl<const LIMBS: usize, P> F2Ext<LIMBS, P>
 where
     P: BinaryIrreducible<LIMBS>,
 {
+    /// Make an element from the limbs
     pub fn new(x: Uint<LIMBS>) -> Self {
         Self {
             value: reduce::<LIMBS, P>(x),
@@ -45,18 +50,22 @@ where
         }
     }
 
+    /// Make an element from a `u64`
     pub fn from_u64(x: u64) -> Self {
         Self::new(Uint::from(x))
     }
 
+    /// Make an element from a `Uint<LIMBS>`
     pub fn from_uint(x: Uint<LIMBS>) -> Self {
         Self::new(x)
     }
 
+    /// Get a `Unit<LIMBS>` from an element
     pub fn as_uint(&self) -> Uint<LIMBS> {
         self.value
     }
 
+    /// Get the degree of the field extension
     pub fn degree() -> usize {
         P::degree()
     }
@@ -98,6 +107,43 @@ where
 {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "F2Ext({:?})", self.value)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Pretty Display — polynomial form over F_2
+// ---------------------------------------------------------------------------
+//
+// Shows the element as a sum of powers of x, e.g.  `x^7 + x^3 + x + 1`.
+// The zero element is printed as `0`.
+
+impl<const LIMBS: usize, P> core::fmt::Display for F2Ext<LIMBS, P>
+where
+    P: BinaryIrreducible<LIMBS>,
+{
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let m = P::degree();
+        let mut terms = Vec::new();
+        let words = self.value.to_words();
+
+        // Collect set bits from high to low for descending-degree display.
+        for i in (0..m).rev() {
+            let word = words[i / 64];
+            let bit = (word >> (i % 64)) & 1;
+            if bit == 1 {
+                match i {
+                    0 => terms.push("1".to_string()),
+                    1 => terms.push("x".to_string()),
+                    _ => terms.push(format!("x^{i}")),
+                }
+            }
+        }
+
+        if terms.is_empty() {
+            write!(f, "0")
+        } else {
+            write!(f, "{}", terms.join(" + "))
+        }
     }
 }
 
@@ -367,6 +413,10 @@ where
         Self::from_uint(Uint::<LIMBS>::ONE)
     }
 
+    fn from_u64(x: u64) -> Self {
+        Self::from_u64(x)
+    }
+
     fn is_zero(&self) -> Choice {
         Self::ct_eq(self, &Self::zero())
     }
@@ -452,5 +502,55 @@ where
 
     fn degree() -> u32 {
         P::degree() as u32
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Cryptographically secure random sampling
+// ---------------------------------------------------------------------------
+
+impl<const LIMBS: usize, P> FieldRandom for F2Ext<LIMBS, P>
+where
+    P: BinaryIrreducible<LIMBS>,
+{
+    /// Sample a uniformly random element of F_{2^m} using a CSPRNG.
+    ///
+    /// Fills a `Uint<LIMBS>` with random bytes, masks to `m` bits,
+    /// and wraps via `F2Ext::new` (which reduces mod the irreducible).
+    fn random(rng: &mut (impl rand::CryptoRng + rand::Rng)) -> Self {
+        let m = P::degree();
+        let mut words = [0u64; LIMBS];
+        for w in words.iter_mut() {
+            *w = rng.next_u64();
+        }
+
+        // Mask to m bits so we stay in the valid range [0, 2^m).
+        let full_limbs = m / 64;
+        let leftover = m % 64;
+
+        // Zero out limbs beyond the ones we need.
+        for w in words
+            .iter_mut()
+            .skip(full_limbs + if leftover > 0 { 1 } else { 0 })
+        {
+            *w = 0;
+        }
+        // Mask the partial top limb.
+        if leftover > 0 && full_limbs < LIMBS {
+            words[full_limbs] &= (1u64 << leftover) - 1;
+        }
+
+        Self::new(Uint::from_words(words))
+    }
+}
+
+impl<const LIMBS: usize, P> FieldFromRepr for F2Ext<LIMBS, P>
+where
+    P: BinaryIrreducible<LIMBS>,
+{
+    type Repr = Uint<LIMBS>;
+
+    fn from_repr(x: Self::Repr) -> Self {
+        Self::from_uint(x)
     }
 }

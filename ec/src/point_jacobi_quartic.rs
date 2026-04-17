@@ -2,20 +2,20 @@
 //!
 //! We use the affine model
 //!
-//! ```text
-//! y² = d x⁴ + 2 a x² + 1
-//! ```
+//! $$
+//! y^2 = d x^4 + 2 a x^2 + 1
+//! $$
 //!
-//! with neutral element `(0, 1)` and negation `-(x, y) = (-x, y)`. The
-//! doubling formulas are taken from equations (9) and (10) in
-//! *Jacobi Quartic Curves Revisited*; the general addition uses the affine
+//! with neutral element $(0, 1)$ and negation $-(x, y) = (-x, y)$.
+//! The doubling formulas are taken from equations (9) and (10) in
+//! *Jacobi Quartic Curves Revisited*; the general addition uses affine
 //! formulas (1) and (2).
 //!
 //! Important: these are affine formulas. Like the existing Edwards code in this
-//! crate, they assume the denominators are invertible. For exceptional inputs
+//! crate, they assume denominators are invertible. For exceptional inputs
 //! where the result leaves this affine chart, the code panics instead of trying
 //! to model the desingularized points at infinity.
-
+use core::fmt;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
 use crate::curve_jacobi_quartic::JacobiQuarticCurve;
@@ -26,8 +26,29 @@ use fp::{ref_field_impl, ref_field_trait_impl};
 /// An affine point `(x, y)` on a Jacobi quartic curve.
 #[derive(Debug, Clone, Copy)]
 pub struct JacobiQuarticPoint<F: FieldOps> {
+    /// The x coordinate of a point
     pub x: F,
+    /// The y coordiante of a point
     pub y: F,
+}
+
+impl<F> fmt::Display for JacobiQuarticPoint<F>
+where
+    F: FieldOps + fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.is_identity() {
+            if f.alternate() {
+                write!(f, "JacobiQuarticPoint {{ O = (0,1) }}")
+            } else {
+                write!(f, "O")
+            }
+        } else if f.alternate() {
+            write!(f, "JacobiQuarticPoint {{ x = {}, y = {} }}", self.x, self.y)
+        } else {
+            write!(f, "({}, {})", self.x, self.y)
+        }
+    }
 }
 
 impl<F: FieldOps> PartialEq for JacobiQuarticPoint<F> {
@@ -43,6 +64,7 @@ ref_field_impl! {
             Self { x, y }
         }
 
+<<<<<<< HEAD
         /// The neutral element `(0, 1)`.
         pub fn identity() -> Self {
             Self {
@@ -62,6 +84,32 @@ ref_field_impl! {
                 x: F::zero(),
                 y: - &one,
             }
+=======
+impl<F: FieldOps> JacobiQuarticPoint<F> {
+    /// Create a new point `(x,y)`
+    pub fn new(x: F, y: F) -> Self {
+        Self { x, y }
+    }
+
+    /// The neutral element `(0, 1)`.
+    pub fn identity() -> Self {
+        Self {
+            x: F::zero(),
+            y: F::one(),
+        }
+    }
+
+    /// Checks if the point is the identity
+    pub fn is_identity(&self) -> bool {
+        self.x == F::zero() && self.y == F::one()
+    }
+
+    /// The affine order-2 point `(0, -1)`.
+    pub fn order_two_point() -> Self {
+        Self {
+            x: F::zero(),
+            y: -F::one(),
+>>>>>>> origin/main
         }
     }
 }

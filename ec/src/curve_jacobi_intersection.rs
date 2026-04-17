@@ -2,12 +2,13 @@
 //!
 //! # Equation
 //!
-//! ```text
-//! s² + c² = 1,
-//! a s² + d² = 1
-//! ```
+//! $$
+//! s^2 + c^2 = 1,
+//! \quad
+//! a s^2 + d^2 = 1
+//! $$
 //!
-//! over a field `F` of characteristic different from `2`.
+//! over a field $F$ with $\mathrm{char}(F) \ne 2$.
 //!
 //! The EFD records that this model is birationally equivalent to the Weierstrass
 //! curve
@@ -16,21 +17,43 @@
 //! y² = x³ + (2-a)x² + (1-a)x.
 //! ```
 //!
+<<<<<<< HEAD
 
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 use fp::field_ops::FieldOps;
 use fp::{ref_field_impl, ref_field_trait_impl};
+=======
+use core::fmt;
+use fp::field_ops::{FieldOps, FieldRandom};
+>>>>>>> origin/main
 
 use crate::curve_ops::Curve;
 use crate::curve_weierstrass::WeierstrassCurve;
 use crate::point_jacobi_intersection::JacobiIntersectionPoint;
 
 /// A Jacobi-intersection curve.
+<<<<<<< HEAD
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
+=======
+///
+/// With the equation
+/// $$
+/// s^2 + c^2 = 1,
+/// \quad
+/// a s^2 + d^2 = 1
+/// $$
+/// or
+/// $$
+/// y^2 = x^3 + (2 - a)x^2 + (1 - a)x.
+/// $$
+#[derive(Debug, Clone, PartialEq, Eq)]
+>>>>>>> origin/main
 pub struct JacobiIntersectionCurve<F: FieldOps> {
+    /// The variable a in the definition of the curve
     pub a: F,
 }
 
+<<<<<<< HEAD
 ref_field_impl! {
     impl<F> JacobiIntersectionCurve<F> {
         /// Construct a Jacobi intersection from its parameter `a`.
@@ -39,6 +62,35 @@ ref_field_impl! {
             assert!(Self::is_smooth(&a), "singular Jacobi intersection");
             Self { a }
         }
+=======
+impl<F> fmt::Display for JacobiIntersectionCurve<F>
+where
+    F: FieldOps + fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if f.alternate() {
+            write!(
+                f,
+                "JacobiIntersectionCurve {{\n  s^2 + c^2 = 1\n  a s^2 + d^2 = 1\n  a = {}\n}}",
+                self.a
+            )
+        } else {
+            write!(f, "s^2 + c^2 = 1, {} s^2 + d^2 = 1", self.a)
+        }
+    }
+}
+
+impl<F: FieldOps + FieldRandom> JacobiIntersectionCurve<F> {
+    /// Construct a Jacobi intersection from its parameter `a`.
+    pub fn new(a: F) -> Self {
+        assert!(
+            F::characteristic()[0] != 2,
+            "Jacobi intersections require char(F) != 2"
+        );
+        assert!(Self::is_smooth(&a), "singular Jacobi intersection");
+        Self { a }
+    }
+>>>>>>> origin/main
 
         /// Smoothness requirement: `a != 0` and `a != 1`.
         pub fn is_smooth(a: &F) -> bool {
@@ -57,6 +109,7 @@ ref_field_impl! {
             let lhs2 = &(&self.a * &s2) + &d2;
             let one = F::one();
 
+<<<<<<< HEAD
             lhs1 == one && lhs2 == one
         }
 
@@ -82,14 +135,67 @@ ref_field_trait_impl! {
     impl<F> Curve for JacobiIntersectionCurve<F> {
         type BaseField = F;
         type Point = JacobiIntersectionPoint<F>;
+=======
+    /// Returns the corresponding invariant `a` (not the a-invariants
+    /// of the Jacobian)
+    pub fn a_invariants(&self) -> [F; 1] {
+        [self.a]
+    }
+
+    /// Sample a random affine point on this Jacobi-intersection curve using the
+    /// provided RNG.
+    ///
+    /// The method repeatedly samples `s` and then solves the defining quadrics
+    /// for `c` and `d` by square-root extraction, returning a point
+    /// `(s, c, d)` on the curve.
+    pub fn random_point(&self, rng: &mut (impl rand::CryptoRng + rand::Rng)) -> JacobiIntersectionPoint<F> {
+        loop {
+            let s = F::random(rng);
+            let s2 = <F as FieldOps>::square(&s);
+
+            let c2 = F::one() - s2;
+            let d2 = F::one() - self.a * s2;
+
+            if let (Some(c), Some(d)) = (c2.sqrt().into_option(), d2.sqrt().into_option()) {
+                let p = JacobiIntersectionPoint::new(s, c, d);
+                debug_assert!(self.is_on_curve(&p));
+                return p;
+            }
+        }
+    }
+
+    /// Birationally equivalent Weierstrass model
+    /// $y^2 = x^3 + (2-a)x^2 + (1-a)x$.
+    pub fn to_weierstrass_curve(&self) -> WeierstrassCurve<F> {
+        let two = <F as FieldOps>::double(&F::one());
+        WeierstrassCurve::new(
+            F::zero(),
+            two - self.a,
+            F::zero(),
+            F::one() - self.a,
+            F::zero(),
+        )
+    }
+}
+
+impl<F: FieldOps + FieldRandom> Curve for JacobiIntersectionCurve<F> {
+    type BaseField = F;
+    type Point = JacobiIntersectionPoint<F>;
+>>>>>>> origin/main
 
         fn is_on_curve(&self, point: &Self::Point) -> bool {
             self.contains(&point.s, &point.c, &point.d)
         }
 
+<<<<<<< HEAD
         fn random_point(&self) -> Self::Point {
             todo!()
         }
+=======
+    fn random_point(&self, rng: &mut (impl rand::CryptoRng + rand::Rng)) -> Self::Point {
+        JacobiIntersectionCurve::random_point(self, rng)
+    }
+>>>>>>> origin/main
 
         fn j_invariant(&self) -> F {
             self.to_weierstrass_curve().j_invariant()

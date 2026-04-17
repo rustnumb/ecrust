@@ -1,43 +1,101 @@
-//! Generic extension field  Fp^M = Fp[x] / (f(x)).
+//! Generic extension field  $\mathbb{F}_{p^M} = \mathbb{F}_p\[x\] / (f(x))$.
 //!
 //! # Overview
 //!
-//! Given a prime p and a monic irreducible polynomial f of degree M over Fp,
-//! the extension field Fp^M = Fp[x]/(f(x)) is the set of polynomials of
-//! degree < M with coefficients in Fp, where arithmetic is done modulo f.
+//! Given a prime $p$ and a monic irreducible polynomial $f$ of degree
+//! $M$ over $\\mathbb{F}\_{p}$, the extension field $\mathbb{F}_{{p^M}} =
+//! \mathbb{F}_p\[x\] / (f(x))$ is the set of polynomials of degree
+//! $M$ with coefficients in $\mathbb{F}_p$, where arithmetic is done
+//! modulo $f$.
 //!
-//! This module provides a single generic type [`FpExt<MOD, LIMBS, M, P>`] that
-//! covers *any* such extension.  The irreducible polynomial is supplied via the
-//! zero-size marker trait [`IrreduciblePoly`].
+//! This module provides a single generic type [`FpExt<MOD, LIMBS, M,
+//! N, P, TSCONSTS>`](self::fp_ext::FpExt) that covers *any* such
+//! extension.  The irreducible polynomial is supplied via the
+//! zero-size marker trait [`IrreduciblePoly`](self::fp_ext::FpExt).
+//!
+//! # Example
+//!
+//! ```
+//! use crypto_bigint::{const_prime_monty_params, Uint};
+//! use fp::field_ops::FieldOps;
+//! use fp::fp_element::FpElement;
+//! use fp::fp_ext::{FpExt, IrreduciblePoly, TonelliShanksConstants};
+//!
+//! /* Setup the underlying prime field */
+//! const_prime_monty_params!(Fp19Mod, Uint<1>, "0000000000000013", 2);
+//! type Fp19 = FpElement<Fp19Mod, 1>;
+//!
+//! fn fp(n: u64) -> Fp19 {
+//!    Fp19::from_u64(n)
+//! }
+//!
+//! /* Setput the irreducible polynomial */
+//! struct QuadPoly;
+//! impl IrreduciblePoly<Fp19Mod, 1, 2> for QuadPoly {
+//!     fn modulus() -> [Fp19; 2] {
+//!         [Fp19::one(), Fp19::zero()]
+//!     }
+//! }
+//!
+//! /* Setup the Tonelli--Shanks constants */
+//! struct TSQuad;
+//! impl TonelliShanksConstants<Fp19Mod, 1, 2, 1> for TSQuad {
+//!     // p^2 - 1
+//!     const ORDER: Uint<1> = Uint::<1>::from_u64(360);
+//!     // (p^2 - 1) / 2
+//!     const HALF_ORDER: Uint<1> = Uint::<1>::from_u64(180);
+//!     // p^2 - 1 = 2^S * T with T odd
+//!     const S: u64 = 3;
+//!     const T: Uint<1> = Uint::<1>::from_u64(45);
+//!     // (T - 1) / 2
+//!     const PROJENATOR_EXP: Uint<1> = Uint::<1>::from_u64(22);
+//!     // 2^(S - 1)
+//!     const TWOSM1: Uint<1> = Uint::<1>::from_u64(4);
+//!     // 2^S root of unity
+//!     fn root_of_unity() -> [FpElement<Fp19Mod, 1>; 2] {
+//!         [Fp19::from_u64(3), Fp19::from_u64(3)]
+//!     }
+//! }
+//!
+//! /* Define the extension field */
+//! type F19_2 = FpExt<Fp19Mod, 1, 2, 1, QuadPoly, TSQuad>;
+//!
+//! /* Some standard tests */
+//! let a = F19_2::new([fp(3), fp(2)]);
+//! let ainv = F19_2::new([fp(9), fp(13)]);
+//! let asquare = F19_2::new([fp(5), fp(12)]);
+//! assert_eq!(a.invert().unwrap(), ainv);
+//! assert_eq!(a.square(), asquare);
+//! assert_eq!(asquare.sqrt().unwrap().square(), asquare);
+//! ```
 //!
 //! # Representation
 //!
-//! An element `a ∈ Fp^M` is stored as exactly M base-field coefficients:
-//!
-//! ```text
-//! coeffs = [a_0, a_1, ..., a_{M-1}]
-//!        ↔  a_0 + a_1x + ... + a_{M-1}x^{M-1}
-//! ```
+//! An element $a \in \mathbb{F}\_{p^M}$ is stored as exactly $M$
+//! base-field coefficients so that `coeffs = [a_0, a_1, ...,
+//! a_{M-1}]` cooresponds to
+//! $$
+//! a_0 + a_1 x + ... + a_{M-1}x^{M-1} \pmod{ f(x) }
+//! $$
 //!
 //! # Operations and costs
 //!
-//! | Operation   | Algorithm                        | Base-field cost    |
-//! |-------------|----------------------------------|--------------------|
-//! | Add / Sub   | Coefficient-wise                 | M  adds            |
-//! | Negate      | Coefficient-wise                 | M  negs            |
-//! | Double      | Coefficient-wise                 | M  doubles         |
-//! | Multiply    | Schoolbook + reduction mod f     | M^2 muls + M^2 adds  |
-//! | Square      | Same as multiply (self * self)   | M^2 muls + M^2 adds  |
-//! |
-//!      | Polynomial extended GCD          | O(M^2)              |
-//! | Frobenius   | self^p  via square-and-multiply  | O(M^2 log p)        |
-//! | Norm        | Product of M Galois conjugates   | O(M^3 log p)        |
-//! | Trace       | Sum of M Galois conjugates       | O(M^2 log p)        |
+//! | Operation   | Algorithm                        | Base-field cost          |
+//! |-------------|----------------------------------|--------------------------|
+//! | Add / Sub   | Coefficient-wise                 | $M$ adds                 |
+//! | Negate      | Coefficient-wise                 | $M$ negs                 |
+//! | Double      | Coefficient-wise                 | $M$ doubles              |
+//! | Multiply    | Schoolbook + reduction mod f     | $M^2$ muls + $M^2$ adds  |
+//! | Square      | Same as multiply (self * self)   | $M^2$ muls + $M^2$ adds  |
+//! | Invert      | Polynomial extended GCD          | $O(M^2)$                 |
+//! | Frobenius   | self^p  via square-and-multiply  | $O(M^2 \log p)$          |
+//! | Norm        | Product of M Galois conjugates   | $O(M^3 \log p)$          |
+//! | Trace       | Sum of M Galois conjugates       | $O(M^2 \log p)$          |
 
 use core::ops::{Add, Mul, Neg, Sub};
 use std::marker::PhantomData;
 
-use crate::field_ops::FieldOps;
+use crate::field_ops::{FieldFromRepr, FieldOps, FieldRandom};
 use crate::fp_element::FpElement;
 use crypto_bigint::{modular::ConstPrimeMontyParams, Uint};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
@@ -47,27 +105,44 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 // ===========================================================================
 
 /// Supplies the monic irreducible polynomial
-///   `f(x) = x^M + c_{M-1}x^{M-1} + ... + c_1x + c_0`
-/// that defines the extension  `Fp^M = Fp[x] / (f(x))`.
+/// $$f(x) = x^M + c_{M-1} x^{M-1} + ... + c_1 x + c_0$$
+/// that defines the extension  $\mathbb{F}_p^M = \mathbb{F}_p\[x\] / (f(x))$.
 ///
 /// # Convention
 ///
 /// `modulus()` returns the **non-leading** coefficients in ascending degree order:
 /// `[c_0, c_1, ..., c_{M-1}]`.
-/// The leading coefficient `1` (coefficient of `x^M`) is implicit.
+/// The leading coefficient 1 (coefficient of $x^M$) is implicit.
 ///
-/// # Example: f(x) = x^2 + 1 over F_19
-/// ```ignore
-/// struct MyPoly;
-/// impl IrreduciblePoly<Fp19Mod, 1, 2> for MyPoly {
+/// # Example: $\mathbb{F}_{19^2}$
+///
+/// The polynomial $f(x) = x^2 + 1$ is irreducible over $\mathbb{F}_{19}$.
+/// ```
+/// # use crypto_bigint::{const_prime_monty_params, Uint};
+/// # use fp::fp_element::FpElement;
+/// # use fp::field_ops::FieldOps;
+/// # use fp::fp_ext::{FpExt, IrreduciblePoly, TonelliShanksConstants};
+/// const_prime_monty_params!(Fp19Mod, Uint<1>, "0000000000000013", 2);
+/// type Fp19 = FpElement<Fp19Mod, 1>;
+/// struct MyQuadPoly;
+/// impl IrreduciblePoly<Fp19Mod, 1, 2> for MyQuadPoly {
 ///     fn modulus() -> [FpElement<Fp19Mod, 1>; 2] {
-///         [FpElement::one(), FpElement::zero()]  // c_0=1, c_1=0 \to x^2+1
+///         // f(x) = x^2 + 0x + 1 -> [1, 0]
+///         [FpElement::one(), FpElement::zero()]
 ///     }
 /// }
 /// ```
 ///
-/// # Example: f(x) = x^3 − 2 over F_19  (i.e. x^3 + 17 since −2 \equiv 17 mod 19)
-/// ```ignore
+/// # Example: $\mathbb{F}_{19^3}$
+///
+/// Note that $f(x) = x^3 + 17$ is irreducible over $\mathbb{F}_{19}$.
+/// ```
+/// # use crypto_bigint::{const_prime_monty_params, Uint};
+/// # use fp::fp_element::FpElement;
+/// # use fp::field_ops::FieldOps;
+/// # use fp::fp_ext::{FpExt, IrreduciblePoly, TonelliShanksConstants};
+/// const_prime_monty_params!(Fp19Mod, Uint<1>, "0000000000000013", 2);
+/// type Fp19 = FpElement<Fp19Mod, 1>;
 /// struct MyCubicPoly;
 /// impl IrreduciblePoly<Fp19Mod, 1, 3> for MyCubicPoly {
 ///     fn modulus() -> [FpElement<Fp19Mod, 1>; 3] {
@@ -93,22 +168,20 @@ implement for a new field
 
 /// Supplies the constants for Tonelli--Shanks algorithm.
 ///
-/// # Conventions
+/// The `usize` constant `N` in the trait definition should be chosen
+/// so that $p^M$ fits inside a `Uint<N>`. Required constants are
+/// listed below all are derived by writing $p^M - 1 = 2^S T$ for some
+/// odd $T$.
 ///
-/// The input value `N` (type: usize) in the definition of the trait should
-/// be chosen so that p^M fits in a UInt<N>. One should supply the following
-/// data:
-/// * `ORDER`: (p^M - 1) (type: UInt<N>)
-/// * `HALF_ORDER`: (p^M - 1) / 2 (type: UInt<N>)
-/// * `S`: So that (p^M - 1) = 2^S * T with T odd (type: u64)
-/// * `T`: So that (p^M - 1) = 2^S * T with T odd (type: UInt<N>)
-/// * `PROJENATOR_EXP`: (T - 1) / 2 (type: UInt<N>)
-/// * `TWOSM1`: 2^(S - 1) (type: UInt<N>)
-/// * `root_of_unity() -> [FpElement<MOD, LIMBS>; M]`: 2^S root of unity
-///   in FpM
-///
-/// # Example: F_(19^2)
-/// ```ignore
+/// # Example: $\mathbb{F}_{19^2}$
+/// Note that we have a factorisation $19^2 - 1 = 2^3 \cdot 45$
+/// ```
+/// # use crypto_bigint::{const_prime_monty_params, Uint};
+/// # use fp::fp_element::FpElement;
+/// # use fp::fp_ext::{FpExt, IrreduciblePoly, TonelliShanksConstants};
+/// const_prime_monty_params!(Fp19Mod, Uint<1>, "0000000000000013", 2);
+/// type Fp19 = FpElement<Fp19Mod, 1>;
+/// struct TSQuad;
 /// impl TonelliShanksConstants<Fp19Mod, 1, 2, 1> for TSQuad {
 ///     // p^2 - 1
 ///     const ORDER: Uint<1> = Uint::<1>::from_u64(360);
@@ -127,27 +200,35 @@ implement for a new field
 ///     }
 /// }
 /// ```
+///
+/// # Todo
+///
+/// - [ ] Compute these constants at compile time to bury this from
+///   the end user.
 pub trait TonelliShanksConstants<MOD, const LIMBS: usize, const M: usize, const N: usize>:
     'static
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
 {
-    // Write the order of the multiplicative group as
-    // (p^M - 1) = 2^S * T where T is odd
-    // Multiplicative group order p^M - 1
-    // p^M - 1
+    /// Multiplicative group order $p^M - 1$
     const ORDER: Uint<N>;
-    // (p^M - 1) / 2
+
+    /// Half mult group order $(p^M - 1) / 2$
     const HALF_ORDER: Uint<N>;
-    // Constant S
+
+    /// Write $p^M - 1 = 2^S T$ with $T$ odd
     const S: u64;
-    // Constant 2^(S - 1)
-    const TWOSM1: Uint<N>;
-    // Constant T
+
+    /// Write $p^M - 1 = 2^S T$ with $T$ odd
     const T: Uint<N>;
-    // Projenator exponent of the TS algorithm this is (T - 1) / 2
+
+    /// Constant $2^{S - 1}$
+    const TWOSM1: Uint<N>;
+
+    /// Projenator exponent of the TS algorithm this is $(T - 1) / 2$
     const PROJENATOR_EXP: Uint<N>;
-    // Root of unity TODO: implement in a way in which this is a const
+
+    /// $2^S$ root of unity
     fn root_of_unity() -> [FpElement<MOD, LIMBS>; M];
 }
 
@@ -155,7 +236,8 @@ where
 // FpExt — element of Fp^M
 // ===========================================================================
 
-/// An element of the extension field  `Fp^M = Fp[x] / (f(x))`.
+/// An element of the extension field $\mathbb{F}_{p^M} =
+/// \mathbb{F}_p\[x\] / (f(x))$.
 ///
 /// `P` is a zero-size marker type implementing [`IrreduciblePoly`].
 /// `M` is the extension degree (number of base-field coefficients stored).
@@ -166,7 +248,8 @@ where
     P: IrreduciblePoly<MOD, LIMBS, M>,
     TSCONSTS: TonelliShanksConstants<MOD, LIMBS, M, N>,
 {
-    /// Coefficients in ascending degree: `coeffs[i]` = coefficient of `x^i`.
+    /// Coefficients in ascending degree, that is `coeffs[i]` is
+    /// the coefficient of $x^i$ (zero indexed).
     pub coeffs: [FpElement<MOD, LIMBS>; M],
     _phantom: PhantomData<P>,
     _order: PhantomData<TSCONSTS>,
@@ -192,14 +275,14 @@ where
         }
     }
 
-    /// Embed a base-field element as `a + 0x + ... + 0x^{M-1}`.
+    /// Embed a base-field element as $a + 0x + ... + 0x^{M-1}$.
     pub fn from_base(a: FpElement<MOD, LIMBS>) -> Self {
         let mut coeffs = std::array::from_fn(|_| FpElement::zero());
         coeffs[0] = a;
         Self::new(coeffs)
     }
 
-    /// Return the coefficient of `x^i`.
+    /// Return the coefficient of $x^i$.
     pub fn coeff(&self, i: usize) -> &FpElement<MOD, LIMBS> {
         &self.coeffs[i]
     }
@@ -271,6 +354,47 @@ where
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "FpExt{:?}", self.coeffs.as_ref())
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Pretty Display — polynomial form over Fp
+// ---------------------------------------------------------------------------
+
+/// Shows the element as  $a_0 + a_1 x + a_2 x^2 + ...$  with zero
+/// coefficients suppressed.  The zero element prints as `0`.
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS> std::fmt::Display
+    for FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
+where
+    MOD: ConstPrimeMontyParams<LIMBS>,
+    P: IrreduciblePoly<MOD, LIMBS, M>,
+    TSCONSTS: TonelliShanksConstants<MOD, LIMBS, M, N>,
+    FpElement<MOD, LIMBS>: std::fmt::Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut terms = Vec::new();
+
+        for (i, coeff) in self.coeffs.iter().enumerate() {
+            if bool::from(coeff.is_zero()) {
+                continue;
+            }
+
+            let is_one = bool::from(coeff.is_one());
+
+            match i {
+                0 => terms.push(format!("{coeff}")),
+                1 if is_one => terms.push("x".to_string()),
+                1 => terms.push(format!("{coeff}*x")),
+                _ if is_one => terms.push(format!("x^{i}")),
+                _ => terms.push(format!("{coeff}*x^{i}")),
+            }
+        }
+
+        if terms.is_empty() {
+            write!(f, "0")
+        } else {
+            write!(f, "{}", terms.join(" + "))
+        }
     }
 }
 
@@ -477,13 +601,14 @@ where
     (quot, poly_normalize(rem))
 }
 
-/// Reduce polynomial `a` modulo the irreducible `f(x) = x^M + Σ modulus[j]x^j`.
+/// Reduce polynomial $a$ modulo the irreducible $f(x) = x^M + \sum_j c_j x^j$.
 ///
 /// Uses the substitution rule:
-///   `x^M \equiv −(modulus[0] + modulus[1]x + ... + modulus[M-1]x^{M-1})`
+/// $$x^M \equiv − (c_0 + c_1 x + ... + c_{M-1} x^{M-1})$$
 ///
-/// Sweeps from the highest degree of `a` down to `M`, eliminating one term
-/// per step.  Each step costs M multiplications and M additions in Fp.
+/// Sweeps from the highest degree of `a` down to `M`, eliminating one
+/// term per step.  Each step costs `M` multiplications and `M`
+/// additions in $\mathbb{F}_p$. Note that $c_i$ is `modulus[i]` below.
 fn poly_reduce<MOD, const LIMBS: usize, const M: usize>(
     a: Vec<FpElement<MOD, LIMBS>>,
     modulus: &[FpElement<MOD, LIMBS>; M],
@@ -649,7 +774,7 @@ where
 /// # Note
 ///
 /// Most of this is directly taken from the Fp case at
-/// https://github.com/SamFrengley/ff-sqrtratio/blob/8e5aa6f934f32d9b9cff56177d9943a2effcd390/ff_derive/src/lib.rs
+/// <https://github.com/SamFrengley/ff-sqrtratio/blob/8e5aa6f934f32d9b9cff56177d9943a2effcd390/ff_derive/src/lib.rs>
 /// under an MIT liscence.
 fn ts_loop<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS>(
     x: &mut FpExt<MOD, LIMBS, M, N, P, TSCONSTS>,
@@ -713,6 +838,10 @@ where
         Self::new(c)
     }
 
+    fn from_u64(x: u64) -> Self {
+        Self::from_base(FpElement::<MOD, LIMBS>::from_u64(x))
+    }
+
     // --- Predicates ---------------------------------------------------------
 
     fn is_zero(&self) -> Choice {
@@ -741,10 +870,11 @@ where
         }))
     }
 
-    /// Schoolbook multiplication followed by reduction modulo f(x).
+    /// Schoolbook multiplication followed by reduction modulo $f(x)$.
     ///
-    /// Product has degree ≤ 2M−2, then each high-degree term is replaced using
-    /// `x^M \equiv −Σ modulus[j]x^j` until all degrees are below M.
+    /// Product has degree $\leq 2M−2$, then each high-degree term is
+    /// replaced using $x^M \equiv −\sum_j \texttt{modulus}\[j\] x^j$
+    /// until all degrees are below $M$.
     fn mul(&self, rhs: &Self) -> Self {
         let product = poly_mul(&self.coeffs, &rhs.coeffs);
         Self::new(poly_reduce(product, &P::modulus()))
@@ -764,9 +894,9 @@ where
 
     /// Inversion via polynomial extended GCD.
     ///
-    /// Finds `s(x)` such that `self(x)s(x) \equiv 1  (mod f(x))` by computing
-    /// `gcd(self, f) = g` (a nonzero constant if self ≠ 0) and setting
-    /// `self⁻¹ = sg⁻¹ mod f`.
+    /// Finds $s$ such that $\texttt{self} \times s \equiv 1 \pmod{f}$
+    /// by computing $\gcd(\texttt{self}, f) = g$ (a nonzero constant
+    /// if `self` is nonzero) and then returning $s g^{-1} \pmod{f}$.
     fn invert(&self) -> CtOption<Self> {
         let is_invertible = !self.is_zero();
 
@@ -835,7 +965,7 @@ where
     /// Tonelli--Shanks squareroot algorithm
     ///
     /// Implementation of the Tonelli--Shanks square root algorithm. Requires
-    /// only a factorisation as $p^M - 1 = 2^K * N$ so can compute this at
+    /// only a factorisation as $p^M - 1 = 2^K N$ so can compute this at
     /// compile time by truncating zeros.
     ///
     /// # Arguments
@@ -871,6 +1001,7 @@ where
     /// # Returns
     ///
     /// `(myinv, mysqrt)` which is `self.invert()` and `self.sqrt()`
+    /// (type: `CtOption<Self>`, `CtOption<Self>`)
     fn inverse_and_sqrt(&self) -> (CtOption<Self>, CtOption<Self>) {
         let is_invertible = !self.is_zero();
 
@@ -909,7 +1040,7 @@ where
     ///
     /// Computes 1/sqrt(self) using the trick from Mike Scott's
     /// "Tricks of the trade" article Section 2
-    /// https://eprint.iacr.org/2020/1497
+    /// <https://eprint.iacr.org/2020/1497>
     ///
     /// # Arguments
     ///
@@ -917,7 +1048,7 @@ where
     ///
     /// # Returns
     ///
-    /// The inverse of the squareroot of `self` (type: CtOption<Self>)
+    /// The inverse of the squareroot of `self` (type: `CtOption<Self>`)
     fn inv_sqrt(&self) -> CtOption<Self> {
         let (inv, sqrt) = self.inverse_and_sqrt();
         inv.and_then(|a| sqrt.map(|b| &a * &b))
@@ -927,14 +1058,14 @@ where
     ///
     /// Computes `1/self` and `rhs.sqrt()` simulaineously using the
     /// trick from Mike Scott's "Tricks of the trade" article Section
-    /// 2 https://eprint.iacr.org/2020/1497
+    /// 2 <https://eprint.iacr.org/2020/1497>
     ///
     /// # Returns
     ///
     /// The inverse of `self` and square root fo `rhs`. Theq former is
     /// none if and only if `self` is nonzero and the latter is not
     /// none if and only if there exists a squareroot of `rhs` in FpM
-    /// (type: (CtOption<Self>, CtOption<self>))
+    /// (type: (`CtOption<Self>`, `CtOption<Self>`))
     fn invertme_sqrtother(&self, rhs: &Self) -> (CtOption<Self>, CtOption<Self>) {
         let is_invertible = !self.is_zero();
 
@@ -961,7 +1092,7 @@ where
     ///
     /// Computes `sqrt(self/rhs)` in one exponentiation using the
     /// trick from Mike Scott's "Tricks of the trade" article Section
-    /// 2 https://eprint.iacr.org/2020/1497
+    /// 2 <https://eprint.iacr.org/2020/1497>
     ///
     /// # Arguments
     ///
@@ -972,7 +1103,7 @@ where
     ///
     /// The squareroot of the ratio `self/rhs` is not none if and only
     /// if `rhs` is invertible and the ratio has an FpM squareroot
-    /// (type: (CtOption<Self>, CtOption<self>))
+    /// (type: `CtOption<Self>`)
     fn sqrt_ratio(&self, rhs: &Self) -> CtOption<Self> {
         let x = self * &(&(self.square()) * rhs);
         let (myinv, mysqrt) = x.inverse_and_sqrt();
@@ -1021,5 +1152,38 @@ where
     /// Degree of Fp^M over the prime subfield Fp.
     fn degree() -> u32 {
         M as u32
+    }
+}
+
+// ===========================================================================
+// Cryptographically secure random sampling
+// ===========================================================================
+
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS> FieldRandom
+    for FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
+where
+    MOD: ConstPrimeMontyParams<LIMBS>,
+    P: IrreduciblePoly<MOD, LIMBS, M>,
+    TSCONSTS: TonelliShanksConstants<MOD, LIMBS, M, N>,
+{
+    /// Sample a uniformly random element of Fp^M by drawing each
+    /// coefficient independently from Fp.
+    fn random(rng: &mut (impl rand::CryptoRng + rand::Rng)) -> Self {
+        let coeffs = std::array::from_fn(|_| FpElement::<MOD, LIMBS>::random(rng));
+        Self::new(coeffs)
+    }
+}
+
+impl<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS> FieldFromRepr
+    for FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
+where
+    MOD: ConstPrimeMontyParams<LIMBS>,
+    P: IrreduciblePoly<MOD, LIMBS, M>,
+    TSCONSTS: TonelliShanksConstants<MOD, LIMBS, M, N>,
+{
+    type Repr = [FpElement<MOD, LIMBS>; M];
+
+    fn from_repr(x: Self::Repr) -> Self {
+        Self::new(x)
     }
 }

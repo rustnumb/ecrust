@@ -1,0 +1,9 @@
+[build]
+rustdocflags = ["--html-in-header", "katex-header.html", "-Dmissing_docs", "-Dwarnings"]
+
+[alias]
+ourdoc = [
+    "doc", 
+    "--workspace", 
+    "--no-deps"
+]
