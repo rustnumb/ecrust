@@ -226,8 +226,8 @@ impl<F: FieldOps> HessianPoint<F> {
         let cz3 = curve.c * z3;
 
         Self::new(
-            self.y * (cz3 - x3),
             self.x * (y3 - cz3),
+            self.y * (cz3 - x3),
             self.z * (x3 - y3),
         )
     }
