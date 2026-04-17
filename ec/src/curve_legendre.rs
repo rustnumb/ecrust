@@ -1,0 +1,229 @@
+//! Elliptic curve definition in Legendre form.
+//!
+//! # Equation
+//!
+//! The **Legendre** family over a field `F` of odd characteristic is
+//!
+//! $$
+//! E_\lambda : y^2 = x(x-1)(x-\lambda),
+//! \qquad \lambda \neq 0,1.
+//! $$
+//!
+//! Expanding the right-hand side gives the equivalent Weierstrass model
+//!
+//! $$
+//! y^2 = x^3 - (1+\lambda)x^2 + \lambda x,
+//! $$
+//!
+//! so the associated $a$-invariants are
+//!
+//! $$
+//! (a_1,a_2,a_3,a_4,a_6) = (0,\,-(1+\lambda),\,0,\,\lambda,\,0).
+//! $$
+//!
+//! # Distinguished points
+//!
+//! The Legendre form makes the full rational $2$-torsion visible:
+//!
+//! $$
+//! O,\quad (0,0),\quad (1,0),\quad (\lambda,0).
+//! $$
+//!
+//! The group identity is the point at infinity `O`.
+//!
+//! # j-invariant
+//!
+//! The $j$-invariant of `E_λ` is
+//!
+//! $$
+//! j(E_\lambda)=256\frac{(\lambda^2-\lambda+1)^3}{\lambda^2(\lambda-1)^2}.
+//! $$
+//!
+//! # References
+//!
+//! - Roland Auer and Jaap Top, *Legendre Elliptic Curves over Finite Fields*,
+//!   Journal of Number Theory 95 (2002), 303–312.
+//! - HongFeng Wu and RongQuan Feng,
+//!   *On the isomorphism classes of Legendre elliptic curves over finite fields*,
+//!   Sci. China Math. 54(9) (2011), 1885–1890.
+use core::fmt;
+use fp::field_ops::{FieldOps, FieldRandom};
+
+use crate::curve_ops::Curve;
+use crate::point_legendre::LegendrePoint;
+
+/// A Legendre elliptic curve over a field `F`.
+///
+/// This stores the parameter `λ` of the curve
+///
+/// $$
+/// E_\lambda : y^2 = x(x-1)(x-\lambda).
+/// $$
+///
+/// The nonsingular case is exactly `λ != 0` and `λ != 1`
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LegendreCurve<F: FieldOps> {
+    /// The Legendre parameter $\lambda$ in:
+    /// $$
+    /// E_{\lambda} : y^2 = x(x - 1)(x - \lambda)
+    /// $$
+    ///
+    /// For a nonsingular Legendre curve one must have $\lambda \neq 0$ and $\lambda \neq 1$.
+    pub lambda: F,
+}
+
+impl<F: FieldOps + FieldRandom> LegendreCurve<F> {
+    /// Construct the Legendre curve $y^2 = x(x-1)(x-\lambda).$
+    pub fn new(lambda: F) -> Self {
+        Self { lambda }
+    }
+
+    /// Returns `true` if and only if the model is singular.
+    ///
+    /// For Legendre form, singularity occurs exactly when `λ ∈ {0,1}`
+    pub fn is_singular(&self) -> bool {
+        self.lambda == F::zero() || self.lambda == F::one()
+    }
+
+    /// Returns the affine right-hand side
+    ///
+    /// $$
+    /// x(x-1)(x-\lambda).
+    /// $$
+    pub fn rhs(&self, x: &F) -> F {
+        *x * (*x - F::one()) * (*x - self.lambda)
+    }
+    /// Checks whether the affine point `(x, y)` satisfies
+    ///
+    /// $$
+    /// y^2 = x(x-1)(x-\lambda).
+    /// $$
+    pub fn contains(&self, x: &F, y: &F) -> bool {
+        let lhs = <F as FieldOps>::square(y);
+        let rhs = self.rhs(x);
+        lhs == rhs
+    }
+
+    /// Samples a random affine point on the curve.
+    ///
+    /// This uses a square-root based strategy in odd characteristic:
+    /// choose a random `x`, compute `rhs(x)`, and return `(x, y)` whenever
+    /// `rhs(x)` is a square.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the curve is singular.
+    pub fn random_point(&self, rng: &mut (impl rand::CryptoRng + rand::Rng)) -> LegendrePoint<F> {
+        assert!(
+            !self.is_singular(),
+            "cannot sample points on a singular Legendre curve"
+        );
+
+        loop {
+            let x = F::random(rng);
+            let rhs = self.rhs(&x);
+
+            if let Some(y) = rhs.sqrt().into_option() {
+                let use_neg = (rng.next_u32() & 1) == 1;
+                let y = if use_neg { -y } else { y };
+                return LegendrePoint::new(x, y);
+            }
+        }
+    }
+
+    /// Returns the Weierstrass `a`-invariants of the expanded model
+    ///
+    /// $$
+    /// y^2 = x^3 - (1+\lambda)x^2 + \lambda x.
+    /// $$
+    ///
+    /// Namely:
+    ///
+    /// $$
+    /// 0,\,-(1+\lambda),\,0,\,\lambda,\,0.
+    /// $$
+    pub fn j_invariants(&self) -> F {
+        assert!(
+            !self.is_singular(),
+            "j-invariant is undefined for a singular Legendre curve"
+        );
+
+        let lambda_sq = <F as FieldOps>::square(&self.lambda);
+        let t = lambda_sq - self.lambda + F::one();
+        let num = F::from_u64(256) * t * t * t;
+
+        let lambda_minus_one = self.lambda - F::one();
+        let den = lambda_sq * <F as FieldOps>::square(&lambda_minus_one);
+
+        let den_inv = den
+            .invert()
+            .into_option()
+            .expect("denominator must be invertible for λ != 0,1");
+
+        num * den_inv
+    }
+
+    /// Returns the a-invariants of
+    ///
+    /// y² = x³ - (1+λ)x² + λx
+    ///
+    /// i.e. [a1, a2, a3, a4, a6] = [0, -(1+λ), 0, λ, 0].
+    pub fn a_invariants(&self) -> [F; 5] {
+        [
+            F::zero(),
+            -(F::one() + self.lambda),
+            F::zero(),
+            self.lambda,
+            F::zero(),
+        ]
+    }
+}
+
+impl<F> fmt::Display for LegendreCurve<F>
+where
+    F: FieldOps + fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if f.alternate() {
+            write!(
+                f,
+                "LegendreCurve {{\n  y^2 = x(x-1)(x - {})\n}}",
+                self.lambda
+            )
+        } else {
+            write!(f, "y^2 = x(x-1)(x - {})", self.lambda)
+        }
+    }
+}
+
+impl<F: FieldOps + FieldRandom> Curve for LegendreCurve<F> {
+    type BaseField = F;
+    type Point = LegendrePoint<F>;
+
+    fn is_on_curve(&self, point: &Self::Point) -> bool {
+        if point.infinity {
+            true
+        } else {
+            let lhs = <F as FieldOps>::square(&point.y);
+            let rhs = self.rhs(&point.x);
+            lhs == rhs
+        }
+    }
+
+    fn random_point(&self, rng: &mut (impl rand::CryptoRng + rand::Rng)) -> Self::Point {
+        LegendreCurve::random_point(self, rng)
+    }
+
+    /// Returns the $j$-invariant of the curve.
+    ///
+    /// This is a complete invariant of elliptic curves over algebraically
+    /// closed fields up to isomorphism.
+    fn j_invariant(&self) -> F {
+        LegendreCurve::j_invariants(&self)
+    }
+
+    /// Returns the $a$-invariants as a vector.
+    fn a_invariants(&self) -> Vec<Self::BaseField> {
+        LegendreCurve::a_invariants(self).to_vec()
+    }
+}
