@@ -112,38 +112,38 @@ where
 // Constructors
 // ---------------------------------------------------------------------------
 
-ref_field_impl! {
-    impl<F> KummerPoint<F> {
-        /// Construct a projective x-line point `(X : Z)` without validation.
-        pub fn new(x: F, z: F) -> Self {
-            assert!(!bool::from((&x * &z).is_zero()));
-            Self{ x, z }
-        }
 
-        /// Construct the finite x-line point corresponding to the affine
-        /// x-coordinate `x`, i.e. `(x : 1)`.
-        pub fn from_x(x: F) -> Self {
-            Self{ x, z: F::one() }
-        }
-
-        /// The image of the identity point on the Kummer line.
-        pub fn identity() -> Self {
-            Self{ x: F::one(), z: F::zero()}
-        }
-
-        /// Return `true` if this point is the image of identity.
-        pub fn is_identity(&self) -> bool {
-            bool::from(self.z.is_zero())
-        }
-
-        /// Attempt to recover the affine x-coordinate (succeeds when Z != 0).
-        pub fn to_x(&self) -> CtOption<F> {
-            let z_inv = self.z.invert();
-            z_inv.map(|zinv| &self.x * &zinv)
-        }
-
+impl<F: FieldOps> KummerPoint<F> {
+    /// Construct a projective x-line point `(X : Z)` without validation.
+    pub fn new(x: F, z: F) -> Self {
+        assert!(!bool::from(x.mul(&z).is_zero()));
+        Self{ x, z }
     }
+
+    /// Construct the finite x-line point corresponding to the affine
+    /// x-coordinate `x`, i.e. `(x : 1)`.
+    pub fn from_x(x: F) -> Self {
+        Self{ x, z: F::one() }
+    }
+
+    /// The image of the identity point on the Kummer line.
+    pub fn identity() -> Self {
+        Self{ x: F::one(), z: F::zero()}
+    }
+
+    /// Return `true` if this point is the image of identity.
+    pub fn is_identity(&self) -> bool {
+        bool::from(self.z.is_zero())
+    }
+
+    /// Attempt to recover the affine x-coordinate (succeeds when Z != 0).
+    pub fn to_x(&self) -> CtOption<F> {
+        let z_inv = self.z.invert();
+        z_inv.map(|zinv| self.x.mul(&zinv))
+    }
+
 }
+
 
 // ---------------------------------------------------------------------------
 // Constant-time functionalities
@@ -208,7 +208,7 @@ ref_field_impl! {
                 let tmp = &diffsq + &(&a24 * &fourxz);
                 let new_z = &fourxz * &tmp;
 
-                Self { x: sumsq * diffsq, z: new_z }
+                Self { x: &sumsq * &diffsq, z: new_z }
             } else {
                 let temp_x = &self.x + &(&curve.b * &self.z);
                 let sq1 = <F as FieldOps>::square(&temp_x);

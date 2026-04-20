@@ -36,7 +36,7 @@ fn all_points(curve: &HessianCurve<F103>) -> Vec<HessianPoint<F103>> {
     }
 
     for omega in cube_roots_of_unity() {
-        pts.push(HessianPoint::new(F103::one(), -omega, F103::zero()));
+        pts.push(HessianPoint::new(F103::one(), -&omega, F103::zero()));
     }
 
     pts
@@ -54,7 +54,7 @@ fn hessian_identity_is_on_curve() {
 fn hessian_infinity_points_are_on_curve() {
     let curve = complete_curve();
     for omega in cube_roots_of_unity() {
-        let p = HessianPoint::new(F103::one(), -omega, F103::zero());
+        let p = HessianPoint::new(F103::one(), -&omega, F103::zero());
         assert!(curve.is_on_curve(&p));
         assert!(p.is_at_infinity());
     }
@@ -66,8 +66,8 @@ fn hessian_identity_is_neutral_for_all_points() {
     let id = HessianPoint::<F103>::identity();
 
     for p in all_points(&curve) {
-        assert_eq!(p.add(&id, &curve), p, "P + O != P for P={:#}", p);
-        assert_eq!(id.add(&p, &curve), p, "O + P != P for P={:#}", p);
+        assert_eq!(p.add(&id, &curve), p, "P + O != P for P={:?}", p);
+        assert_eq!(id.add(&p, &curve), p, "O + P != P for P={:?}", p);
     }
 }
 
@@ -78,8 +78,8 @@ fn hessian_negation_works_for_all_points() {
 
     for p in all_points(&curve) {
         let neg = p.negate(&curve);
-        assert_eq!(p.add(&neg, &curve), id, "P + (-P) != O for P={:#}", p);
-        assert_eq!(neg.add(&p, &curve), id, "(-P) + P != O for P={:#}", p);
+        assert_eq!(p.add(&neg, &curve), id, "P + (-P) != O for P={:?}", p);
+        assert_eq!(neg.add(&p, &curve), id, "(-P) + P != O for P={:?}", p);
     }
 }
 

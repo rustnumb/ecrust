@@ -32,7 +32,7 @@ fn legendre_curve_a_invariants_are_correct() {
 
     assert_eq!(a.len(), 5);
     assert_eq!(a[0], F19::zero());
-    assert_eq!(a[1], -four); // -(1 + λ) = -(1 + 3) = -4
+    assert_eq!(a[1], -&four); // -(1 + λ) = -(1 + 3) = -4
     assert_eq!(a[2], F19::zero());
     assert_eq!(a[3], F19::from(three));
     assert_eq!(a[4], F19::zero());
@@ -73,13 +73,13 @@ fn legendre_curve_j_invariant_matches_closed_formula() {
 
 
     let lambda_sq = <F19 as FieldOps>::square(&lambda);
-    let t = lambda_sq - lambda + F19::one();
-    let num = two_five_six * t * t * t;
+    let t = &(&lambda_sq - &lambda) + &F19::one();
+    let num = &(&two_five_six * &t) * &(&t * &t);
 
-    let den = lambda_sq * <F19 as FieldOps>::square(&(lambda - F19::one()));
+    let den = &lambda_sq * &<F19 as FieldOps>::square(&(&lambda - &F19::one()));
     let den_inv = den.invert().into_option().unwrap();
 
-    let expected = num * den_inv;
+    let expected = &num * &den_inv;
 
     assert_eq!(c.j_invariant(), expected);
 }
@@ -91,7 +91,7 @@ fn legendre_to_general_weierstrass_matches_a_invariants() {
     let w = c.to_weierstrass();
 
     assert_eq!(w.a1, F19::zero());
-    assert_eq!(w.a2, -(F19::one() + c.lambda));
+    assert_eq!(w.a2, -&(&F19::one() + &c.lambda));
     assert_eq!(w.a3, F19::zero());
     assert_eq!(w.a4, c.lambda);
     assert_eq!(w.a6, F19::zero());
@@ -123,9 +123,9 @@ fn legendre_short_weierstrass_coordinate_shift_works() {
 
     let three = fp(3);
     let three_inv = three.invert().into_option().unwrap();
-    let shift = (F19::one() + c.lambda) * three_inv;
+    let shift = &(&F19::one() + &c.lambda) * &three_inv;
 
-    let xw = p.x - shift;
+    let xw = &p.x - &shift;
     let yw = p.y;
 
     assert!(w.contains(&xw, &yw));

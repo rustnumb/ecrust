@@ -81,32 +81,34 @@ ref_field_impl! {
     }
 }
 
-impl<F: FieldOps + FieldRandom> JacobiIntersectionCurve<F> {
-    /// Sample a random affine point on this Jacobi‑intersection curve using the
-    /// provided RNG.
-    ///
-    /// The method repeatedly samples `s` and then solves the defining quadrics
-    /// for `c` and `d` by square‑root extraction, returning a point
-    /// `(s, c, d)` on the curve.
-    pub fn random_point(&self, rng: &mut (impl CryptoRng + Rng)) -> JacobiIntersectionPoint<F> {
-        loop {
-            let s = F::random(rng);
-            let s2 = <F as FieldOps>::square(&s);
+ref_field_impl!{
+    impl<F: FieldOps + FieldRandom> JacobiIntersectionCurve<F> {
+        /// Sample a random affine point on this Jacobi‑intersection curve using the
+        /// provided RNG.
+        ///
+        /// The method repeatedly samples `s` and then solves the defining quadrics
+        /// for `c` and `d` by square‑root extraction, returning a point
+        /// `(s, c, d)` on the curve.
+        pub fn random_point(&self, rng: &mut (impl CryptoRng + Rng)) -> JacobiIntersectionPoint<F> {
+            loop {
+                let s = F::random(rng);
+                let s2 = <F as FieldOps>::square(&s);
 
-            let c2 = F::one() - s2;
-            let d2 = F::one() - self.a * s2;
+                let c2 = &F::one() - &s2;
+                let d2 = &F::one() - &(&self.a * &s2);
 
-            if let (Some(c), Some(d)) = (c2.sqrt().into_option(), d2.sqrt().into_option()) {
-                let p = JacobiIntersectionPoint::new(s, c, d);
-                debug_assert!(self.is_on_curve(&p));
-                return p;
+                if let (Some(c), Some(d)) = (c2.sqrt().into_option(), d2.sqrt().into_option()) {
+                    let p = JacobiIntersectionPoint::new(s, c, d);
+                    debug_assert!(self.is_on_curve(&p));
+                    return p;
+                }
             }
         }
     }
 }
 
 ref_field_trait_impl! {
-    impl<F> Curve for JacobiIntersectionCurve<F> {
+    impl<F: FieldOps + FieldRandom> Curve for JacobiIntersectionCurve<F> {
         type BaseField = F;
         type Point = JacobiIntersectionPoint<F>;
 

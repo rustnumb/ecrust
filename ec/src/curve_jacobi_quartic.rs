@@ -86,32 +86,35 @@ ref_field_impl! {
     }
 }
 
-impl<F: FieldOps + FieldRandom> JacobiQuarticCurve<F> {
-    /// Sample a random affine point on this Jacobi quartic using the provided RNG.
-    ///
-    /// The method repeatedly samples `x`, evaluates the right-hand side of the
-    /// quartic equation, and returns `(x, y)` when that value is a square in the
-    /// base field.
-    pub fn random_point(&self, rng: &mut (impl rand::CryptoRng + rand::Rng)) -> JacobiQuarticPoint<F> {
-        loop {
-            let x = F::random(rng);
-            let x2 = <F as FieldOps>::square(&x);
-            let x4 = <F as FieldOps>::square(&x2);
-            let rhs = self.d * x4
-                + <F as FieldOps>::double(&F::one()) * self.a * x2
-                + F::one();
+ref_field_impl!{
+    impl<F: FieldOps + FieldRandom> JacobiQuarticCurve<F> {
+        /// Sample a random affine point on this Jacobi quartic using the provided RNG.
+        ///
+        /// The method repeatedly samples `x`, evaluates the right-hand side of the
+        /// quartic equation, and returns `(x, y)` when that value is a square in the
+        /// base field.
+        pub fn random_point(&self, rng: &mut (impl rand::CryptoRng + rand::Rng)) -> JacobiQuarticPoint<F> {
+            loop {
+                let x = F::random(rng);
+                let x2 = <F as FieldOps>::square(&x);
+                let x4 = <F as FieldOps>::square(&x2);
+                let rhs = &(&(&self.d * &x4)
+                    + &(&<F as FieldOps>::double(&F::one()) * &(&self.a * &x2)))
+                    + &F::one();
 
-            if let Some(y) = rhs.sqrt().into_option() {
-                let p = JacobiQuarticPoint::new(x, y);
-                debug_assert!(self.is_on_curve(&p));
-                return p;
+                if let Some(y) = rhs.sqrt().into_option() {
+                    let p = JacobiQuarticPoint::new(x, y);
+                    debug_assert!(self.is_on_curve(&p));
+                    return p;
+                }
             }
         }
     }
 }
 
+
 ref_field_trait_impl! {
-    impl<F> Curve for JacobiQuarticCurve<F> {
+    impl<F: FieldOps + FieldRandom> Curve for JacobiQuarticCurve<F> {
         type BaseField = F;
         type Point = JacobiQuarticPoint<F>;
 

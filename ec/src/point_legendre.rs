@@ -68,10 +68,10 @@ use core::fmt;
 //use std::os::unix::raw::ino_t;
 //use crypto_bigint::modular::ConstMontyForm;
 use crate::curve_legendre::LegendreCurve;
-use crate::point_ops::PointOps;
+use crate::point_ops::{PointAdd, PointOps};
 use fp::field_ops::FieldOps;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
-use fp::ref_field_impl;
+use fp::{ref_field_impl, ref_field_trait_impl};
 
 /// A point on a Legendre elliptic curve over `F`.
 ///
@@ -215,7 +215,7 @@ ref_field_impl!{
             if self.infinity {
                 return Self::identity();
             }
-            Self::new(self.x, -self.y)
+            Self::new(self.x, -&self.y)
         }
 
         /// Doubles the point: returns `[2]P`.
@@ -334,35 +334,33 @@ ref_field_impl!{
 
 }
 
-impl<F> PointOps for LegendrePoint<F>
-where
-    F: FieldOps,
-{
-    type BaseField = F;
-    type Curve = LegendreCurve<F>;
+ref_field_trait_impl!{
+    impl<F: FieldOps> PointOps for LegendrePoint<F> {
+        type BaseField = F;
+        type Curve = LegendreCurve<F>;
 
-    fn identity(_curve: &Self::Curve) -> Self {
-        LegendrePoint::<F>::identity()
-    }
+        fn identity(_curve: &Self::Curve) -> Self {
+            LegendrePoint::<F>::identity()
+        }
 
-    fn is_identity(&self) -> bool {
-        self.infinity
-    }
+        fn is_identity(&self) -> bool {
+            self.infinity
+        }
 
-    fn negate(&self, curve: &Self::Curve) -> Self {
-        LegendrePoint::<F>::negate(self, curve)
-    }
+        fn negate(&self, curve: &Self::Curve) -> Self {
+            LegendrePoint::<F>::negate(self, curve)
+        }
 
-    fn scalar_mul(&self, k: &[u64], curve: &Self::Curve) -> Self {
-        LegendrePoint::<F>::scalar_mul(self, k, curve)
+        fn scalar_mul(&self, k: &[u64], curve: &Self::Curve) -> Self {
+            LegendrePoint::<F>::scalar_mul(self, k, curve)
+        }
     }
 }
 
-impl<F> crate::point_ops::PointAdd for LegendrePoint<F>
-where
-    F: FieldOps,
-{
-    fn add(&self, other: &Self, curve: &Self::Curve) -> Self {
-        LegendrePoint::<F>::add(self, other, curve)
+ref_field_trait_impl!{
+    impl<F: FieldOps> PointAdd for LegendrePoint<F> {
+        fn add(&self, other: &Self, curve: &Self::Curve) -> Self {
+            LegendrePoint::<F>::add(self, other, curve)
+        }
     }
 }

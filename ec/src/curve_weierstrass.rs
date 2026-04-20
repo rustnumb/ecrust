@@ -38,18 +38,17 @@ use crate::point_weierstrass::AffinePoint;
 /// case simply has $a_1 = a_2 = a_3 = 0$.
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub struct WeierstrassCurve<F: FieldOps> {
-    /// a-invariants
+    /// a-invariant
     pub a1: F,
-    /// a-invariants
+    /// a-invariant
     pub a2: F,
-    /// a-invariants
+    /// a-invariant
     pub a3: F,
-    /// a-invariants
+    /// a-invariant
     pub a4: F,
-    /// a-invariants
+    /// a-invariant
     pub a6: F,
 }
-
 
 impl<F> fmt::Display for WeierstrassCurve<F>
 where
@@ -73,7 +72,7 @@ where
 }
 
 ref_field_impl! {
-    impl<F: FieldOps + FieldRandom> WeierstrassCurve<F> {
+    impl<F> WeierstrassCurve<F> {
         // -------------------------------------------------------------------
         // Constructors
         // -------------------------------------------------------------------
@@ -88,7 +87,6 @@ ref_field_impl! {
         /// Panics if the curve is singular.
         pub fn new(a1: F, a2: F, a3: F, a4: F, a6: F) -> Self {
             assert!(Self::is_smooth(&a1, &a2, &a3, &a4, &a6));
-
             Self { a1, a2, a3, a4, a6 }
         }
 
@@ -124,7 +122,7 @@ ref_field_impl! {
         /// This is equivalent to checking that the discriminant satisfies
         /// $\Delta \ne 0$.
         pub fn is_smooth(a1: &F, a2: &F, a3: &F, a4: &F, a6: &F) -> bool {
-            discriminant_from_coeffs::<F>(&a1, &a2, &a3, &a4, &a6) != F::zero()
+            discriminant_from_coeffs::<F>(a1, a2, a3, a4, a6) != F::zero()
         }
 
         // -------------------------------------------------------------------
@@ -159,9 +157,11 @@ ref_field_impl! {
         pub fn contains(&self, x: &F, y: &F) -> bool {
             let lhs = {
                 let y2 = <F as FieldOps>::square(y);
-                let a1xy = &self.a1 * &(x * y);
+                let xy = x * y;
+                let a1xy = &self.a1 * &xy;
                 let a3y = &self.a3 * y;
-                &y2 + &(&a1xy + &a3y)
+                let tmp = &y2 + &a1xy;
+                &tmp + &a3y
             };
 
             let rhs = {
@@ -169,37 +169,59 @@ ref_field_impl! {
                 let x3 = x * &x2;
                 let a2x2 = &self.a2 * &x2;
                 let a4x = &self.a4 * x;
-                &x3 + &(&a2x2 + &(&a4x + &self.a6))
+                let tmp1 = &x3 + &a2x2;
+                let tmp2 = &tmp1 + &a4x;
+                &tmp2 + &self.a6
             };
 
             lhs == rhs
         }
+    }
+}
 
+ref_field_impl!{
+    impl<F: FieldOps + FieldRandom> WeierstrassCurve<F> {
         /// Sample a random affine point on this curve using the provided RNG.
         ///
         /// This currently uses a square-root-based construction and is implemented
         /// only for odd characteristic. It returns a finite affine point `P` such
         /// that `self.is_on_curve(&P)` holds.
-        pub fn random_point(&self, rng: &mut (impl rand::CryptoRng + rand::Rng)) -> AffinePoint<F>{
-            assert!(F::characteristic()[0] != 2, "random_point currently implemented for odd characteristic");
+        pub fn random_point(&self, rng: &mut (impl rand::CryptoRng + rand::Rng)) -> AffinePoint<F> {
+            assert!(
+                F::characteristic()[0] != 2,
+                "random_point currently implemented for odd characteristic"
+            );
 
-            let two = <F as FieldOps>::double(&F::one());
-            let two_inv = two.invert().into_option().expect("2 must be invertible");
+            let one = F::one();
+            let two = <F as FieldOps>::double(&one);
+            let two_inv = <F as FieldOps>::invert(&two)
+                .into_option()
+                .expect("2 must be invertible");
 
             loop {
-                let x = F::random(rng);
+                let x = <F as FieldRandom>::random(rng);
 
-                let b = self.a1 * x + self.a3;
+                let a1x = &self.a1 * &x;
+                let b = &a1x + &self.a3;
+
                 let x2 = <F as FieldOps>::square(&x);
-                let rhs = x * x2 + self.a2 * x2 + self.a4 * x + self.a6;
+                let x3 = &x * &x2;
+                let a2x2 = &self.a2 * &x2;
+                let a4x = &self.a4 * &x;
 
-                // Solve y^2 + b y = rhs via discriminant:
-                // disc = b^2 + 4 rhs
-                let disc = <F as FieldOps>::square(&b)
-                    + <F as FieldOps>::double(&<F as FieldOps>::double(&rhs));
+                let rhs_tmp1 = &x3 + &a2x2;
+                let rhs_tmp2 = &rhs_tmp1 + &a4x;
+                let rhs = &rhs_tmp2 + &self.a6;
+
+                let b_sq = <F as FieldOps>::square(&b);
+                let two_rhs = <F as FieldOps>::double(&rhs);
+                let four_rhs = <F as FieldOps>::double(&two_rhs);
+                let disc = &b_sq + &four_rhs;
 
                 if let Some(sqrt_disc) = disc.sqrt().into_option() {
-                    let y = (-b + sqrt_disc) * two_inv;
+                    let neg_b = -&b;
+                    let sum = &neg_b + &sqrt_disc;
+                    let y = &sum * &two_inv;
                     let p = AffinePoint::new(x, y);
                     debug_assert!(self.is_on_curve(&p));
                     return p;
@@ -209,148 +231,172 @@ ref_field_impl! {
     }
 }
 
+
 // -------------------------------------------------------------------
 // Discriminant private helpers  (Silverman, §III.1)
 // -------------------------------------------------------------------
 
-ref_field_fns!{
+ref_field_fns! {
     /// `b₂ = a₁² + 4a₂`.
-    fn b2_from_coeffs<F: FieldOps>(a1: &F, a2: &F) -> F {
-        let a1_sq = <F as FieldOps>::square(&a1);
-        let four_a2 = <F as FieldOps>::double(&<F as FieldOps>::double(&a2));
+    fn b2_from_coeffs<F>(a1: &F, a2: &F) -> F {
+        let a1_sq = <F as FieldOps>::square(a1);
+        let two_a2 = <F as FieldOps>::double(a2);
+        let four_a2 = <F as FieldOps>::double(&two_a2);
         &a1_sq + &four_a2
     }
-    
+
     /// `b₄ = a₁a₃ + 2a₄`.
     fn b4_from_coeffs<F>(a1: &F, a3: &F, a4: &F) -> F {
         let a1a3 = a1 * a3;
         let two_a4 = <F as FieldOps>::double(a4);
         &a1a3 + &two_a4
     }
-    
+
     /// `b₆ = a₃² + 4a₆`.
     fn b6_from_coeffs<F>(a3: &F, a6: &F) -> F {
-        let a3_sq = <F as FieldOps>::square(&a3);
-        let four_a6 = <F as FieldOps>::double(&<F as FieldOps>::double(&a6));
+        let a3_sq = <F as FieldOps>::square(a3);
+        let two_a6 = <F as FieldOps>::double(a6);
+        let four_a6 = <F as FieldOps>::double(&two_a6);
         &a3_sq + &four_a6
     }
-    
+
     /// `b₈ = a₁²a₆ + 4a₂a₆ − a₁a₃a₄ + a₂a₃² − a₄²`.
-    fn b8_from_coeffs<F: FieldOps>(a1: &F, a2: &F, a3: &F, a4: &F, a6: &F) -> F {
-        let a1sq_a6 = &<F as FieldOps>::square(&a1) * a6;
-        let four_a2_a6 = <F as FieldOps>::double(&<F as FieldOps>::double(&(a2 * a6)));
-        let a1_a3_a4 = a1 * &(a3 * a4);
-        let a2_a3sq = a2 * &<F as FieldOps>::square(&a3);
-        let a4sq = <F as FieldOps>::square(&a4);
-    
-        &a1sq_a6 + &(&four_a2_a6 - &(&a1_a3_a4 + &(&a2_a3sq - &a4sq)))
+    fn b8_from_coeffs<F>(a1: &F, a2: &F, a3: &F, a4: &F, a6: &F) -> F {
+        let a1_sq = <F as FieldOps>::square(a1);
+        let a1sq_a6 = &a1_sq * a6;
+
+        let a2a6 = a2 * a6;
+        let two_a2_a6 = <F as FieldOps>::double(&a2a6);
+        let four_a2_a6 = <F as FieldOps>::double(&two_a2_a6);
+
+        let a1a3 = a1 * a3;
+        let a1_a3_a4 = &a1a3 * a4;
+
+        let a3_sq = <F as FieldOps>::square(a3);
+        let a2_a3sq = a2 * &a3_sq;
+
+        let a4_sq = <F as FieldOps>::square(a4);
+
+        let tmp1 = &a1sq_a6 + &four_a2_a6;
+        let tmp2 = &tmp1 - &a1_a3_a4;
+        let tmp3 = &tmp2 + &a2_a3sq;
+        &tmp3 - &a4_sq
     }
-    
+
     /// The discriminant  `Δ = −b₂²b₈ − 8b₄³ − 27b₆² + 9b₂b₄b₆`.
     ///
     /// The curve is non-singular if and only if `Δ ≠ 0`.
     /// (Only meaningful when `char(F) ≠ 2, 3`.)
-    fn discriminant_from_coeffs<F: FieldOps>(a1: &F, a2: &F, a3: &F, a4: &F, a6: &F) -> F {
-        let b2 = b2_from_coeffs::<F>(&a1, &a2);
-        let b4 = b4_from_coeffs::<F>(&a1, &a3, &a4);
-        let b6 = b6_from_coeffs::<F>(&a3, &a6);
-        let b8 = b8_from_coeffs::<F>(&a1, &a2, &a3, &a4, &a6);
-    
-        // Helper: build small integer constants from repeated doubling / adding
-        let two = <F as FieldOps>::double(&F::one());
-        let three = &two + &F::one();
-        let eight = <F as FieldOps>::double(&<F as FieldOps>::double(&two));
+    fn discriminant_from_coeffs<F>(a1: &F, a2: &F, a3: &F, a4: &F, a6: &F) -> F {
+        let b2 = b2_from_coeffs::<F>(a1, a2);
+        let b4 = b4_from_coeffs::<F>(a1, a3, a4);
+        let b6 = b6_from_coeffs::<F>(a3, a6);
+        let b8 = b8_from_coeffs::<F>(a1, a2, a3, a4, a6);
+
+        let one = F::one();
+        let two = <F as FieldOps>::double(&one);
+        let three = &two + &one;
+        let four = <F as FieldOps>::double(&two);
+        let eight = <F as FieldOps>::double(&four);
         let nine = <F as FieldOps>::square(&three);
         let twentyseven = &nine * &three;
-    
-        // −b₂²b₈
-        let term1 = -<F as FieldOps>::square(&b2) * b8;
-    
-        // −8b₄³
-        let b4_cubed = &<F as FieldOps>::square(&b4) * &b4;
-        let term2 = -&(&eight * &b4_cubed);
-    
-        // −27b₆²
-        let term3 = -twentyseven * <F as FieldOps>::square(&b6);
-    
-        // 9b₂b₄b₆
-        let term4 = &nine * &(&b2 * &(&b4 * &b6));
-    
-            let tmp1 = &term1 + &term2;
-            let tmp2 = &tmp1 + &term3;
-            &tmp2 + &term4
-        }
-    
-        /// `c₄ = b₂² - 24b₄`.
-        fn c4_from_coeffs<F>(a1: &F, a2: &F, a3: &F, a4: &F) -> F {
-            let b2 = b2_from_coeffs::<F>(a1, a2);
-            let b4 = b4_from_coeffs::<F>(a1, a3, a4);
-            let b2_sq = <F as FieldOps>::square(&b2);
-    
-            let two = <F as FieldOps>::double(&F::one());
-            let three = &two + &F::one();
-            let four = <F as FieldOps>::double(&two);
-            let eight = <F as FieldOps>::double(&four);
-            let twentyfour = &eight * &three;
-    
-            let twentyfour_b4 = &twentyfour * &b4;
-            &b2_sq - &twentyfour_b4
-        }
-    
-        fn j_inv_from_coeffs<F>(a1: &F, a2: &F, a3: &F, a4: &F, a6: &F) -> F {
-            let c4 = c4_from_coeffs::<F>(a1, a2, a3, a4);
-            let c4_sq = <F as FieldOps>::square(&c4);
-            let c4_cubed = &c4 * &c4_sq;
-    
-            let delta = discriminant_from_coeffs::<F>(a1, a2, a3, a4, a6);
-            let delta_inv = <F as FieldOps>::invert(&delta).unwrap();
-            &c4_cubed * &delta_inv
-        }
+
+        let b2_sq = <F as FieldOps>::square(&b2);
+        let neg_b2_sq = -&b2_sq;
+        let term1 = &neg_b2_sq * &b8;
+
+        let b4_sq = <F as FieldOps>::square(&b4);
+        let b4_cubed = &b4_sq * &b4;
+        let neg_eight = -&eight;
+        let term2 = &neg_eight * &b4_cubed;
+
+        let b6_sq = <F as FieldOps>::square(&b6);
+        let neg_twentyseven = -&twentyseven;
+        let term3 = &neg_twentyseven * &b6_sq;
+
+        let b4b6 = &b4 * &b6;
+        let b2b4b6 = &b2 * &b4b6;
+        let term4 = &nine * &b2b4b6;
+
+        let tmp1 = &term1 + &term2;
+        let tmp2 = &tmp1 + &term3;
+        &tmp2 + &term4
+    }
+
+    /// `c₄ = b₂² - 24b₄`.
+    fn c4_from_coeffs<F>(a1: &F, a2: &F, a3: &F, a4: &F) -> F {
+        let b2 = b2_from_coeffs::<F>(a1, a2);
+        let b4 = b4_from_coeffs::<F>(a1, a3, a4);
+        let b2_sq = <F as FieldOps>::square(&b2);
+
+        let one = F::one();
+        let two = <F as FieldOps>::double(&one);
+        let three = &two + &one;
+        let four = <F as FieldOps>::double(&two);
+        let eight = <F as FieldOps>::double(&four);
+        let twentyfour = &eight * &three;
+
+        let twentyfour_b4 = &twentyfour * &b4;
+        &b2_sq - &twentyfour_b4
+    }
+
+    fn j_inv_from_coeffs<F>(a1: &F, a2: &F, a3: &F, a4: &F, a6: &F) -> F {
+        let c4 = c4_from_coeffs::<F>(a1, a2, a3, a4);
+        let c4_sq = <F as FieldOps>::square(&c4);
+        let c4_cubed = &c4 * &c4_sq;
+
+        let delta = discriminant_from_coeffs::<F>(a1, a2, a3, a4, a6);
+        let delta_inv = <F as FieldOps>::invert(&delta).unwrap();
+        &c4_cubed * &delta_inv
+    }
 }
 
 // -------------------------------------------------------------------
 // Invariants attached to the model
 // -------------------------------------------------------------------
 
-impl<F: FieldOps> WeierstrassCurve<F> {
-    /// Returns the invariant $b_2 = a_1^2 + 4a_2$.
-    pub fn b2(&self) -> F {
-        b2_from_coeffs::<F>(&self.a1, &self.a2)
-    }
+ref_field_impl!{
+    impl<F: FieldOps> WeierstrassCurve<F> {
+        /// Returns the invariant $b_2 = a_1^2 + 4a_2$.
+        pub fn b2(&self) -> F {
+            b2_from_coeffs::<F>(&self.a1, &self.a2)
+        }
 
-    /// Returns the invariant $b_4 = a_1 a_3 + 2a_4$.
-    pub fn b4(&self) -> F {
-        b4_from_coeffs::<F>(&self.a1, &self.a3, &self.a4)
-    }
+        /// Returns the invariant $b_4 = a_1 a_3 + 2a_4$.
+        pub fn b4(&self) -> F {
+            b4_from_coeffs::<F>(&self.a1, &self.a3, &self.a4)
+        }
 
-    /// Returns the invariant $b_6 = a_3^2 + 4a_6$.
-    pub fn b6(&self) -> F {
-        b6_from_coeffs::<F>(&self.a3, &self.a6)
-    }
+        /// Returns the invariant $b_6 = a_3^2 + 4a_6$.
+        pub fn b6(&self) -> F {
+            b6_from_coeffs::<F>(&self.a3, &self.a6)
+        }
 
-    /// Returns the invariant
-    ///
-    /// $$
-    /// b_8 = a_1^2 a_6 + 4 a_2 a_6 - a_1 a_3 a_4 + a_2 a_3^2 - a_4^2.
-    /// $$
-    pub fn b8(&self) -> F {
-        b8_from_coeffs::<F>(&self.a1, &self.a2, &self.a3, &self.a4, &self.a6)
-    }
+        /// Returns the invariant
+        ///
+        /// $$
+        /// b_8 = a_1^2 a_6 + 4 a_2 a_6 - a_1 a_3 a_4 + a_2 a_3^2 - a_4^2.
+        /// $$
+        pub fn b8(&self) -> F {
+            b8_from_coeffs::<F>(&self.a1, &self.a2, &self.a3, &self.a4, &self.a6)
+        }
 
-    /// Returns the discriminant $\Delta$ of the curve.
-    ///
-    /// The curve is non-singular if and only if $\Delta \ne 0$.
-    pub fn discriminant(&self) -> F {
-        discriminant_from_coeffs::<F>(&self.a1, &self.a2, &self.a3, &self.a4, &self.a6)
+        /// Returns the discriminant $\Delta$ of the curve.
+        ///
+        /// The curve is non-singular if and only if $\Delta \ne 0$.
+        pub fn discriminant(&self) -> F {
+            discriminant_from_coeffs::<F>(&self.a1, &self.a2, &self.a3, &self.a4, &self.a6)
+        }
     }
 }
+
 
 // -------------------------------------------------------------------
 // Curve predicates
 // -------------------------------------------------------------------
 
-
-impl<F: FieldOps + FieldRandom> Curve for WeierstrassCurve<F> {
+ref_field_trait_impl!{
+    impl<F: FieldOps + FieldRandom> Curve for WeierstrassCurve<F> {
     type BaseField = F;
     type Point = AffinePoint<F>;
 
@@ -382,7 +428,7 @@ impl<F: FieldOps + FieldRandom> Curve for WeierstrassCurve<F> {
         WeierstrassCurve::a_invariants(self).to_vec()
     }
 }
-
+}
 
 
 // ---------------------------------------------------------------------------
@@ -394,12 +440,12 @@ where
     F: FieldOps + Copy,
 {
     fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
-        Self{
-            a1: F::conditional_select(& a.a1, &b.a1, choice),
-            a2: F::conditional_select(& a.a2, &b.a2, choice),
-            a3: F::conditional_select(& a.a3, &b.a3, choice),
-            a4: F::conditional_select(& a.a4, &b.a4, choice),
-            a6: F::conditional_select(& a.a6, &b.a6, choice),
+        Self {
+            a1: F::conditional_select(&a.a1, &b.a1, choice),
+            a2: F::conditional_select(&a.a2, &b.a2, choice),
+            a3: F::conditional_select(&a.a3, &b.a3, choice),
+            a4: F::conditional_select(&a.a4, &b.a4, choice),
+            a6: F::conditional_select(&a.a6, &b.a6, choice),
         }
     }
 
@@ -425,12 +471,14 @@ where
     F: FieldOps + Copy + ConstantTimeEq,
 {
     fn ct_eq(&self, other: &Self) -> Choice {
-        self.a1.ct_eq(&other.a1) &
-        self.a2.ct_eq(&other.a2) &
-        self.a3.ct_eq(&other.a3) &
-        self.a4.ct_eq(&other.a4) &
-        self.a6.ct_eq(&other.a6)
+        self.a1.ct_eq(&other.a1)
+            & self.a2.ct_eq(&other.a2)
+            & self.a3.ct_eq(&other.a3)
+            & self.a4.ct_eq(&other.a4)
+            & self.a6.ct_eq(&other.a6)
     }
 
-    fn ct_ne(&self, other: &Self) -> Choice { !self.ct_eq(other) }
+    fn ct_ne(&self, other: &Self) -> Choice {
+        !self.ct_eq(other)
+    }
 }

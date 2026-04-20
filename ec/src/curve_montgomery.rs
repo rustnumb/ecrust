@@ -166,7 +166,7 @@ ref_field_impl! {
 // -------------------------------------------------------------------
 
 ref_field_trait_impl! {
-    impl<F> Curve for MontgomeryCurve<F> {
+    impl<F: FieldOps + Copy + FieldRandom> Curve for MontgomeryCurve<F> {
         type BaseField = F;
         type Point = KummerPoint<F>;
 

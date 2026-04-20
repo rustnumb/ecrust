@@ -28,7 +28,7 @@ use fp::{ref_field_impl, ref_field_trait_impl};
 pub struct JacobiQuarticPoint<F: FieldOps> {
     /// The x coordinate of a point
     pub x: F,
-    /// The y coordiante of a point
+    /// The y coordinate of a point
     pub y: F,
 }
 
@@ -59,31 +59,31 @@ impl<F: FieldOps> PartialEq for JacobiQuarticPoint<F> {
 
 impl<F: FieldOps> Eq for JacobiQuarticPoint<F> {}
 
-ref_field_impl! {
-    impl<F> JacobiQuarticPoint<F> {
-        pub fn new(x: F, y: F) -> Self {
-            Self { x, y }
-        }
 
-        /// The neutral element `(0, 1)`.
-        pub fn identity() -> Self {
-            Self {
-                x: F::zero(),
-                y: F::one(),
-            }
-        }
+impl<F: FieldOps> JacobiQuarticPoint<F> {
+    pub fn new(x: F, y: F) -> Self {
+        Self { x, y }
+    }
 
-        pub fn is_identity(&self) -> bool {
-            self.x == F::zero() && self.y == F::one()
+    /// The neutral element `(0, 1)`.
+    pub fn identity() -> Self {
+        Self {
+            x: F::zero(),
+            y: F::one(),
         }
+    }
 
-        /// The affine order-2 point `(0, -1)`.
-        pub fn order_two_point() -> Self {
-            let one = F::one();
-            Self {
-                x: F::zero(),
-                y: - &one,
-            }
+    pub fn is_identity(&self) -> bool {
+        self.x == F::zero() && self.y == F::one()
+    }
+
+    /// The affine order-2 point `(0, -1)`.
+    pub fn order_two_point() -> Self {
+        let one = F::one();
+        let minus_one = <F as FieldOps>::negate(&one);
+        Self {
+            x: F::zero(),
+            y: minus_one,
         }
     }
 }

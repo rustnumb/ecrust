@@ -40,7 +40,7 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 use crate::curve_edwards::EdwardsCurve;
 use crate::point_ops::PointOps;
 use fp::field_ops::FieldOps;
-use fp::ref_field_impl;
+use fp::{ref_field_impl, ref_field_trait_impl};
 
 /// An affine point on an Edwards curve, for any characteristic.
 #[derive(Debug, Clone, Copy)]
@@ -371,23 +371,26 @@ ref_field_impl! {
 // PointOps bridge
 // ---------------------------------------------------------------------------
 
-impl<F: FieldOps> PointOps for EdwardsPoint<F> {
-    type BaseField = F;
-    type Curve = EdwardsCurve<F>;
+ref_field_trait_impl!{
+    impl<F: FieldOps> PointOps for EdwardsPoint<F> {
+        type BaseField = F;
+        type Curve = EdwardsCurve<F>;
 
-    fn identity(_curve: &Self::Curve) -> Self {
-        EdwardsPoint::<F>::identity()
+        fn identity(_curve: &Self::Curve) -> Self {
+            EdwardsPoint::<F>::identity()
+        }
+
+        fn is_identity(&self) -> bool {
+            EdwardsPoint::<F>::is_identity(self)
+        }
+
+        fn negate(&self, curve: &Self::Curve) -> Self {
+            EdwardsPoint::<F>::negate(self, curve)
+        }
+
+        fn scalar_mul(&self, k: &[u64], curve: &Self::Curve) -> Self {
+            EdwardsPoint::<F>::scalar_mul(self, k, curve)
+        }
     }
 
-    fn is_identity(&self) -> bool {
-        EdwardsPoint::<F>::is_identity(self)
-    }
-
-    fn negate(&self, curve: &Self::Curve) -> Self {
-        EdwardsPoint::<F>::negate(self, curve)
-    }
-
-    fn scalar_mul(&self, k: &[u64], curve: &Self::Curve) -> Self {
-        EdwardsPoint::<F>::scalar_mul(self, k, curve)
-    }
 }

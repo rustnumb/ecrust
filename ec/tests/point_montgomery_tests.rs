@@ -23,10 +23,8 @@ fn fq(n: u64) -> F59 {
 fn curve() -> MontgomeryCurve<F19> {
     MontgomeryCurve::new(fp(3), fp(5))
 }
-<<<<<<< HEAD
+
 //fn curve2() -> MontgomeryCurve<F59> { MontgomeryCurve::new(fq(7), fq(1)) }
-=======
->>>>>>> origin/main
 
 fn all_x_coords_montgomery_19(a: F19, b: F19) -> Vec<F19> {
     let mut xs = Vec::new();

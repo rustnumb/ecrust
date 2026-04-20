@@ -99,61 +99,67 @@ ref_field_trait_impl!{
     impl<F: FieldOps> Eq for HessianPoint<F> {}
 }
 
-ref_field_impl!{
-    impl<F: FieldOps> HessianPoint<F> {
-        /// Construct a projective Hessian point without validation.
-        pub fn new(x: F, y: F, z: F) -> Self {
-            Self { x, y, z }
-        }
+impl<F: FieldOps> HessianPoint<F> {
+    /// Construct a projective Hessian point without validation.
+    pub fn new(x: F, y: F, z: F) -> Self {
+        Self { x, y, z }
+    }
 
-        /// Construct the finite affine point `(x, y)`, represented as `(x:y:1)`.
-        pub fn from_affine(x: F, y: F) -> Self {
-            Self { x, y, z: F::one() }
-        }
+    /// Construct the finite affine point `(x, y)`, represented as `(x:y:1)`.
+    pub fn from_affine(x: F, y: F) -> Self {
+        Self { x, y, z: F::one() }
+    }
 
-        /// Return the neutral element `(1:-1:0)`.
-        pub fn identity() -> Self {
-            Self {
-                x: F::one(),
-                y: -F::one(),
-                z: F::zero(),
-            }
-        }
-
-        /// Return `true` when the point is the neutral element.
-        pub fn is_identity(&self) -> bool {
-            if !bool::from(self.z.is_zero()) {
-                return false;
-            }
-
-            if bool::from(self.x.is_zero()) && bool::from(self.y.is_zero()) {
-                return false;
-            }
-
-            &self.x + &self.y == F::zero()
-        }
-
-        /// Return `true` if the point lies on the line at infinity.
-        pub fn is_at_infinity(&self) -> bool {
-            bool::from(self.z.is_zero()) && !self.is_zero_projective()
-        }
-
-        /// Return `true` if this is the invalid projective triple `(0:0:0)`.
-        pub fn is_zero_projective(&self) -> bool {
-            bool::from(self.x.is_zero())
-                && bool::from(self.y.is_zero())
-                && bool::from(self.z.is_zero())
-        }
-
-        /// Convert a finite projective point to affine coordinates.
-        pub fn to_affine(&self) -> Option<(F, F)> {
-            self.z
-                .invert()
-                .into_option()
-                .map(|zinv| (&self.x * &zinv, &self.y * &zinv))
+    /// Return the neutral element `(1:-1:0)`.
+    pub fn identity() -> Self {
+        let one = F::one();
+        let minus_one = <F as FieldOps>::negate(&one);
+        Self {
+            x: one,
+            y: minus_one,
+            z: F::zero(),
         }
     }
+
+    /// Return `true` when the point is the neutral element.
+    pub fn is_identity(&self) -> bool {
+        if !bool::from(self.z.is_zero()) {
+            return false;
+        }
+
+        if bool::from(self.x.is_zero()) && bool::from(self.y.is_zero()) {
+            return false;
+        }
+
+        <F as FieldOps>::add(&self.x, &self.y) == F::zero()
+    }
+
+    /// Return `true` if the point lies on the line at infinity.
+    pub fn is_at_infinity(&self) -> bool {
+        bool::from(self.z.is_zero()) && !self.is_zero_projective()
+    }
+
+    /// Return `true` if this is the invalid projective triple `(0:0:0)`.
+    pub fn is_zero_projective(&self) -> bool {
+        bool::from(self.x.is_zero())
+            && bool::from(self.y.is_zero())
+            && bool::from(self.z.is_zero())
+    }
+
+    /// Convert a finite projective point to affine coordinates.
+    pub fn to_affine(&self) -> Option<(F, F)> {
+        self.z
+            .invert()
+            .into_option()
+            .map(|zinv| {
+                (
+                    <F as FieldOps>::mul(&self.x, &zinv),
+                    <F as FieldOps>::mul(&self.y, &zinv),
+                    )
+            })
+    }
 }
+
 
 
 impl<F> ConditionallySelectable for HessianPoint<F>
@@ -265,7 +271,7 @@ ref_field_impl!{
             let y2_sq = <F as FieldOps>::square(&other.y);
             let z2_sq = <F as FieldOps>::square(&other.z);
 
-            let x3 = &(&(&curve.c * &self.y) * &(&self.z * &z2_sq)) - &other.x * &(&other.y * &x1_sq);
+            let x3 = &(&(&curve.c * &self.y) * &(&self.z * &z2_sq)) - &(&other.x * &(&other.y * &x1_sq));
             let y3 = &(&self.x * &(&self.y * &y2_sq)) - &(&(&curve.c * &other.x) * &(&other.z * &z1_sq));
             let z3 = &(&self.x * &(&self.z * &x2_sq)) - &(&other.y * &(&other.z * &y1_sq));
 
@@ -320,30 +326,34 @@ ref_field_impl!{
     }
 }
 
+ref_field_trait_impl!{
+    impl<F: FieldOps> PointOps for HessianPoint<F> {
+        type BaseField = F;
+        type Curve = HessianCurve<F>;
 
-impl<F: FieldOps> PointOps for HessianPoint<F> {
-    type BaseField = F;
-    type Curve = HessianCurve<F>;
+        fn identity(_curve: &Self::Curve) -> Self {
+            HessianPoint::<F>::identity()
+        }
 
-    fn identity(_curve: &Self::Curve) -> Self {
-        HessianPoint::<F>::identity()
-    }
+        fn is_identity(&self) -> bool {
+            HessianPoint::<F>::is_identity(self)
+        }
 
-    fn is_identity(&self) -> bool {
-        HessianPoint::<F>::is_identity(self)
-    }
+        fn negate(&self, curve: &Self::Curve) -> Self {
+            HessianPoint::<F>::negate(self, curve)
+        }
 
-    fn negate(&self, curve: &Self::Curve) -> Self {
-        HessianPoint::<F>::negate(self, curve)
-    }
-
-    fn scalar_mul(&self, k: &[u64], curve: &Self::Curve) -> Self {
-        HessianPoint::<F>::scalar_mul(self, k, curve)
+        fn scalar_mul(&self, k: &[u64], curve: &Self::Curve) -> Self {
+            HessianPoint::<F>::scalar_mul(self, k, curve)
+        }
     }
 }
 
-impl<F: FieldOps> PointAdd for HessianPoint<F> {
-    fn add(&self, other: &Self, curve: &Self::Curve) -> Self {
-        HessianPoint::<F>::add(self, other, curve)
+
+ref_field_trait_impl!{
+    impl<F: FieldOps> PointAdd for HessianPoint<F> {
+        fn add(&self, other: &Self, curve: &Self::Curve) -> Self {
+            HessianPoint::<F>::add(self, other, curve)
+        }
     }
 }
