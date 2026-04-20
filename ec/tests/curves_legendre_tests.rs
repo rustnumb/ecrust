@@ -67,19 +67,22 @@ fn legendre_curve_rejects_off_curve_point() {
 fn legendre_curve_j_invariant_matches_closed_formula() {
     let c = curve();
     let lambda = F19::from(FpElement::from_u64(3));
+    println!("lambda = {}", lambda.as_uint().to_words()[0]);
     let two_five_six = F19::from(FpElement::from_u64(256));
-
-
 
 
     let lambda_sq = <F19 as FieldOps>::square(&lambda);
     let t = &(&lambda_sq - &lambda) + &F19::one();
+    println!("t = {}", t.as_uint().to_words()[0]);
     let num = &(&two_five_six * &t) * &(&t * &t);
+    println!("num = {}", num.as_uint().to_words()[0]);
 
     let den = &lambda_sq * &<F19 as FieldOps>::square(&(&lambda - &F19::one()));
+    println!("den = {}", den.as_uint().to_words()[0]);
     let den_inv = den.invert().into_option().unwrap();
 
     let expected = &num * &den_inv;
+    println!("expected = {}", expected.as_uint().to_words()[0]);
 
     assert_eq!(c.j_invariant(), expected);
 }
@@ -116,7 +119,9 @@ fn legendre_to_short_weierstrass_preserves_j() {
 #[test]
 fn legendre_short_weierstrass_coordinate_shift_works() {
     let c = curve();
+    let jc = c.j_invariant();
     let w = c.to_short_weierstrass();
+    let jw = w.j_invariant();
 
     let p = LegendrePoint::new(fp(2), fp(6));
     assert!(c.is_on_curve(&p));

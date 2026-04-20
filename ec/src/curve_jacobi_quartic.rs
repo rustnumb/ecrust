@@ -15,6 +15,7 @@
 //! “extended Jacobi quartic” family with arbitrary `a` and `d` satisfying
 //! `d(a²-d) ≠ 0`.
 
+use core::fmt;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 use fp::field_ops::{FieldOps, FieldRandom};
 use fp::{ref_field_impl, ref_field_trait_impl};
@@ -33,6 +34,27 @@ pub struct JacobiQuarticCurve<F: FieldOps> {
     pub a: F,
     /// Invariant d in the definition
     pub d: F,
+}
+
+impl<F> fmt::Display for JacobiQuarticCurve<F>
+where
+    F: FieldOps + fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if f.alternate() {
+            write!(
+                f,
+                "JacobiQuarticCurve {{\n  y^2 = d x^4 + 2 a x^2 + 1\n  a = {}\n  d = {}\n}}",
+                self.a, self.d
+            )
+        } else {
+            write!(
+                f,
+                "y^2 = ({})x^4 + 2({})x^2 + 1",
+                self.d, self.a
+            )
+        }
+    }
 }
 
 ref_field_impl! {

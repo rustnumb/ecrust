@@ -18,6 +18,7 @@
 //! ```
 //!
 
+use core::fmt;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 use fp::field_ops::{FieldOps, FieldRandom};
 use fp::{ref_field_impl, ref_field_trait_impl};
@@ -32,6 +33,23 @@ use crate::point_jacobi_intersection::JacobiIntersectionPoint;
 pub struct JacobiIntersectionCurve<F: FieldOps> {
     /// The variable a in the definition of the curve
     pub a: F,
+}
+
+impl<F> fmt::Display for JacobiIntersectionCurve<F>
+where
+    F: FieldOps + fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if f.alternate() {
+            write!(
+                f,
+                "JacobiIntersectionCurve {{\n  s^2 + c^2 = 1\n  a s^2 + d^2 = 1\n  a = {}\n}}",
+                self.a
+            )
+        } else {
+            write!(f, "s^2 + c^2 = 1, {} s^2 + d^2 = 1", self.a)
+        }
+    }
 }
 
 ref_field_impl! {

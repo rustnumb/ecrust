@@ -303,8 +303,15 @@ ref_field_impl!{
             let delta_cu = &delta * &delta_sq;
             let delta_six = &delta_cu * &delta_cu;
 
-            let a = -&(&F::from_u64(27) * &(&delta * &(&delta_cu + &F::from_u64(8))));
-            let b = &F::from_u64(54) * &(&delta_six - &(&(&F::from_u64(20) * &delta_cu) - &F::from_u64(8)));
+            let delta_cu_pl_8 = &delta_cu + &F::from_u64(8);
+            let tmp1 = &delta * &delta_cu_pl_8;
+            let a = -&(&F::from_u64(27) * &tmp1);
+
+            let twenty_delta_cu = &F::from_u64(20) * &delta_cu;
+            let sum1 = &delta_six - &twenty_delta_cu;
+            let sum2 = &sum1 - &F::from_u64(8);
+
+            let b = &F::from_u64(54) * &sum2;
 
             Some(WeierstrassCurve {
                 a1: F::zero(),

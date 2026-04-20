@@ -290,9 +290,13 @@ ref_field_impl!{
 
             let m = &dy * &dx_inv;
             let one_plus_lambda = &F::one() + &curve.lambda;
+            let ms_x1_ms_x2 = -&(&self.x + &other.x);
 
-            let x3 = &<F as FieldOps>::square(&m) + &(&one_plus_lambda - &(&self.x - &other.x));
-            let y3 = &(&m * &(&self.x - &x3)) - &self.y;
+            let x3 = &<F as FieldOps>::square(&m) + &(&one_plus_lambda + &ms_x1_ms_x2);
+
+            let x1_ms_x3 = &self.x - &x3;
+            let tmp = &m * &x1_ms_x3;
+            let y3 = &tmp - &self.y;
 
             Self::new(x3, y3)
         }

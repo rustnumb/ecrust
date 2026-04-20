@@ -145,7 +145,7 @@ ref_field_impl!{
             );
 
             let lambda_sq = <F as FieldOps>::square(&self.lambda);
-            let t = &lambda_sq - &(&self.lambda + &F::one());
+            let t = &(&lambda_sq - &self.lambda) + &F::one();
             let tsq = <F as FieldOps>::square(&t);
             let num = &F::from_u64(256) * &(&t * &tsq);
 
@@ -231,7 +231,7 @@ ref_field_impl!{
                 F::characteristic()[0] > 3,
                 "short Weierstrass conversion requires characteristic != 2, 3"
             );
-            
+
             let three = F::from_u64(3);
             let twenty_seven = F::from_u64(27);
 
@@ -255,7 +255,7 @@ ref_field_impl!{
             let lm_minus_two = &self.lambda - &F::from_u64(2);
             let twolm_minus_one = &<F as FieldOps>::double(&self.lambda) - &F::one();
 
-            let num_b = &lm_plus_one * &(&lm_minus_two * &twolm_minus_one);
+            let num_b = -&(&lm_plus_one * &(&lm_minus_two * &twolm_minus_one));
             let b = &num_b * &twenty_seven_inv;
 
             WeierstrassCurve::new_short(a, b)
