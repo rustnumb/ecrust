@@ -71,6 +71,7 @@ use crate::curve_legendre::LegendreCurve;
 use crate::point_ops::PointOps;
 use fp::field_ops::FieldOps;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
+use fp::ref_field_impl;
 
 /// A point on a Legendre elliptic curve over `F`.
 ///
@@ -146,6 +147,7 @@ impl<F: FieldOps> LegendrePoint<F> {
         self.infinity
     }
 }
+
 impl<F> ConditionallySelectable for LegendrePoint<F>
 where
     F: FieldOps + Copy,
@@ -204,128 +206,132 @@ where
     }
 }
 
-impl<F: FieldOps> LegendrePoint<F> {
-    ///
-    /// For a finite affine point `(x, y)` on a Legendre curve, the inverse is
-    /// `(x, -y)`. The point at infinity is its own inverse.
-    pub fn negate(&self, _curve: &LegendreCurve<F>) -> Self {
-        if self.infinity {
-            return Self::identity();
-        }
-        Self::new(self.x, -self.y)
-    }
-
-    /// Doubles the point: returns `[2]P`.
-    ///
-    /// If `P = O`, returns `O`.
-    /// If `y = 0`, then `P` is a nontrivial 2-torsion point and `[2]P = O`.
-    pub fn double(&self, curve: &LegendreCurve<F>) -> Self {
-        if self.infinity {
-            return Self::identity();
-        }
-
-        let denom = <F as FieldOps>::double(&self.y);
-        let denom_inv = match denom.invert().into_option() {
-            Some(inv) => inv,
-            None => return Self::identity(),
-        };
-
-        let x1_sq = <F as FieldOps>::square(&self.x);
-        let one_plus_lambda = F::one() + curve.lambda;
-
-        let m = (F::from_u64(3) * x1_sq
-            - (F::from_u64(2) * one_plus_lambda) * self.x
-            + curve.lambda)
-            * denom_inv;
-
-        let x3 = <F as FieldOps>::square(&m) + one_plus_lambda - F::from_u64(2) * self.x;
-        let y3 = m * (self.x - x3) - self.y;
-
-        Self::new(x3, y3)
-    }
-
-    /// Adds two points: returns `P + Q`.
-    ///
-    /// Handles the usual special cases:
-    /// - `O + Q = Q`
-    /// - `P + O = P`
-    /// - `P = Q` uses doubling
-    /// - `P = -Q` returns `O`
-    ///
-    /// For distinct finite points `P = (x1, y1)` and `Q = (x2, y2)` with
-    /// `x1 != x2`, the slope is
-    ///
-    /// `m = (y2 - y1) / (x2 - x1)`
-    ///
-    /// and
-    ///
-    /// `x3 = m^2 + (1+λ) - x1 - x2`
-    ///
-    /// `y3 = m(x1 - x3) - y1`.
-    pub fn add(&self, other: &Self, curve: &LegendreCurve<F>) -> Self {
-        if self.infinity {
-            return *other;
-        }
-        if other.infinity {
-            return *self;
-        }
-
-        if self.x == other.x {
-            if self.y == other.y {
-                return self.double(curve);
+ref_field_impl!{
+    impl<F: FieldOps> LegendrePoint<F> {
+        ///
+        /// For a finite affine point `(x, y)` on a Legendre curve, the inverse is
+        /// `(x, -y)`. The point at infinity is its own inverse.
+        pub fn negate(&self, _curve: &LegendreCurve<F>) -> Self {
+            if self.infinity {
+                return Self::identity();
             }
-            return Self::identity();
+            Self::new(self.x, -self.y)
         }
 
-        let dx = other.x - self.x;
-        let dy = other.y - self.y;
-
-        let dx_inv = dx
-            .invert()
-            .into_option()
-            .expect("x1 != x2, so dx must be invertible");
-
-        let m = dy * dx_inv;
-        let one_plus_lambda = F::one() + curve.lambda;
-
-        let x3 = <F as FieldOps>::square(&m) + one_plus_lambda - self.x - other.x;
-        let y3 = m * (self.x - x3) - self.y;
-
-        Self::new(x3, y3)
-    }
-
-    /// Multiply `self` by `k`
-    ///
-    /// # Arguments
-    ///
-    /// * `&self` - Point on curve (type: `Self`)
-    /// * `k` - Integer (type: `&[u64]`)
-    /// * `curve` - The curve we're on (type: `&<LegendrePoint<F> as PointOps>::Curve`)
-    ///
-    /// # Returns
-    ///
-    /// The point `k * self` (type: `Self`)
-    pub fn scalar_mul(&self, k: &[u64], curve: &<LegendrePoint<F> as PointOps>::Curve) -> Self {
-        let mut r0 = Self::identity();
-        let mut r1 = self.clone();
-
-        for &limb in k.iter().rev() {
-            for bit in (0..64).rev() {
-                let choice = Choice::from(((limb >> bit) & 1) as u8);
-
-                Self::conditional_swap(&mut r0, &mut r1, choice);
-
-                let sum = r0.add(&r1, curve);
-                let dbl = r0.double(curve);
-                r1 = sum;
-                r0 = dbl;
-
-                Self::conditional_swap(&mut r0, &mut r1, choice);
+        /// Doubles the point: returns `[2]P`.
+        ///
+        /// If `P = O`, returns `O`.
+        /// If `y = 0`, then `P` is a nontrivial 2-torsion point and `[2]P = O`.
+        pub fn double(&self, curve: &LegendreCurve<F>) -> Self {
+            if self.infinity {
+                return Self::identity();
             }
+
+            let denom = <F as FieldOps>::double(&self.y);
+            let denom_inv = match denom.invert().into_option() {
+                Some(inv) => inv,
+                None => return Self::identity(),
+            };
+
+            let x1_sq = <F as FieldOps>::square(&self.x);
+            let three_x1_sq = &F::from_u64(3) * &x1_sq;
+            let one_plus_lambda = &F::one() + &curve.lambda;
+            let twice_one_plus_lambda = &F::from_u64(2) * &one_plus_lambda;
+            let num = &(&three_x1_sq - &(&twice_one_plus_lambda * &self.x)) + &curve.lambda;
+
+            let m = &num * &denom_inv;
+
+            let x3 = &<F as FieldOps>::square(&m) + &(&one_plus_lambda - &(&F::from_u64(2) * &self.x));
+            let y3 = &(&m * &(&self.x - &x3)) - &self.y;
+
+            Self::new(x3, y3)
         }
 
-        r0
+        /// Adds two points: returns `P + Q`.
+        ///
+        /// Handles the usual special cases:
+        /// - `O + Q = Q`
+        /// - `P + O = P`
+        /// - `P = Q` uses doubling
+        /// - `P = -Q` returns `O`
+        ///
+        /// For distinct finite points `P = (x1, y1)` and `Q = (x2, y2)` with
+        /// `x1 != x2`, the slope is
+        ///
+        /// `m = (y2 - y1) / (x2 - x1)`
+        ///
+        /// and
+        ///
+        /// `x3 = m^2 + (1+λ) - x1 - x2`
+        ///
+        /// `y3 = m(x1 - x3) - y1`.
+        pub fn add(&self, other: &Self, curve: &LegendreCurve<F>) -> Self {
+            if self.infinity {
+                return *other;
+            }
+            if other.infinity {
+                return *self;
+            }
+
+            if self.x == other.x {
+                if self.y == other.y {
+                    return self.double(curve);
+                }
+                return Self::identity();
+            }
+
+            let dx = &other.x - &self.x;
+            let dy = &other.y - &self.y;
+
+            let dx_inv = dx
+                .invert()
+                .into_option()
+                .expect("x1 != x2, so dx must be invertible");
+
+            let m = &dy * &dx_inv;
+            let one_plus_lambda = &F::one() + &curve.lambda;
+
+            let x3 = &<F as FieldOps>::square(&m) + &(&one_plus_lambda - &(&self.x - &other.x));
+            let y3 = &(&m * &(&self.x - &x3)) - &self.y;
+
+            Self::new(x3, y3)
+        }
+
+        /// Multiply `self` by `k`
+        ///
+        /// # Arguments
+        ///
+        /// * `&self` - Point on curve (type: `Self`)
+        /// * `k` - Integer (type: `&[u64]`)
+        /// * `curve` - The curve we're on (type: `&<LegendrePoint<F> as PointOps>::Curve`)
+        ///
+        /// # Returns
+        ///
+        /// The point `k * self` (type: `Self`)
+        pub fn scalar_mul(&self, k: &[u64], curve: &<LegendrePoint<F> as PointOps>::Curve) -> Self {
+            let mut r0 = Self::identity();
+            let mut r1 = self.clone();
+
+            for &limb in k.iter().rev() {
+                for bit in (0..64).rev() {
+                    let choice = Choice::from(((limb >> bit) & 1) as u8);
+
+                    Self::conditional_swap(&mut r0, &mut r1, choice);
+
+                    let sum = r0.add(&r1, curve);
+                    let dbl = r0.double(curve);
+                    r1 = sum;
+                    r0 = dbl;
+
+                    Self::conditional_swap(&mut r0, &mut r1, choice);
+                }
+            }
+
+            r0
+        }
+
     }
+
 }
 
 impl<F> PointOps for LegendrePoint<F>
