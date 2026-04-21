@@ -24,3 +24,7 @@ pub mod point_hessian;
 pub mod point_legendre;
 ///! Elliptic curve definition in Legendre form.
 pub mod curve_legendre;
+/// Twisted Hessian curves.
+pub mod curve_twisted_hessian;
+/// Projective points on twisted Hessian curves.
+pub mod point_twisted_hessian;
