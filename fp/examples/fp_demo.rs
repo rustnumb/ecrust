@@ -246,7 +246,7 @@ fn main() {
     // quick sanity: a * a^{-1} == 1
     let a = GF256::random(&mut rng);
     let a_inv = a.invert().unwrap();
-    let prod = a * a_inv;
+    let prod = &a * &a_inv;
     println!("  sanity  a  = {a}");
     println!("  sanity 1/a = {a_inv}");
     println!("  a * 1/a    = {prod}  (should be 1)");
@@ -259,7 +259,7 @@ fn main() {
 
     let a = GF2_511::random(&mut rng);
     let a_inv = a.invert().unwrap();
-    let prod = a * a_inv;
+    let prod = &a * &a_inv;
     println!("  sanity  a  = {a}");
     println!("  sanity 1/a = {a_inv}");
     println!("  a * 1/a    = {prod}  (should be 1)");
@@ -281,7 +281,7 @@ fn main() {
     // quick sanity: a * a^{-1} == 1
     let b = Fp19_2::random(&mut rng);
     let b_inv = b.invert().unwrap();
-    let prod = b * b_inv;
+    let prod = &b * &b_inv;
     println!("  sanity  b  = {b}");
     println!("  sanity 1/b = {b_inv}");
     println!("  b * 1/b    = {prod}  (should be 1)");
@@ -301,7 +301,7 @@ fn main() {
     let a2_inv = a2.invert().unwrap();
     println!("  sanity  a  = {a2}");
     println!("  sanity 1/a = {a2_inv}");
-    println!("  a * 1/a    = {}  (should be 1)", a2 * a2_inv);
+    println!("  a * 1/a    = {}  (should be 1)", &a2 * &a2_inv);
 
     println!("\n===== F_{{97283^3}} = F_97283[x]/(x^3+x+1) =====");
     for i in 0..5 {
@@ -312,7 +312,7 @@ fn main() {
     let a3_inv = a3.invert().unwrap();
     println!("  sanity  a  = {a3}");
     println!("  sanity 1/a = {a3_inv}");
-    println!("  a * 1/a    = {}  (should be 1)", a3 * a3_inv);
+    println!("  a * 1/a    = {}  (should be 1)", &a3 * &a3_inv);
 
     println!("\n===== F_{{97283^4}} = F_97283[x]/(x^4+2x^2+2) =====");
     for i in 0..5 {
@@ -323,6 +323,6 @@ fn main() {
     let a4_inv = a4.invert().unwrap();
     println!("  sanity  a  = {a4}");
     println!("  sanity 1/a = {a4_inv}");
-    println!("  a * 1/a    = {}  (should be 1)", a4 * a4_inv);
+    println!("  a * 1/a    = {}  (should be 1)", &a4 * &a4_inv);
 
 }

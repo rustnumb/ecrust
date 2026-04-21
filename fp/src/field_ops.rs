@@ -1,6 +1,5 @@
 //! Core trait that every field element in the tower must implement.
 
-use std::ops::{Add, Mul, Neg, Sub};
 use subtle::{Choice, ConditionallySelectable, CtOption};
 
 /// Trait for generating cryptographically secure random field elements.
@@ -35,10 +34,6 @@ pub trait FieldOps:
     + Clone
     + PartialEq
     + Eq
-    + Add<Output = Self>
-    + Sub<Output = Self>
-    + Mul<Output = Self>
-    + Neg<Output = Self>
     + Default
     + ConditionallySelectable
 {
@@ -287,4 +282,201 @@ pub trait FieldFromRepr: FieldOps {
 
     /// Constructs a field element from the given representation.
     fn from_repr(x: Self::Repr) -> Self;
+}
+
+
+// -------------------------------------------------------------------
+// Macros for using operator overloads on referenced values
+// -------------------------------------------------------------------
+
+
+/// Helper macro for generic code that wants to use borrowed operators
+/// like `&a + &b`, `&a - &b`, `&a * &b`, and `-&a`.
+
+
+/// For inherent impls like:
+///
+/// ```ignore
+/// ref_field_impl! {
+///     impl<F> WeierstrassCurve<F> {
+///         ...
+///     }
+/// }
+/// ```
+#[macro_export]
+macro_rules! ref_field_impl {
+    (impl<$F:ident> $Ty:ty { $($body:tt)* }) => {
+        impl<$F> $Ty
+        where
+            $F: $crate::field_ops::FieldOps,
+            for<'a, 'b> &'a $F: std::ops::Add<&'b $F, Output = $F>,
+            for<'a, 'b> &'a $F: std::ops::Sub<&'b $F, Output = $F>,
+            for<'a, 'b> &'a $F: std::ops::Mul<&'b $F, Output = $F>,
+            for<'a> &'a $F: std::ops::Neg<Output = $F>,
+        {
+            $($body)*
+        }
+    };
+
+    (impl<$F:ident : $First:ident $(+ $Rest:ident)*> $Ty:ty { $($body:tt)* }) => {
+        impl<$F: $First $(+ $Rest)*> $Ty
+        where
+            $F: $crate::field_ops::FieldOps,
+            for<'a, 'b> &'a $F: std::ops::Add<&'b $F, Output = $F>,
+            for<'a, 'b> &'a $F: std::ops::Sub<&'b $F, Output = $F>,
+            for<'a, 'b> &'a $F: std::ops::Mul<&'b $F, Output = $F>,
+            for<'a> &'a $F: std::ops::Neg<Output = $F>,
+        {
+            $($body)*
+        }
+    };
+}
+
+/// For inherent impls like:
+///
+/// ```ignore
+/// ref_field_impl! {
+///     impl<F> WeierstrassCurve<F> {
+///         ...
+///     }
+/// }
+/// ```
+#[macro_export]
+macro_rules! ref_field_trait_impl {
+    (impl<$F:ident> $Trait:ident for $Ty:ty { $($body:tt)* }) => {
+        impl<$F> $Trait for $Ty
+        where
+            $F: $crate::field_ops::FieldOps,
+            for<'a, 'b> &'a $F: std::ops::Add<&'b $F, Output = $F>,
+            for<'a, 'b> &'a $F: std::ops::Sub<&'b $F, Output = $F>,
+            for<'a, 'b> &'a $F: std::ops::Mul<&'b $F, Output = $F>,
+            for<'a> &'a $F: std::ops::Neg<Output = $F>,
+        {
+            $($body)*
+        }
+    };
+
+    (impl<$F:ident : $First:ident $(+ $Rest:ident)*> $Trait:ident for $Ty:ty { $($body:tt)* }) => {
+        impl<$F: $First $(+ $Rest)*> $Trait for $Ty
+        where
+            $F: $crate::field_ops::FieldOps,
+            for<'a, 'b> &'a $F: std::ops::Add<&'b $F, Output = $F>,
+            for<'a, 'b> &'a $F: std::ops::Sub<&'b $F, Output = $F>,
+            for<'a, 'b> &'a $F: std::ops::Mul<&'b $F, Output = $F>,
+            for<'a> &'a $F: std::ops::Neg<Output = $F>,
+        {
+            $($body)*
+        }
+    };
+}
+
+
+/// For trait impls when one wants to specify the path like:
+///
+/// ```ignore
+/// ref_field_trait_impl_path! {
+///     impl<F> (crate::point_ops::PointAdd) for AffinePoint<F> {
+///         ...
+///     }
+/// }
+/// ```
+#[macro_export]
+macro_rules! ref_field_trait_impl_path {
+    (impl<$F:ident> ($Trait:path) for $Ty:ty { $($body:tt)* }) => {
+        impl<$F> $Trait for $Ty
+        where
+            $F: $crate::field_ops::FieldOps,
+            for<'a, 'b> &'a $F: std::ops::Add<&'b $F, Output = $F>,
+            for<'a, 'b> &'a $F: std::ops::Sub<&'b $F, Output = $F>,
+            for<'a, 'b> &'a $F: std::ops::Mul<&'b $F, Output = $F>,
+            for<'a> &'a $F: std::ops::Neg<Output = $F>,
+        {
+            $($body)*
+        }
+    };
+
+    (impl<$F:ident : $First:ident $(+ $Rest:ident)*> ($Trait:path) for $Ty:ty { $($body:tt)* }) => {
+        impl<$F: $First $(+ $Rest)*> $Trait for $Ty
+        where
+            $F: $crate::field_ops::FieldOps,
+            for<'a, 'b> &'a $F: std::ops::Add<&'b $F, Output = $F>,
+            for<'a, 'b> &'a $F: std::ops::Sub<&'b $F, Output = $F>,
+            for<'a, 'b> &'a $F: std::ops::Mul<&'b $F, Output = $F>,
+            for<'a> &'a $F: std::ops::Neg<Output = $F>,
+        {
+            $($body)*
+        }
+    };
+}
+
+/// For single free functions like:
+///
+/// ```ignore
+/// ref_field_fn! {
+///     fn b2_from_coeffs<F>(a1: &F, a2: &F) -> F {
+///         ...
+///     }
+/// }
+/// ```
+#[macro_export]
+macro_rules! ref_field_fn {
+    (fn $name:ident<$F:ident> ( $($args:tt)* ) -> $Ret:ty $body:block) => {
+        fn $name<$F>($($args)*) -> $Ret
+        where
+            $F: $crate::field_ops::FieldOps,
+            for<'a, 'b> &'a $F: std::ops::Add<&'b $F, Output = $F>,
+            for<'a, 'b> &'a $F: std::ops::Sub<&'b $F, Output = $F>,
+            for<'a, 'b> &'a $F: std::ops::Mul<&'b $F, Output = $F>,
+            for<'a> &'a $F: std::ops::Neg<Output = $F>,
+        $body
+    };
+
+    (fn $name:ident<$F:ident : $First:ident $(+ $Rest:ident)*> ( $($args:tt)* ) -> $Ret:ty $body:block) => {
+        fn $name<$F: $First $(+ $Rest)*>($($args)*) -> $Ret
+        where
+            $F: $crate::field_ops::FieldOps,
+            for<'a, 'b> &'a $F: std::ops::Add<&'b $F, Output = $F>,
+            for<'a, 'b> &'a $F: std::ops::Sub<&'b $F, Output = $F>,
+            for<'a, 'b> &'a $F: std::ops::Mul<&'b $F, Output = $F>,
+            for<'a> &'a $F: std::ops::Neg<Output = $F>,
+        $body
+    };
+}
+
+/// For batches of free functions like:
+///
+/// ```ignore
+/// ref_field_fns! {
+///     fn b2_from_coeffs<F>(a1: &F, a2: &F) -> F { ... }
+///     ...
+///     fn b4_from_coeffs<F>(a1: &F, a3: &F, a4: &F) -> F { ... }
+/// }
+/// ```
+#[macro_export]
+macro_rules! ref_field_fns {
+    () => {};
+
+    (
+        $(#[$meta:meta])*
+        fn $name:ident<$F:ident> ( $($args:tt)* ) -> $Ret:ty $body:block
+        $($rest:tt)*
+    ) => {
+        $(#[$meta])*
+        $crate::ref_field_fn! {
+            fn $name<$F>($($args)*) -> $Ret $body
+        }
+        $crate::ref_field_fns! { $($rest)* }
+    };
+
+    (
+        $(#[$meta:meta])*
+        fn $name:ident<$F:ident : $First:ident $(+ $Rest:ident)*> ( $($args:tt)* ) -> $Ret:ty $body:block
+        $($rest:tt)*
+    ) => {
+        $(#[$meta])*
+        $crate::ref_field_fn! {
+            fn $name<$F: $First $(+ $Rest)*>($($args)*) -> $Ret $body
+        }
+        $crate::ref_field_fns! { $($rest)* }
+    };
 }

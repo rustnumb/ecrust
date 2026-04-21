@@ -20,6 +20,7 @@ path = "src/lib.rs"
 fp = { workspace = true }
 ec = { workspace = true }
 crypto-bigint = { workspace = true }
+subtle = "2.6"
 
 [package.metadata.docs.rs]
 rustdoc-args = ["--html-in-header", "katex-header.html"]

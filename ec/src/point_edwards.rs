@@ -40,6 +40,7 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 use crate::curve_edwards::EdwardsCurve;
 use crate::point_ops::PointOps;
 use fp::field_ops::FieldOps;
+use fp::{ref_field_impl, ref_field_trait_impl};
 
 /// An affine point on an Edwards curve, for any characteristic.
 #[derive(Debug, Clone, Copy)]
@@ -90,7 +91,7 @@ impl<F: FieldOps> Eq for EdwardsPoint<F> {}
 // ---------------------------------------------------------------------------
 
 impl<F: FieldOps> EdwardsPoint<F> {
-    /// Construct an affine Edwards point.  No on-curve check.
+    /// Construct an affine Edwards point. No on-curve check.
     pub fn new(x: F, y: F) -> Self {
         Self { x, y }
     }
@@ -165,176 +166,204 @@ where
 // Group operations
 // ---------------------------------------------------------------------------
 
-impl<F: FieldOps> EdwardsPoint<F> {
-    /// Negate a point.
-    /// - Odd char: `-(x, y) = (-x, y)`
-    /// - Char 2:   `-(x, y) = (y, x)`
-    pub fn negate(&self, _curve: &EdwardsCurve<F>) -> Self {
-        if F::characteristic()[0] != 2 {
-            Self::new(-self.x, self.y)
-        } else {
-            Self::new(self.y, self.x)
-        }
-    }
-
-    /// Add two points on the Edwards curve.
-    pub fn add(&self, other: &Self, curve: &EdwardsCurve<F>) -> Self {
-        if F::characteristic()[0] != 2 {
-            self.add_odd(other, curve)
-        } else {
-            self.add_binary(other, curve)
-        }
-    }
-
-    /// Double a point.  Both addition laws are strongly unified, so this
-    /// just delegates to `add`.
-    pub fn double(&self, curve: &EdwardsCurve<F>) -> Self {
-        self.add(self, curve)
-    }
-
-    /// Scalar multiplication `[k]P` (constant-time double-and-add).
-    pub fn scalar_mul(&self, k: &[u64], curve: &EdwardsCurve<F>) -> Self {
-        let mut result = Self::identity();
-
-        for &limb in k.iter().rev() {
-            for bit in (0..64).rev() {
-                let doubled = result.double(curve);
-                let added = doubled.add(self, curve);
-                let choice = Choice::from(((limb >> bit) & 1) as u8);
-                result = Self::conditional_select(&doubled, &added, choice);
+ref_field_impl! {
+    impl<F> EdwardsPoint<F> {
+        /// Negate a point.
+        /// - Odd char: `-(x, y) = (-x, y)`
+        /// - Char 2:   `-(x, y) = (y, x)`
+        pub fn negate(&self, _curve: &EdwardsCurve<F>) -> Self {
+            if F::characteristic()[0] != 2 {
+                Self::new(-&self.x, self.y.clone())
+            } else {
+                Self::new(self.y.clone(), self.x.clone())
             }
         }
 
-        result
-    }
+        /// Add two points on the Edwards curve.
+        pub fn add(&self, other: &Self, curve: &EdwardsCurve<F>) -> Self {
+            if F::characteristic()[0] != 2 {
+                self.add_odd(other, curve)
+            } else {
+                self.add_binary(other, curve)
+            }
+        }
 
-    // -----------------------------------------------------------------------
-    // Odd-characteristic addition
-    //
-    //   x₃ = (x₁y₂ + y₁x₂) / (1 + d·x₁x₂y₁y₂)
-    //   y₃ = (y₁y₂ − x₁x₂) / (1 − d·x₁x₂y₁y₂)
-    // -----------------------------------------------------------------------
+        /// Double a point. Both addition laws are strongly unified, so this
+        /// just delegates to `add`.
+        pub fn double(&self, curve: &EdwardsCurve<F>) -> Self {
+            self.add(self, curve)
+        }
 
-    fn add_odd(&self, other: &Self, curve: &EdwardsCurve<F>) -> Self {
-        let d = curve.d2;
+        /// Scalar multiplication `[k]P` (constant-time double-and-add).
+        pub fn scalar_mul(&self, k: &[u64], curve: &EdwardsCurve<F>) -> Self {
+            let mut result = Self::identity();
 
-        let x1y2 = self.x * other.y;
-        let y1x2 = self.y * other.x;
-        let x1x2 = self.x * other.x;
-        let y1y2 = self.y * other.y;
+            for &limb in k.iter().rev() {
+                for bit in (0..64).rev() {
+                    let doubled = result.double(curve);
+                    let added = doubled.add(self, curve);
+                    let choice = Choice::from(((limb >> bit) & 1) as u8);
+                    result = Self::conditional_select(&doubled, &added, choice);
+                }
+            }
 
-        let dxy = d * x1x2 * y1y2;
+            result
+        }
 
-        let one = F::one();
-        let x_num = x1y2 + y1x2;
-        let x_den = one + dxy;
-        let y_num = y1y2 - x1x2;
-        let y_den = one - dxy;
+        // -----------------------------------------------------------------------
+        // Odd-characteristic addition
+        //
+        //   x₃ = (x₁y₂ + y₁x₂) / (1 + d·x₁x₂y₁y₂)
+        //   y₃ = (y₁y₂ − x₁x₂) / (1 − d·x₁x₂y₁y₂)
+        // -----------------------------------------------------------------------
 
-        let x_den_inv = x_den
-            .invert()
-            .into_option()
-            .expect("Edwards addition: x-denominator must be invertible");
-        let y_den_inv = y_den
-            .invert()
-            .into_option()
-            .expect("Edwards addition: y-denominator must be invertible");
+        fn add_odd(&self, other: &Self, curve: &EdwardsCurve<F>) -> Self {
+            let x1y2 = &self.x * &other.y;
+            let y1x2 = &self.y * &other.x;
+            let x1x2 = &self.x * &other.x;
+            let y1y2 = &self.y * &other.y;
 
-        Self::new(x_num * x_den_inv, y_num * y_den_inv)
-    }
+            let x1x2y1y2 = &x1x2 * &y1y2;
+            let dxy = &curve.d2 * &x1x2y1y2;
 
-    // -----------------------------------------------------------------------
-    // Characteristic-2 addition  (Bernstein–Lange–Rezaeian Farashahi §3)
-    //
-    //   w₁ = x₁+y₁,  w₂ = x₂+y₂
-    //   A  = x₁²+x₁,  B  = y₁²+y₁
-    //
-    //   x₃ = (d₁(x₁+x₂) + d₂·w₁·w₂ + A·(x₂(y₁+y₂+1)+y₁y₂))
-    //         / (d₁ + A·w₂)
-    //   y₃ = (d₁(y₁+y₂) + d₂·w₁·w₂ + B·(y₂(x₁+x₂+1)+x₁x₂))
-    //         / (d₁ + B·w₂)
-    // -----------------------------------------------------------------------
+            let one = F::one();
+            let x_num = &x1y2 + &y1x2;
+            let x_den = &one + &dxy;
+            let y_num = &y1y2 - &x1x2;
+            let y_den = &one - &dxy;
 
-    fn add_binary(&self, other: &Self, curve: &EdwardsCurve<F>) -> Self {
-        let x1 = self.x;
-        let y1 = self.y;
-        let x2 = other.x;
-        let y2 = other.y;
-        let d1 = curve.d1;
-        let d2 = curve.d2;
+            let x_den_inv = <F as FieldOps>::invert(&x_den)
+                .into_option()
+                .expect("Edwards addition: x-denominator must be invertible");
+            let y_den_inv = <F as FieldOps>::invert(&y_den)
+                .into_option()
+                .expect("Edwards addition: y-denominator must be invertible");
 
-        let w1 = x1 + y1;
-        let w2 = x2 + y2;
+            let x3 = &x_num * &x_den_inv;
+            let y3 = &y_num * &y_den_inv;
 
-        let a = <F as FieldOps>::square(&x1) + x1;
-        let b = <F as FieldOps>::square(&y1) + y1;
+            Self::new(x3, y3)
+        }
 
-        let d2_w1w2 = d2 * w1 * w2;
-        let x1x2 = x1 * x2;
-        let y1y2 = y1 * y2;
+        // -----------------------------------------------------------------------
+        // Characteristic-2 addition
+        //
+        //   w₁ = x₁+y₁,   w₂ = x₂+y₂
+        //   A  = x₁²+x₁,  B  = y₁²+y₁
+        //
+        //   x₃ = (d₁(x₁+x₂) + d₂·w₁·w₂ + A·(x₂(y₁+y₂+1)+y₁y₂))
+        //         / (d₁ + A·w₂)
+        //   y₃ = (d₁(y₁+y₂) + d₂·w₁·w₂ + B·(y₂(x₁+x₂+1)+x₁x₂))
+        //         / (d₁ + B·w₂)
+        // -----------------------------------------------------------------------
 
-        let x_num = d1 * (x1 + x2) + d2_w1w2 + a * (x2 * (y1 + y2 + F::one()) + y1y2);
-        let x_den = d1 + a * w2;
+        fn add_binary(&self, other: &Self, curve: &EdwardsCurve<F>) -> Self {
+            let w1 = &self.x + &self.y;
+            let w2 = &other.x + &other.y;
 
-        let y_num = d1 * (y1 + y2) + d2_w1w2 + b * (y2 * (x1 + x2 + F::one()) + x1x2);
-        let y_den = d1 + b * w2;
+            let x1_sq = <F as FieldOps>::square(&self.x);
+            let a = &x1_sq + &self.x;
 
-        let x_den_inv = x_den
-            .invert()
-            .into_option()
-            .expect("binary Edwards addition: x-denom must be invertible");
-        let y_den_inv = y_den
-            .invert()
-            .into_option()
-            .expect("binary Edwards addition: y-denom must be invertible");
+            let y1_sq = <F as FieldOps>::square(&self.y);
+            let b = &y1_sq + &self.y;
 
-        Self::new(x_num * x_den_inv, y_num * y_den_inv)
-    }
-}
+            let w1w2 = &w1 * &w2;
+            let d2_w1w2 = &curve.d2 * &w1w2;
 
-// ---------------------------------------------------------------------------
-// w-coordinate helpers for char-2 Montgomery ladder
-// ---------------------------------------------------------------------------
+            let x1x2 = &self.x * &other.x;
+            let y1y2 = &self.y * &other.y;
 
-impl<F: FieldOps> EdwardsPoint<F> {
-    /// Differential addition on the `w`-line (`w = x + y`, char 2 only).
-    ///
-    /// Given `w₁ = w(Q−P)`, `w₂ = w(P)`, `w₃ = w(Q)`, compute `w₅ = w(P+Q)`.
-    pub fn w_diff_add(w1: &F, w2: &F, w3: &F, curve: &EdwardsCurve<F>) -> F {
-        let r = *w2 * *w3;
-        let s = <F as FieldOps>::square(&r);
-        let one = F::one();
-        let t = r * (one + *w2 + *w3) + s;
+            let x1_plus_x2 = &self.x + &other.x;
+            let y1_plus_y2 = &self.y + &other.y;
+            let one = F::one();
 
-        let d2_over_d1 = curve.d2 * curve.d1.invert().into_option().expect("d1 invertible");
-        let coeff = d2_over_d1 + one;
+            let ysum_plus_one = &y1_plus_y2 + &one;
+            let x_part = &other.x * &ysum_plus_one;
+            let x_paren = &x_part + &y1y2;
+            let ax = &a * &x_paren;
+            let d1x = &curve.d1 * &x1_plus_x2;
+            let x_num_tmp = &d1x + &d2_w1w2;
+            let x_num = &x_num_tmp + &ax;
+            let x_den = &curve.d1 + &(&a * &w2);
 
-        let den = curve.d1 + t + coeff * s;
-        let den_inv = den
-            .invert()
-            .into_option()
-            .expect("w-diff-add denominator invertible");
+            let xsum_plus_one = &x1_plus_x2 + &one;
+            let y_part = &other.y * &xsum_plus_one;
+            let y_paren = &y_part + &x1x2;
+            let by = &b * &y_paren;
+            let d1y = &curve.d1 * &y1_plus_y2;
+            let y_num_tmp = &d1y + &d2_w1w2;
+            let y_num = &y_num_tmp + &by;
+            let y_den = &curve.d1 + &(&b * &w2);
 
-        t * den_inv + *w1
-    }
+            let x_den_inv = <F as FieldOps>::invert(&x_den)
+                .into_option()
+                .expect("binary Edwards addition: x-denom must be invertible");
+            let y_den_inv = <F as FieldOps>::invert(&y_den)
+                .into_option()
+                .expect("binary Edwards addition: y-denom must be invertible");
 
-    /// `w`-coordinate doubling (`w = x + y`, char 2 only).
-    ///
-    /// Given `w₂ = w(P)`, compute `w₄ = w(2P)`.
-    pub fn w_double(w2: &F, curve: &EdwardsCurve<F>) -> F {
-        let a = <F as FieldOps>::square(w2);
-        let j = <F as FieldOps>::square(&a);
+            let x3 = &x_num * &x_den_inv;
+            let y3 = &y_num * &y_den_inv;
 
-        let d2_over_d1 = curve.d2 * curve.d1.invert().into_option().expect("d1 invertible");
+            Self::new(x3, y3)
+        }
 
-        let num = a + j;
-        let den = curve.d1 + a + d2_over_d1 * j;
-        let den_inv = den
-            .invert()
-            .into_option()
-            .expect("w-double denominator invertible");
+        // -----------------------------------------------------------------------
+        // w-coordinate helpers for char-2 Montgomery ladder
+        // -----------------------------------------------------------------------
 
-        num * den_inv
+        /// Differential addition on the `w`-line (`w = x + y`, char 2 only).
+        ///
+        /// Given `w₁ = w(Q−P)`, `w₂ = w(P)`, `w₃ = w(Q)`, compute `w₅ = w(P+Q)`.
+        pub fn w_diff_add(w1: &F, w2: &F, w3: &F, curve: &EdwardsCurve<F>) -> F {
+            let r = w2 * w3;
+            let s = <F as FieldOps>::square(&r);
+
+            let one = F::one();
+            let tmp1 = &one + w2;
+            let tmp2 = &tmp1 + w3;
+            let rt = &r * &tmp2;
+            let t = &rt + &s;
+
+            let d1_inv = <F as FieldOps>::invert(&curve.d1)
+                .into_option()
+                .expect("d1 invertible");
+            let d2_over_d1 = &curve.d2 * &d1_inv;
+            let coeff = &d2_over_d1 + &one;
+
+            let coeff_s = &coeff * &s;
+            let den_tmp = &curve.d1 + &t;
+            let den = &den_tmp + &coeff_s;
+            let den_inv = <F as FieldOps>::invert(&den)
+                .into_option()
+                .expect("w-diff-add denominator invertible");
+
+            let frac = &t * &den_inv;
+            &frac + w1
+        }
+
+        /// `w`-coordinate doubling (`w = x + y`, char 2 only).
+        ///
+        /// Given `w₂ = w(P)`, compute `w₄ = w(2P)`.
+        pub fn w_double(w2: &F, curve: &EdwardsCurve<F>) -> F {
+            let a = <F as FieldOps>::square(w2);
+            let j = <F as FieldOps>::square(&a);
+
+            let d1_inv = <F as FieldOps>::invert(&curve.d1)
+                .into_option()
+                .expect("d1 invertible");
+            let d2_over_d1 = &curve.d2 * &d1_inv;
+
+            let num = &a + &j;
+            let coeff_j = &d2_over_d1 * &j;
+            let den_tmp = &curve.d1 + &a;
+            let den = &den_tmp + &coeff_j;
+            let den_inv = <F as FieldOps>::invert(&den)
+                .into_option()
+                .expect("w-double denominator invertible");
+
+            &num * &den_inv
+        }
     }
 }
 
@@ -342,23 +371,26 @@ impl<F: FieldOps> EdwardsPoint<F> {
 // PointOps bridge
 // ---------------------------------------------------------------------------
 
-impl<F: FieldOps> PointOps for EdwardsPoint<F> {
-    type BaseField = F;
-    type Curve = EdwardsCurve<F>;
+ref_field_trait_impl!{
+    impl<F: FieldOps> PointOps for EdwardsPoint<F> {
+        type BaseField = F;
+        type Curve = EdwardsCurve<F>;
 
-    fn identity(_curve: &Self::Curve) -> Self {
-        EdwardsPoint::<F>::identity()
+        fn identity(_curve: &Self::Curve) -> Self {
+            EdwardsPoint::<F>::identity()
+        }
+
+        fn is_identity(&self) -> bool {
+            EdwardsPoint::<F>::is_identity(self)
+        }
+
+        fn negate(&self, curve: &Self::Curve) -> Self {
+            EdwardsPoint::<F>::negate(self, curve)
+        }
+
+        fn scalar_mul(&self, k: &[u64], curve: &Self::Curve) -> Self {
+            EdwardsPoint::<F>::scalar_mul(self, k, curve)
+        }
     }
 
-    fn is_identity(&self) -> bool {
-        EdwardsPoint::<F>::is_identity(self)
-    }
-
-    fn negate(&self, curve: &Self::Curve) -> Self {
-        EdwardsPoint::<F>::negate(self, curve)
-    }
-
-    fn scalar_mul(&self, k: &[u64], curve: &Self::Curve) -> Self {
-        EdwardsPoint::<F>::scalar_mul(self, k, curve)
-    }
 }
