@@ -121,10 +121,12 @@ ref_field_impl!{
         // Invariants and constants
         // -------------------------------------------------------------------
 
+        /// Returns the invariants a, b attached to this model.
         pub fn a_invariants(&self) -> [F; 2] {
             [self.a.clone(), self.b.clone()]
         }
 
+        /// Compute the constant (a+2)/4 attached to the model.
         pub fn a24(&self) -> F {
             assert_ne!(F::characteristic()[0], 2);
 

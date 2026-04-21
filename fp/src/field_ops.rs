@@ -289,6 +289,20 @@ pub trait FieldFromRepr: FieldOps {
 // Macros for using operator overloads on referenced values
 // -------------------------------------------------------------------
 
+
+/// Helper macro for generic code that wants to use borrowed operators
+/// like `&a + &b`, `&a - &b`, `&a * &b`, and `-&a`.
+
+
+/// For inherent impls like:
+///
+/// ```ignore
+/// ref_field_impl! {
+///     impl<F> WeierstrassCurve<F> {
+///         ...
+///     }
+/// }
+/// ```
 #[macro_export]
 macro_rules! ref_field_impl {
     (impl<$F:ident> $Ty:ty { $($body:tt)* }) => {
@@ -318,6 +332,15 @@ macro_rules! ref_field_impl {
     };
 }
 
+/// For inherent impls like:
+///
+/// ```ignore
+/// ref_field_impl! {
+///     impl<F> WeierstrassCurve<F> {
+///         ...
+///     }
+/// }
+/// ```
 #[macro_export]
 macro_rules! ref_field_trait_impl {
     (impl<$F:ident> $Trait:ident for $Ty:ty { $($body:tt)* }) => {
@@ -347,6 +370,16 @@ macro_rules! ref_field_trait_impl {
     };
 }
 
+
+/// For trait impls when one wants to specify the path like:
+///
+/// ```ignore
+/// ref_field_trait_impl_path! {
+///     impl<F> (crate::point_ops::PointAdd) for AffinePoint<F> {
+///         ...
+///     }
+/// }
+/// ```
 #[macro_export]
 macro_rules! ref_field_trait_impl_path {
     (impl<$F:ident> ($Trait:path) for $Ty:ty { $($body:tt)* }) => {
@@ -376,6 +409,15 @@ macro_rules! ref_field_trait_impl_path {
     };
 }
 
+/// For single free functions like:
+///
+/// ```ignore
+/// ref_field_fn! {
+///     fn b2_from_coeffs<F>(a1: &F, a2: &F) -> F {
+///         ...
+///     }
+/// }
+/// ```
 #[macro_export]
 macro_rules! ref_field_fn {
     (fn $name:ident<$F:ident> ( $($args:tt)* ) -> $Ret:ty $body:block) => {
@@ -401,6 +443,15 @@ macro_rules! ref_field_fn {
     };
 }
 
+/// For batches of free functions like:
+///
+/// ```ignore
+/// ref_field_fns! {
+///     fn b2_from_coeffs<F>(a1: &F, a2: &F) -> F { ... }
+///     ...
+///     fn b4_from_coeffs<F>(a1: &F, a3: &F, a4: &F) -> F { ... }
+/// }
+/// ```
 #[macro_export]
 macro_rules! ref_field_fns {
     () => {};

@@ -81,6 +81,7 @@ ref_field_impl! {
             lhs1 == one && lhs2 == one
         }
 
+        /// Returns the invariant a attached to the model.
         pub fn a_invariants(&self) -> [F; 1] {
             [self.a.clone()]
         }
