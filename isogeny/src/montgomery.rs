@@ -3,7 +3,7 @@
 //! AT THE MOMENT THIS WORKS ONLY IN ODD CHARACTERISTIC!!!
 
 
-use subtle::{ConstantTimeEq, Choice};
+use subtle::{ConstantTimeEq, Choice, ConditionallySelectable};
 
 use fp::field_ops::FieldOps;
 use ec::curve_montgomery::MontgomeryCurve;
@@ -12,14 +12,14 @@ use fp::{ref_field_fns, ref_field_impl, ref_field_trait_impl};
 
 use primal::is_prime;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct PointAndDegree<F: FieldOps + Copy> {
     pub pt: KummerPoint<F>,
-    pub degree: usize,
+    pub degree: u64,
     pub degree_known: Choice
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct MontgomeryIsogeny<F: FieldOps + Copy> {
     pub domain: MontgomeryCurve<F>,
     pub codomain: MontgomeryCurve<F>,
@@ -63,7 +63,7 @@ ref_field_trait_impl! {
 
 ref_field_impl! {
     impl<F> PointAndDegree<F> {
-        pub fn new_known_degree(pt: KummerPoint<F>, degree: usize) -> Self {
+        pub fn new_known_degree(pt: KummerPoint<F>, degree: u64) -> Self {
             Self{pt, degree, degree_known: Choice::from(1)}
         }
 
@@ -86,7 +86,7 @@ ref_field_impl! {
             }
         }
 
-        pub fn degree(domain: &MontgomeryCurve<F>, pt: KummerPoint<F>) -> usize {
+        pub fn degree(domain: &MontgomeryCurve<F>, pt: KummerPoint<F>) -> u64 {
             todo!()
         }
 
@@ -171,3 +171,75 @@ ref_field_fns! {
 // Constant-time functionalities
 // ---------------------------------------------------------------------------
 
+impl<F: FieldOps + Copy> ConditionallySelectable for PointAndDegree<F> {
+    fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
+        Self {
+            pt: KummerPoint::conditional_select(&a.pt, &b.pt, choice),
+            degree: u64::conditional_select(&a.degree, &b.degree, choice),
+            degree_known: Choice::conditional_select(&a.degree_known, &b.degree_known, choice)
+        }
+    }
+
+    fn conditional_assign(&mut self, other: &Self, choice: Choice) {
+        KummerPoint::conditional_assign(&mut self.pt, &other.pt, choice);
+        u64::conditional_assign(&mut self.degree, &other.degree, choice);
+        Choice::conditional_assign(&mut self.degree_known, &other.degree_known, choice);
+    }
+
+    fn conditional_swap(a: &mut Self, b: &mut Self, choice: Choice) {
+        KummerPoint::conditional_swap(&mut a.pt, &mut b.pt, choice);
+        u64::conditional_swap(&mut a.degree, &mut b.degree, choice);
+        Choice::conditional_swap(&mut a.degree_known, &mut b.degree_known, choice);
+    }
+}
+
+ref_field_trait_impl! {
+    impl<F: FieldOps + Copy + ConstantTimeEq> ConstantTimeEq for PointAndDegree<F> {
+        fn ct_eq(&self, other: &Self) -> Choice {
+            self.pt.ct_eq(&other.pt)
+        }
+
+        fn ct_ne(&self, other: &Self) -> Choice {
+            !self.ct_eq(other)
+        }
+    }
+}
+
+impl<F> ConditionallySelectable for MontgomeryIsogeny<F>
+where
+    F: FieldOps + Copy,
+{
+    fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
+        Self {
+            domain: MontgomeryCurve::conditional_select(&a.domain, &b.domain, choice),
+            codomain: MontgomeryCurve::conditional_select(&a.codomain, &b.codomain, choice),
+            pt_deg: PointAndDegree::conditional_select(&a.pt_deg, &b.pt_deg, choice),
+        }
+    }
+
+    fn conditional_assign(&mut self, other: &Self, choice: Choice) {
+        MontgomeryCurve::conditional_assign(&mut self.domain, &other.domain, choice);
+        MontgomeryCurve::conditional_assign(&mut self.codomain, &other.codomain, choice);
+        PointAndDegree::conditional_assign(&mut self.pt_deg, &other.pt_deg, choice);
+    }
+
+    fn conditional_swap(a: &mut Self, b: &mut Self, choice: Choice) {
+        MontgomeryCurve::conditional_swap(&mut a.domain, &mut b.domain, choice);
+        MontgomeryCurve::conditional_swap(&mut a.codomain, &mut b.codomain, choice);
+        PointAndDegree::conditional_swap(&mut a.pt_deg, &mut b.pt_deg, choice);
+    }
+}
+
+ref_field_trait_impl! {
+    impl<F: FieldOps + Copy + ConstantTimeEq> ConstantTimeEq for MontgomeryIsogeny<F> {
+        fn ct_eq(&self, other: &Self) -> Choice {
+            self.domain.ct_eq(&other.domain)
+                & self.codomain.ct_eq(&other.codomain)
+                & self.pt_deg.ct_eq(&other.pt_deg)
+        }
+
+        fn ct_ne(&self, other: &Self) -> Choice {
+            !self.ct_eq(other)
+        }
+    }
+}
