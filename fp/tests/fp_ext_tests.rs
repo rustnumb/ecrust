@@ -91,7 +91,7 @@ fn random_elements_test() {
         }
 
         let a_inv = a.invert().unwrap();
-        let prod = a_inv * a;
+        let prod = &a_inv * &a;
 
         assert!(bool::from(prod.is_one()));
     }
@@ -141,20 +141,20 @@ fn nonzero_is_not_zero() {
 
 #[test]
 fn add_coefficient_wise() {
-    let c = FieldOps::add(&el(3, 2), &el(1, 1));
+    let c = &el(3, 2) + &el(1, 1);
     assert_eq!(c.coeffs[0].as_limbs()[0], 4);
     assert_eq!(c.coeffs[1].as_limbs()[0], 3);
 }
 
 #[test]
 fn add_wraps_mod_p() {
-    let c = FieldOps::add(&el(18, 0), &el(5, 0));
+    let c = &el(18, 0) + &el(5, 0);
     assert_eq!(c.coeffs[0].as_limbs()[0], 4);
 }
 
 #[test]
 fn sub_coefficient_wise() {
-    let c = FieldOps::sub(&el(5, 4), &el(2, 1));
+    let c = &el(5, 4) - &el(2, 1);
     assert_eq!(c.coeffs[0].as_limbs()[0], 3);
     assert_eq!(c.coeffs[1].as_limbs()[0], 3);
 }
@@ -162,19 +162,19 @@ fn sub_coefficient_wise() {
 #[test]
 fn negate_then_add_is_zero() {
     let a = el(7, 3);
-    assert!(bool::from(FieldOps::add(&a, &a.negate()).is_zero()));
+    assert!(bool::from((&a + &a.negate()).is_zero()));
 }
 
 #[test]
 fn add_zero_is_identity() {
     let a = el(5, 11);
-    assert_eq!(FieldOps::add(&a, &F19_2::zero()), a);
+    assert_eq!(&a + &F19_2::zero(), a);
 }
 
 #[test]
 fn double_equals_add_self() {
     let a = el(3, 7);
-    assert_eq!(a.double(), FieldOps::add(&a, &a));
+    assert_eq!(a.double(), &a + &a);
 }
 
 // -----------------------------------------------------------------------
@@ -184,13 +184,13 @@ fn double_equals_add_self() {
 #[test]
 fn mul_by_one_is_identity() {
     let a = el(5, 11);
-    assert_eq!(FieldOps::mul(&a, &F19_2::one()), a);
+    assert_eq!(&a * &F19_2::one(), a);
 }
 
 #[test]
 fn mul_x_squared_reduces_to_minus_one() {
     let x = el(0, 1);
-    let r = FieldOps::mul(&x, &x);
+    let r = &x * &x;
     assert_eq!(r.coeffs[0].as_limbs()[0], 18);
     assert!(bool::from(r.coeffs[1].is_zero()));
 }
@@ -198,7 +198,7 @@ fn mul_x_squared_reduces_to_minus_one() {
 #[test]
 fn mul_concrete_values() {
     // (3+2x)(1+x) = 1 + 5x
-    let r = FieldOps::mul(&el(3, 2), &el(1, 1));
+    let r = &el(3, 2) * &el(1, 1);
     assert_eq!(r.coeffs[0].as_limbs()[0], 1);
     assert_eq!(r.coeffs[1].as_limbs()[0], 5);
 }
@@ -207,7 +207,7 @@ fn mul_concrete_values() {
 fn mul_commutativity() {
     let a = el(7, 3);
     let b = el(2, 11);
-    assert_eq!(FieldOps::mul(&a, &b), FieldOps::mul(&b, &a));
+    assert_eq!(&a * &b, &b * &a);
 }
 
 #[test]
@@ -216,8 +216,8 @@ fn mul_associativity() {
     let b = el(3, 4);
     let c = el(5, 6);
     assert_eq!(
-        FieldOps::mul(&FieldOps::mul(&a, &b), &c),
-        FieldOps::mul(&a, &FieldOps::mul(&b, &c))
+        &(&a * &b) * &c,
+        &a * &(&b * &c)
     );
 }
 
@@ -227,15 +227,15 @@ fn mul_distributivity() {
     let b = el(1, 5);
     let c = el(4, 7);
     assert_eq!(
-        FieldOps::mul(&a, &FieldOps::add(&b, &c)),
-        FieldOps::add(&FieldOps::mul(&a, &b), &FieldOps::mul(&a, &c))
+        &a * &(&b + &c),
+        &(&a * &b) + &(&a * &c)
     );
 }
 
 #[test]
 fn square_equals_mul_self() {
     let a = el(4, 9);
-    assert_eq!(a.square(), FieldOps::mul(&a, &a));
+    assert_eq!(a.square(), &a * &a);
 }
 
 // -----------------------------------------------------------------------
@@ -262,7 +262,7 @@ fn invert_correctness() {
         let a = el(a0, a1);
         let inv = a.invert().unwrap();
         assert!(
-            bool::from(FieldOps::mul(&a, &inv).is_one()),
+            bool::from((&a * &inv).is_one()),
             "inv failed for ({},{})",
             a0,
             a1
@@ -407,7 +407,7 @@ fn inv_and_sqrt_test_quad() {
     let mut a = el(x, y);
     a = a.pow(&[2]);
     let (myinv, mysqrt) = a.inverse_and_sqrt();
-    let should_be_one = FieldOps::mul(&a, &myinv.unwrap());
+    let should_be_one = &a * &myinv.unwrap();
     assert_eq!(mysqrt.unwrap().pow(&[2]), a);
     assert!(bool::from(should_be_one.is_one()));
 }
@@ -444,7 +444,7 @@ fn invme_sqrtother_test_quad() {
     let mut b = el(x, y);
     b = b.pow(&[2]);
     let (myinv, mysqrt) = a.invertme_sqrtother(&b);
-    let should_be_one = FieldOps::mul(&a, &myinv.unwrap());
+    let should_be_one = &a * &myinv.unwrap();
     assert_eq!(mysqrt.unwrap().pow(&[2]), b);
     assert!(bool::from(should_be_one.is_one()));
 }
@@ -551,7 +551,7 @@ fn cubic_zero_one() {
 fn cubic_x_cubed_reduces() {
     // x³ ≡ 2 mod (x³−2)
     let x = el3(0, 1, 0);
-    let x3 = FieldOps::mul(&FieldOps::mul(&x, &x), &x);
+    let x3 = &(&x * &x) * &x;
     assert_eq!(x3.coeffs[0].as_limbs()[0], 2);
     assert!(bool::from(x3.coeffs[1].is_zero()));
     assert!(bool::from(x3.coeffs[2].is_zero()));
@@ -561,14 +561,14 @@ fn cubic_x_cubed_reduces() {
 fn cubic_mul_commutativity() {
     let a = el3(1, 2, 3);
     let b = el3(4, 5, 6);
-    assert_eq!(FieldOps::mul(&a, &b), FieldOps::mul(&b, &a));
+    assert_eq!(&a * &b, &b * &a);
 }
 
 #[test]
 fn cubic_invert_correctness() {
     let a = el3(1, 2, 3);
     assert!(bool::from(
-        FieldOps::mul(&a, &a.invert().expect("invertible")).is_one()
+        (&a * &a.invert().expect("invertible")).is_one()
     ));
 }
 
@@ -614,7 +614,7 @@ fn inv_and_sqrt_test_cubic() {
     let mut a = el3(x, y, z);
     a = a.pow(&[2]);
     let (myinv, mysqrt) = a.inverse_and_sqrt();
-    let should_be_one = FieldOps::mul(&a, &myinv.unwrap());
+    let should_be_one = &a * &myinv.unwrap();
     assert_eq!(mysqrt.unwrap().pow(&[2]), a);
     assert!(bool::from(should_be_one.is_one()));
 }
@@ -648,7 +648,7 @@ fn invme_sqrtother_test_cubic() {
     let mut b = el3(x, y, z);
     b = b.pow(&[2]);
     let (myinv, mysqrt) = a.invertme_sqrtother(&b);
-    let should_be_one = FieldOps::mul(&a, &myinv.unwrap());
+    let should_be_one = &a * &myinv.unwrap();
     assert_eq!(mysqrt.unwrap().pow(&[2]), b);
     assert!(bool::from(should_be_one.is_one()));
 }

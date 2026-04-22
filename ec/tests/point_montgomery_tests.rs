@@ -24,13 +24,15 @@ fn curve() -> MontgomeryCurve<F19> {
     MontgomeryCurve::new(fp(3), fp(5))
 }
 
+//fn curve2() -> MontgomeryCurve<F59> { MontgomeryCurve::new(fq(7), fq(1)) }
+
 fn all_x_coords_montgomery_19(a: F19, b: F19) -> Vec<F19> {
     let mut xs = Vec::new();
 
     for xint in 0..19u64 {
         let x = fp(xint);
-        let rhs_num = x * (x * x + a * x + F19::one());
-        let rhs = rhs_num * F19::invert(&b).expect("b should be invertible mod 19");
+        let rhs_num = &x * &(&(&(&x * &x) + &(&a * &x)) + &F19::one());
+        let rhs = &rhs_num * &F19::invert(&b).expect("b should be invertible mod 19");
 
         let mut has_y = false;
         for y in 0..19u64 {

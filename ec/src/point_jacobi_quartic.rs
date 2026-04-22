@@ -21,13 +21,14 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 use crate::curve_jacobi_quartic::JacobiQuarticCurve;
 use crate::point_ops::{PointAdd, PointOps};
 use fp::field_ops::FieldOps;
+use fp::{ref_field_impl, ref_field_trait_impl};
 
 /// An affine point `(x, y)` on a Jacobi quartic curve.
 #[derive(Debug, Clone, Copy)]
 pub struct JacobiQuarticPoint<F: FieldOps> {
     /// The x coordinate of a point
     pub x: F,
-    /// The y coordiante of a point
+    /// The y coordinate of a point
     pub y: F,
 }
 
@@ -58,8 +59,9 @@ impl<F: FieldOps> PartialEq for JacobiQuarticPoint<F> {
 
 impl<F: FieldOps> Eq for JacobiQuarticPoint<F> {}
 
+
 impl<F: FieldOps> JacobiQuarticPoint<F> {
-    /// Create a new point `(x,y)`
+    /// Constructs a finite affine point `(x, y)`.
     pub fn new(x: F, y: F) -> Self {
         Self { x, y }
     }
@@ -72,16 +74,18 @@ impl<F: FieldOps> JacobiQuarticPoint<F> {
         }
     }
 
-    /// Checks if the point is the identity
+    /// Returns `true` if this point is the identity.
     pub fn is_identity(&self) -> bool {
         self.x == F::zero() && self.y == F::one()
     }
 
     /// The affine order-2 point `(0, -1)`.
     pub fn order_two_point() -> Self {
+        let one = F::one();
+        let minus_one = <F as FieldOps>::negate(&one);
         Self {
             x: F::zero(),
-            y: -F::one(),
+            y: minus_one,
         }
     }
 }
@@ -121,127 +125,154 @@ where
     }
 }
 
-impl<F: FieldOps> JacobiQuarticPoint<F> {
-    /// Negation on a Jacobi quartic: `-(x, y) = (-x, y)`.
-    pub fn negate(&self, _curve: &JacobiQuarticCurve<F>) -> Self {
-        Self::new(-self.x, self.y)
-    }
-
-    /// Dedicated affine doubling from equations (9) and (10):
-    ///
-    /// ```text
-    /// μ  = 2y / (2 + 2ax² − y²)
-    /// x₃ = μx
-    /// y₃ = μ(μ − y) − 1.
-    /// ```
-    ///
-    pub fn double(&self, curve: &JacobiQuarticCurve<F>) -> Self {
-        if self.is_identity() {
-            return *self;
+ref_field_impl! {
+    impl<F> JacobiQuarticPoint<F> {
+        /// Negation on a Jacobi quartic: `-(x, y) = (-x, y)`.
+        pub fn negate(&self, _curve: &JacobiQuarticCurve<F>) -> Self {
+            Self::new(-&self.x, self.y.clone())
         }
 
-        let x2 = <F as FieldOps>::square(&self.x);
-        let y2 = <F as FieldOps>::square(&self.y);
-        let two = <F as FieldOps>::double(&F::one());
-
-        let denom = two + two * curve.a * x2 - y2;
-        let denom_inv = denom.invert().into_option()
-            .expect("Jacobi quartic doubling denominator vanished; result leaves affine chart or input is exceptional");
-
-        let mu = two * self.y * denom_inv;
-        let x3 = mu * self.x;
-        let y3 = mu * (mu - self.y) - F::one();
-
-        Self::new(x3, y3)
-    }
-
-    /// Affine addition using equations (1) and (2):
-    ///
-    /// ```text
-    /// x₃ = (x₁y₂ + y₁x₂)/(1 − d x₁²x₂²)
-    /// y₃ = ((y₁y₂ + 2ax₁x₂)(1 + d x₁²x₂²) + 2d x₁x₂(x₁² + x₂²))
-    ///      /(1 − d x₁²x₂²)².
-    /// ```
-    ///
-    pub fn add(&self, other: &Self, curve: &JacobiQuarticCurve<F>) -> Self {
-        if self.is_identity() {
-            return *other;
-        }
-        if other.is_identity() {
-            return *self;
-        }
-        if *self == *other {
-            return self.double(curve);
-        }
-        if *other == self.negate(curve) {
-            return Self::identity();
-        }
-
-        let x1 = self.x;
-        let y1 = self.y;
-        let x2 = other.x;
-        let y2 = other.y;
-
-        let x1_sq = <F as FieldOps>::square(&x1);
-        let x2_sq = <F as FieldOps>::square(&x2);
-        let x1x2 = x1 * x2;
-        let y1y2 = y1 * y2;
-        let dx4 = curve.d * x1_sq * x2_sq;
-        let two = <F as FieldOps>::double(&F::one());
-
-        let denom = F::one() - dx4;
-        let denom_inv = denom.invert().into_option()
-            .expect("Jacobi quartic addition denominator vanished; choose d nonsquare / odd-order subgroup or use a projective model");
-
-        let x3 = (x1 * y2 + y1 * x2) * denom_inv;
-
-        let numer_y = (y1y2 + two * curve.a * x1x2) * (F::one() + dx4)
-            + two * curve.d * x1x2 * (x1_sq + x2_sq);
-        let y3 = numer_y * <F as FieldOps>::square(&denom_inv);
-
-        Self::new(x3, y3)
-    }
-
-    /// Constant-time double-and-add in the same style as the Edwards code.
-    pub fn scalar_mul(&self, k: &[u64], curve: &JacobiQuarticCurve<F>) -> Self {
-        let mut result = Self::identity();
-
-        for &limb in k.iter().rev() {
-            for bit in (0..64).rev() {
-                let doubled = result.double(curve);
-                let added = doubled.add(self, curve);
-                let choice = Choice::from(((limb >> bit) & 1) as u8);
-                result = Self::conditional_select(&doubled, &added, choice);
+        /// Dedicated affine doubling from equations (9) and (10):
+        ///
+        /// ```text
+        /// μ  = 2y / (2 + 2ax² − y²)
+        /// x₃ = μx
+        /// y₃ = μ(μ − y) − 1.
+        /// ```
+        pub fn double(&self, curve: &JacobiQuarticCurve<F>) -> Self {
+            if self.is_identity() {
+                return *self;
             }
+
+            let x2 = <F as FieldOps>::square(&self.x);
+            let y2 = <F as FieldOps>::square(&self.y);
+
+            let one = F::one();
+            let two = <F as FieldOps>::double(&one);
+
+            let ax2 = &curve.a * &x2;
+            let two_ax2 = &two * &ax2;
+            let denom_tmp = &two + &two_ax2;
+            let denom = &denom_tmp - &y2;
+            let denom_inv = <F as FieldOps>::invert(&denom)
+                .into_option()
+                .expect("Jacobi quartic doubling denominator vanished; result leaves affine chart or input is exceptional");
+
+            let two_y = &two * &self.y;
+            let mu = &two_y * &denom_inv;
+            let x3 = &mu * &self.x;
+
+            let mu_minus_y = &mu - &self.y;
+            let mu_times = &mu * &mu_minus_y;
+            let y3 = &mu_times - &one;
+
+            Self::new(x3, y3)
         }
 
-        result
+        /// Affine addition using equations (1) and (2):
+        ///
+        /// ```text
+        /// x₃ = (x₁y₂ + y₁x₂)/(1 − d x₁²x₂²)
+        /// y₃ = ((y₁y₂ + 2ax₁x₂)(1 + d x₁²x₂²) + 2d x₁x₂(x₁² + x₂²))
+        ///      /(1 − d x₁²x₂²)².
+        /// ```
+        pub fn add(&self, other: &Self, curve: &JacobiQuarticCurve<F>) -> Self {
+            if self.is_identity() {
+                return *other;
+            }
+            if other.is_identity() {
+                return *self;
+            }
+            if *self == *other {
+                return self.double(curve);
+            }
+            if *other == self.negate(curve) {
+                return Self::identity();
+            }
+
+            let x1_sq = <F as FieldOps>::square(&self.x);
+            let x2_sq = <F as FieldOps>::square(&other.x);
+            let x1x2 = &self.x * &other.x;
+            let y1y2 = &self.y * &other.y;
+            let x1_sq_x2_sq = &x1_sq * &x2_sq;
+            let dx4 = &curve.d * &x1_sq_x2_sq;
+
+            let one = F::one();
+            let two = <F as FieldOps>::double(&one);
+
+            let denom = &one - &dx4;
+            let denom_inv = <F as FieldOps>::invert(&denom)
+                .into_option()
+                .expect("Jacobi quartic addition denominator vanished; choose d nonsquare / odd-order subgroup or use a projective model");
+
+            let x1y2 = &self.x * &other.y;
+            let y1x2 = &self.y * &other.x;
+            let x_num = &x1y2 + &y1x2;
+            let x3 = &x_num * &denom_inv;
+
+            let two_a = &two * &curve.a;
+            let two_a_x1x2 = &two_a * &x1x2;
+            let y_part = &y1y2 + &two_a_x1x2;
+            let one_plus_dx4 = &one + &dx4;
+            let first_term = &y_part * &one_plus_dx4;
+
+            let x_sq_sum = &x1_sq + &x2_sq;
+            let two_d = &two * &curve.d;
+            let two_d_x1x2 = &two_d * &x1x2;
+            let second_term = &two_d_x1x2 * &x_sq_sum;
+
+            let numer_y = &first_term + &second_term;
+            let denom_inv_sq = <F as FieldOps>::square(&denom_inv);
+            let y3 = &numer_y * &denom_inv_sq;
+
+            Self::new(x3, y3)
+        }
+
+        /// Constant-time double-and-add in the same style as the Edwards code.
+        pub fn scalar_mul(&self, k: &[u64], curve: &JacobiQuarticCurve<F>) -> Self {
+            let mut result = Self::identity();
+
+            for &limb in k.iter().rev() {
+                for bit in (0..64).rev() {
+                    let doubled = result.double(curve);
+                    let added = doubled.add(self, curve);
+                    let choice = Choice::from(((limb >> bit) & 1) as u8);
+                    result = Self::conditional_select(&doubled, &added, choice);
+                }
+            }
+
+            result
+        }
     }
 }
 
-impl<F: FieldOps> PointOps for JacobiQuarticPoint<F> {
-    type BaseField = F;
-    type Curve = JacobiQuarticCurve<F>;
+ref_field_trait_impl! {
+    impl<F> PointOps for JacobiQuarticPoint<F> {
+        type BaseField = F;
+        type Curve = JacobiQuarticCurve<F>;
 
-    fn identity(_curve: &Self::Curve) -> Self {
-        JacobiQuarticPoint::<F>::identity()
-    }
+        fn identity(_curve: &Self::Curve) -> Self {
+            JacobiQuarticPoint::<F>::identity()
+        }
 
-    fn is_identity(&self) -> bool {
-        JacobiQuarticPoint::<F>::is_identity(self)
-    }
+        fn is_identity(&self) -> bool {
+            JacobiQuarticPoint::<F>::is_identity(self)
+        }
 
-    fn negate(&self, curve: &Self::Curve) -> Self {
-        JacobiQuarticPoint::<F>::negate(self, curve)
-    }
+        fn negate(&self, curve: &Self::Curve) -> Self {
+            JacobiQuarticPoint::<F>::negate(self, curve)
+        }
 
-    fn scalar_mul(&self, k: &[u64], curve: &Self::Curve) -> Self {
-        JacobiQuarticPoint::<F>::scalar_mul(self, k, curve)
+        fn scalar_mul(&self, k: &[u64], curve: &Self::Curve) -> Self {
+            JacobiQuarticPoint::<F>::scalar_mul(self, k, curve)
+        }
     }
 }
 
-impl<F: FieldOps> PointAdd for JacobiQuarticPoint<F> {
-    fn add(&self, other: &Self, curve: &Self::Curve) -> Self {
-        JacobiQuarticPoint::<F>::add(self, other, curve)
+ref_field_trait_impl! {
+    impl<F> PointAdd for JacobiQuarticPoint<F> {
+        fn add(&self, other: &Self, curve: &Self::Curve) -> Self {
+            JacobiQuarticPoint::<F>::add(self, other, curve)
+        }
     }
 }

@@ -36,7 +36,7 @@ fn all_points(curve: &HessianCurve<F103>) -> Vec<HessianPoint<F103>> {
     }
 
     for omega in cube_roots_of_unity() {
-        pts.push(HessianPoint::new(F103::one(), -omega, F103::zero()));
+        pts.push(HessianPoint::new(F103::one(), -&omega, F103::zero()));
     }
 
     pts
@@ -54,7 +54,7 @@ fn hessian_identity_is_on_curve() {
 fn hessian_infinity_points_are_on_curve() {
     let curve = complete_curve();
     for omega in cube_roots_of_unity() {
-        let p = HessianPoint::new(F103::one(), -omega, F103::zero());
+        let p = HessianPoint::new(F103::one(), -&omega, F103::zero());
         assert!(curve.is_on_curve(&p));
         assert!(p.is_at_infinity());
     }
@@ -66,8 +66,8 @@ fn hessian_identity_is_neutral_for_all_points() {
     let id = HessianPoint::<F103>::identity();
 
     for p in all_points(&curve) {
-        assert_eq!(p.add(&id, &curve), p, "P + O != P for P={:#}", p);
-        assert_eq!(id.add(&p, &curve), p, "O + P != P for P={:#}", p);
+        assert_eq!(p.add(&id, &curve), p, "P + O != P for P={:?}", p);
+        assert_eq!(id.add(&p, &curve), p, "O + P != P for P={:?}", p);
     }
 }
 
@@ -78,8 +78,8 @@ fn hessian_negation_works_for_all_points() {
 
     for p in all_points(&curve) {
         let neg = p.negate(&curve);
-        assert_eq!(p.add(&neg, &curve), id, "P + (-P) != O for P={:#}", p);
-        assert_eq!(neg.add(&p, &curve), id, "(-P) + P != O for P={:#}", p);
+        assert_eq!(p.add(&neg, &curve), id, "P + (-P) != O for P={:?}", p);
+        assert_eq!(neg.add(&p, &curve), id, "(-P) + P != O for P={:?}", p);
     }
 }
 
@@ -123,6 +123,15 @@ fn hessian_addition_is_associative_on_complete_curve() {
 }
 
 #[test]
+fn hessian_double_matches_add_self() {
+    let curve = complete_curve();
+
+    for p in all_points(&curve) {
+        assert_eq!(p.double(&curve), p.add(&p, &curve), "[2]P mismatch for P={:?}", p);
+    }
+}
+
+#[test]
 fn hessian_scalar_mul_matches_repeated_addition() {
     let curve = complete_curve();
     let p = HessianPoint::from_affine(f(16), f(11));
@@ -159,11 +168,13 @@ fn hessian_efd_constructor_matches_paper_parameterization() {
 fn hessian_weierstrass_birational_roundtrip() {
     let curve = HessianCurve::new_hessian(f(15));
     let zeta = F103::one();
+    let jc = curve.j_invariant();
 
     let p = HessianPoint::from_affine(f(3), f(24));
     assert!(curve.is_on_curve(&p));
 
     let wc = curve.to_weierstrass_curve_with_zeta(zeta).unwrap();
+    let jw = wc.j_invariant();
 
     let wp = curve
         .map_point_to_weierstrass_with_zeta(&p, zeta)

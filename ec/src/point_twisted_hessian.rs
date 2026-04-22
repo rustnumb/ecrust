@@ -1,40 +1,27 @@
-//! Projective points on a generalized Hessian curve.
+//! Projective points on a twisted Hessian curve.
 //!
 //! We represent points on
 //!
-//! $$X^3 + Y^3 + cZ^3 = dXYZ$$
+//! $$aX^3 + Y^3 + Z^3 = 3dXYZ$$
 //!
 //! by projective triples `(X:Y:Z)`.
 //!
-//! This choice is important for Hessian curves because the neutral element is a
-//! point at infinity:
-//!
-//! $$O = (1 : -1 : 0).$$
-//!
-//! The formulas implemented here follow:
-//!
-//! - Farashahi--Joye, §2--§4 for the generalized Hessian model,
-//! - the EFD projective Hessian formulas for the ordinary Hessian case.
-//!
-//! In particular:
-//!
-//! - negation is `-(X:Y:Z) = (Y:X:Z)`,
-//! - doubling uses the projective formulas from equation (6) in the paper,
-//! - addition uses the unified formulas (9), with formulas (10) as a fallback
-//!   for the exceptional cases described in §4.
+//! The formulas implemented here follow the twisted Hessian group law from
+//! Decru--Kunzweiler (2026), §2.2 / Remark 2.11.
 
 use core::fmt;
 
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
-use crate::curve_hessian::HessianCurve;
+use crate::curve_ops::Curve;
+use crate::curve_twisted_hessian::TwistedHessianCurve;
 use crate::point_ops::{PointAdd, PointOps};
-use fp::field_ops::FieldOps;
+use fp::field_ops::{FieldOps, FieldRandom};
 use fp::{ref_field_impl, ref_field_trait_impl};
 
-/// A projective point `(X:Y:Z)` on a generalized Hessian curve.
+/// A projective point `(X:Y:Z)` on a twisted Hessian curve.
 #[derive(Debug, Clone, Copy)]
-pub struct HessianPoint<F: FieldOps> {
+pub struct TwistedHessianPoint<F: FieldOps> {
     /// Projective `X` coordinate.
     pub x: F,
     /// Projective `Y` coordinate.
@@ -43,20 +30,20 @@ pub struct HessianPoint<F: FieldOps> {
     pub z: F,
 }
 
-impl<F> fmt::Display for HessianPoint<F>
+impl<F> fmt::Display for TwistedHessianPoint<F>
 where
     F: FieldOps + fmt::Display,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_identity() {
             if f.alternate() {
-                write!(f, "HessianPoint {{ O = (1:-1:0) }}")
+                write!(f, "TwistedHessianPoint {{ O = (0:-1:1) }}")
             } else {
                 write!(f, "O")
             }
         } else if self.is_zero_projective() {
             if f.alternate() {
-                write!(f, "HessianPoint {{ invalid = (0:0:0) }}")
+                write!(f, "TwistedHessianPoint {{ invalid = (0:0:0) }}")
             } else {
                 write!(f, "(0:0:0)")
             }
@@ -64,23 +51,26 @@ where
             if f.alternate() {
                 write!(
                     f,
-                    "HessianPoint {{ X:Y:Z = ({}:{}:{}), x = {}, y = {} }}",
+                    "TwistedHessianPoint {{ X:Y:Z = ({}:{}:{}), x = {}, y = {} }}",
                     self.x, self.y, self.z, x_aff, y_aff
                 )
             } else {
                 write!(f, "({}, {})", x_aff, y_aff)
             }
         } else if f.alternate() {
-            write!(f, "HessianPoint {{ X:Y:Z = ({}:{}:{}) }}", self.x, self.y, self.z)
+            write!(
+                f,
+                "TwistedHessianPoint {{ X:Y:Z = ({}:{}:{}) }}",
+                self.x, self.y, self.z
+            )
         } else {
             write!(f, "({}:{}:{})", self.x, self.y, self.z)
         }
     }
 }
 
-ref_field_trait_impl!{
-    impl<F: FieldOps> PartialEq for HessianPoint<F> {
-        /// Equality of projective points.
+ref_field_trait_impl! {
+    impl<F: FieldOps> PartialEq for TwistedHessianPoint<F> {
         fn eq(&self, other: &Self) -> bool {
             let self_zero = self.is_zero_projective();
             let other_zero = other.is_zero_projective();
@@ -95,48 +85,39 @@ ref_field_trait_impl!{
     }
 }
 
-ref_field_trait_impl!{
-    impl<F: FieldOps> Eq for HessianPoint<F> {}
+ref_field_trait_impl! {
+    impl<F: FieldOps> Eq for TwistedHessianPoint<F> {}
 }
 
-impl<F: FieldOps> HessianPoint<F> {
-    /// Construct a projective Hessian point without validation.
+impl<F: FieldOps> TwistedHessianPoint<F> {
+    /// Construct a projective twisted Hessian point without validation.
     pub fn new(x: F, y: F, z: F) -> Self {
         Self { x, y, z }
     }
 
-    /// Construct the finite affine point `(x, y)`, represented as `(x:y:1)`.
+    /// Construct the affine point `(x, y)` as `(x:y:1)`.
     pub fn from_affine(x: F, y: F) -> Self {
         Self { x, y, z: F::one() }
     }
 
-    /// Return the neutral element `(1:-1:0)`.
+    /// Return the neutral element `(0:-1:1)`.
     pub fn identity() -> Self {
         let one = F::one();
         let minus_one = <F as FieldOps>::negate(&one);
         Self {
-            x: one,
+            x: F::zero(),
             y: minus_one,
-            z: F::zero(),
+            z: F::one(),
         }
     }
 
     /// Return `true` when the point is the neutral element.
     pub fn is_identity(&self) -> bool {
-        if !bool::from(self.z.is_zero()) {
+        if self.is_zero_projective() {
             return false;
         }
 
-        if bool::from(self.x.is_zero()) && bool::from(self.y.is_zero()) {
-            return false;
-        }
-
-        <F as FieldOps>::add(&self.x, &self.y) == F::zero()
-    }
-
-    /// Return `true` if the point lies on the line at infinity.
-    pub fn is_at_infinity(&self) -> bool {
-        bool::from(self.z.is_zero()) && !self.is_zero_projective()
+        bool::from(self.x.is_zero()) && F::add(&self.y, &self.z) == F::zero()
     }
 
     /// Return `true` if this is the invalid projective triple `(0:0:0)`.
@@ -146,23 +127,23 @@ impl<F: FieldOps> HessianPoint<F> {
             && bool::from(self.z.is_zero())
     }
 
+    /// Return `true` if the point lies on the line at infinity.
+    pub fn is_at_infinity(&self) -> bool {
+        bool::from(self.z.is_zero()) && !self.is_zero_projective()
+    }
+
     /// Convert a finite projective point to affine coordinates.
     pub fn to_affine(&self) -> Option<(F, F)> {
-        self.z
-            .invert()
-            .into_option()
-            .map(|zinv| {
-                (
-                    <F as FieldOps>::mul(&self.x, &zinv),
-                    <F as FieldOps>::mul(&self.y, &zinv),
-                    )
-            })
+        self.z.invert().into_option().map(|zinv| {
+            (
+                <F as FieldOps>::mul(&self.x, &zinv),
+                <F as FieldOps>::mul(&self.y, &zinv),
+            )
+        })
     }
 }
 
-
-
-impl<F> ConditionallySelectable for HessianPoint<F>
+impl<F> ConditionallySelectable for TwistedHessianPoint<F>
 where
     F: FieldOps + Copy,
 {
@@ -187,8 +168,8 @@ where
     }
 }
 
-ref_field_trait_impl!{
-    impl<F: FieldOps + Copy + ConstantTimeEq> ConstantTimeEq for HessianPoint<F> {
+ref_field_trait_impl! {
+    impl<F: FieldOps + Copy + ConstantTimeEq> ConstantTimeEq for TwistedHessianPoint<F> {
         fn ct_eq(&self, other: &Self) -> Choice {
             let self_zero = self.is_zero_projective();
             let other_zero = other.is_zero_projective();
@@ -207,47 +188,17 @@ ref_field_trait_impl!{
     }
 }
 
-ref_field_impl!{
-    impl<F: FieldOps> HessianPoint<F> {
-        /// Negation on a Hessian curve:
+ref_field_impl! {
+    impl<F: FieldOps + FieldRandom> TwistedHessianPoint<F> {
+        /// Negation on a twisted Hessian curve:
         ///
-        /// $$-(X:Y:Z) = (Y:X:Z).$$
-        pub fn negate(&self, _curve: &HessianCurve<F>) -> Self {
-            Self::new(self.y, self.x, self.z)
+        /// $$-(X:Y:Z) = (X:Z:Y).$$
+        pub fn negate(&self, _curve: &TwistedHessianCurve<F>) -> Self {
+            Self::new(self.x.clone(), self.z.clone(), self.y.clone())
         }
 
-        /// Projective point doubling.
-        ///
-        /// This implements Farashahi--Joye equation (6):
-        ///
-        /// ```text
-        /// X3 = Y1 (c Z1^3 - X1^3)
-        /// Y3 = X1 (Y1^3 - c Z1^3)
-        /// Z3 = Z1 (X1^3 - Y1^3)
-        /// ```
-        pub fn double(&self, curve: &HessianCurve<F>) -> Self {
-            if self.is_identity() {
-                return *self;
-            }
-
-            let x2 = <F as FieldOps>::square(&self.x);
-            let y2 = <F as FieldOps>::square(&self.y);
-            let z2 = <F as FieldOps>::square(&self.z);
-
-            let x3 = &self.x * &x2;
-            let y3 = &self.y * &y2;
-            let z3 = &self.z * &z2;
-            let cz3 = &curve.c * &z3;
-
-            Self::new(
-                &self.y * &(&cz3 - &x3),
-                &self.x * &(&y3 - &cz3),
-                &self.z * &(&x3 - &y3),
-            )
-        }
-
-        /// Unified projective addition formula (9) from Farashahi--Joye §3.
-        fn add_formula_9(&self, other: &Self, curve: &HessianCurve<F>) -> Self {
+        /// First addition formula from Remark 2.11.
+        fn add_formula_1(&self, other: &Self) -> Self {
             let x1_sq = <F as FieldOps>::square(&self.x);
             let y1_sq = <F as FieldOps>::square(&self.y);
             let z1_sq = <F as FieldOps>::square(&self.z);
@@ -255,15 +206,15 @@ ref_field_impl!{
             let y2_sq = <F as FieldOps>::square(&other.y);
             let z2_sq = <F as FieldOps>::square(&other.z);
 
-            let x3 = &(&(&curve.c * &other.y) * &(&other.z * &z1_sq)) - &(&self.x * &(&self.y * &x2_sq));
-            let y3 = &(&other.x * &(&other.y * &y1_sq)) - &(&(&curve.c * &self.x) * &(&self.z * &z2_sq));
-            let z3 = &(&other.x * &(&other.z * &x1_sq)) - &(&self.y * &(&self.z * &y2_sq));
+            let x3 = &(&x1_sq * &(&other.y * &other.z)) - &(&x2_sq * &(&self.y * &self.z));
+            let y3 = &(&z1_sq * &(&other.x * &other.y)) - &(&z2_sq * &(&self.x * &self.y));
+            let z3 = &(&y1_sq * &(&other.x * &other.z)) - &(&y2_sq * &(&self.x * &self.z));
 
             Self::new(x3, y3, z3)
         }
 
-        /// Unified projective addition formula (10) from Farashahi--Joye §3.
-        fn add_formula_10(&self, other: &Self, curve: &HessianCurve<F>) -> Self {
+        /// Second addition formula from Remark 2.11.
+        fn add_formula_2(&self, other: &Self, curve: &TwistedHessianCurve<F>) -> Self {
             let x1_sq = <F as FieldOps>::square(&self.x);
             let y1_sq = <F as FieldOps>::square(&self.y);
             let z1_sq = <F as FieldOps>::square(&self.z);
@@ -271,45 +222,52 @@ ref_field_impl!{
             let y2_sq = <F as FieldOps>::square(&other.y);
             let z2_sq = <F as FieldOps>::square(&other.z);
 
-            let x3 = &(&(&curve.c * &self.y) * &(&self.z * &z2_sq)) - &(&other.x * &(&other.y * &x1_sq));
-            let y3 = &(&self.x * &(&self.y * &y2_sq)) - &(&(&curve.c * &other.x) * &(&other.z * &z1_sq));
-            let z3 = &(&self.x * &(&self.z * &x2_sq)) - &(&other.y * &(&other.z * &y1_sq));
+            let x3 = &(&z2_sq * &(&self.x * &self.z)) - &(&y1_sq * &(&other.x * &other.y));
+            let y3 = &(&y2_sq * &(&self.y * &self.z)) - &(&curve.a * &(&x1_sq * &(&other.x * &other.z)));
+            let z3 = &(&curve.a * &(&x2_sq * &(&self.x * &self.y))) - &(&z1_sq * &(&other.y * &other.z));
 
             Self::new(x3, y3, z3)
         }
 
-        /// Add two projective Hessian points.
+        /// Add two projective twisted Hessian points.
         ///
-        /// We first evaluate the unified formulas (9). If they produce the invalid
-        /// triple `(0:0:0)`, we fall back to formulas (10), which cover the
-        /// complementary exceptional set described in Farashahi--Joye §4.
-        pub fn add(&self, other: &Self, curve: &HessianCurve<F>) -> Self {
+        /// The first branch is used generically; the second branch covers the
+        /// complementary exceptional set.
+        pub fn add(&self, other: &Self, curve: &TwistedHessianCurve<F>) -> Self {
             if self.is_identity() {
-                return *other;
+                return other.clone();
             }
             if other.is_identity() {
-                return *self;
+                return self.clone();
             }
 
-            let r = self.add_formula_9(other, curve);
+            debug_assert!(curve.is_on_curve(self));
+            debug_assert!(curve.is_on_curve(other));
+
+            let r = self.add_formula_1(other);
             if !r.is_zero_projective() {
                 return r;
             }
 
-            let s = self.add_formula_10(other, curve);
+            let s = self.add_formula_2(other, curve);
             if !s.is_zero_projective() {
                 return s;
             }
 
-            if *other == self.negate(curve) {
+            if other == &self.negate(curve) {
                 return Self::identity();
             }
 
-            panic!("Hessian addition failed for valid-looking inputs; both unified formula branches vanished");
+            panic!("twisted Hessian addition failed for valid-looking inputs; both unified formula branches vanished");
+        }
+
+        /// Doubling via the unified addition formulas.
+        pub fn double(&self, curve: &TwistedHessianCurve<F>) -> Self {
+            self.add(self, curve)
         }
 
         /// Variable-time double-and-add scalar multiplication.
-        pub fn scalar_mul(&self, k: &[u64], curve: &HessianCurve<F>) -> Self {
+        pub fn scalar_mul(&self, k: &[u64], curve: &TwistedHessianCurve<F>) -> Self {
             let mut result = Self::identity();
 
             for &limb in k.iter().rev() {
@@ -326,34 +284,33 @@ ref_field_impl!{
     }
 }
 
-ref_field_trait_impl!{
-    impl<F: FieldOps> PointOps for HessianPoint<F> {
+ref_field_trait_impl! {
+    impl<F: FieldOps> PointOps for TwistedHessianPoint<F> {
         type BaseField = F;
-        type Curve = HessianCurve<F>;
+        type Curve = TwistedHessianCurve<F>;
 
         fn identity(_curve: &Self::Curve) -> Self {
-            HessianPoint::<F>::identity()
+            TwistedHessianPoint::<F>::identity()
         }
 
         fn is_identity(&self) -> bool {
-            HessianPoint::<F>::is_identity(self)
+            TwistedHessianPoint::<F>::is_identity(self)
         }
 
         fn negate(&self, curve: &Self::Curve) -> Self {
-            HessianPoint::<F>::negate(self, curve)
+            TwistedHessianPoint::<F>::negate(self, curve)
         }
 
         fn scalar_mul(&self, k: &[u64], curve: &Self::Curve) -> Self {
-            HessianPoint::<F>::scalar_mul(self, k, curve)
+            TwistedHessianPoint::<F>::scalar_mul(self, k, curve)
         }
     }
 }
 
-
-ref_field_trait_impl!{
-    impl<F: FieldOps> PointAdd for HessianPoint<F> {
+ref_field_trait_impl! {
+    impl<F: FieldOps> PointAdd for TwistedHessianPoint<F> {
         fn add(&self, other: &Self, curve: &Self::Curve) -> Self {
-            HessianPoint::<F>::add(self, other, curve)
+            TwistedHessianPoint::<F>::add(self, other, curve)
         }
     }
 }

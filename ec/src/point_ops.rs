@@ -13,7 +13,8 @@ use subtle::ConditionallySelectable;
 /// (`Add`, `Sub`, `Mul`, `Neg`) because point addition and negation usually
 /// need access to the curve parameters. The clean abstraction boundary is a
 /// method-based API taking `&Self::Curve` explicitly.
-pub trait PointOps: Clone + ConditionallySelectable {
+///
+pub trait PointOps: Clone  + ConditionallySelectable {
     /// The base field $\mathbb{F}_{p^M}$
     type BaseField: FieldOps;
 

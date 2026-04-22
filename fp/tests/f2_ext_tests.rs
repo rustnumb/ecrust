@@ -42,7 +42,7 @@ fn random_elements_test() {
         }
 
         let a_inv = a.invert().unwrap();
-        let prod = a_inv * a;
+        let prod = &a_inv * &a;
 
         assert!(bool::from(prod.is_one()));
     }
@@ -103,25 +103,25 @@ fn inv_zero_is_none() {
 fn add_coefficient_wise() {
     let a = elt(0b1_1111); // x^4 + x^3 + x^2 + x + 1
     let b = elt(0b101_0111); // x^6 + x^4 + x^2 + x + 1
-    let c = FieldOps::add(&a, &b); // x^6 + x^3 = 0b100_1000
+    let c =  &a + &b; // x^6 + x^3 = 0b100_1000
     assert_eq!(c, elt(0b100_1000));
 
     let d = elt(0b10_1010); // x^5 + x^3 + x
     let e = elt(0b1101_0100); // x^7 + x^6 + x^4 + x^2
-    let f = FieldOps::add(&d, &e); // x^7 + x^6 + x^5 + x^4 + x^3 + x^2 + x = 0b1111_1110
+    let f = &d + &e; // x^7 + x^6 + x^5 + x^4 + x^3 + x^2 + x = 0b1111_1110
     assert_eq!(f, elt(0b1111_1110));
 }
 
 #[test]
 fn negate_then_add_is_zero() {
     let a = elt(0b1_1111); // 1 + x + x^2 + x^3 + x^4
-    assert!(bool::from(FieldOps::add(&a, &a.negate()).is_zero()));
+    assert!(bool::from((&a + &a.negate()).is_zero()));
 }
 
 #[test]
 fn add_zero_is_identity() {
     let a = elt(0b1_1111); // x^4 + x^3 + x^2 + x + 1
-    assert_eq!(FieldOps::add(&a, &F256::zero()), a);
+    assert_eq!(&a + &F256::zero(), a);
 }
 
 #[test]
@@ -137,7 +137,7 @@ fn double_equals_zero() {
 #[test]
 fn mul_by_one_is_identity() {
     let a = elt(0b1_1111); // x^4 + x^3 + x^2 + x + 1
-    assert_eq!(FieldOps::mul(&a, &F256::one()), a);
+    assert_eq!(&a * &F256::one(), a);
 }
 
 #[test]
@@ -154,15 +154,15 @@ fn reduce_concrete_values() {
 fn mul_concrete_values() {
     let a = elt(0b1_1001); // x^4 + x^3 + 1
     let b = elt(0b101_0011); // x^6 + x^4 + x + 1
-    let c = FieldOps::mul(&a, &b); // x^7 + x^5 + x^4 + x^3 + x = 0b1011_1010
+    let c = &a * &b; // x^7 + x^5 + x^4 + x^3 + x = 0b1011_1010
     assert_eq!(c, elt(0b1011_1010));
 
     let d = elt(0b10_1010); // x^5 + x^3 + x
     let e = elt(0b1101_0100); // x^7 + x^6 + x^4 + x^2
-    let f = FieldOps::mul(&d, &e); // x^7 + x^3 + x^2 = 0b1000_1100
+    let f = &d * &e; // x^7 + x^3 + x^2 = 0b1000_1100
     assert_eq!(f, elt(0b1000_1100));
 
-    let g = FieldOps::mul(&b, &d); // x^7 + x^2 + x = 0b1000_0110
+    let g = &b * &d; // x^7 + x^2 + x = 0b1000_0110
     assert_eq!(g, elt(0b1000_0110));
 }
 
@@ -170,8 +170,7 @@ fn mul_concrete_values() {
 fn mul_commutativity() {
     let a = elt(0b1_1001); // x^4 + x^3 + 1
     let b = elt(0b101_0011); // x^6 + x^4 + x + 1
-    assert_eq!(FieldOps::mul(&a, &b), FieldOps::mul(&b, &a));
-}
+    assert_eq!(&a * &b, &b * &a);}
 
 #[test]
 fn mul_associativity() {
@@ -179,8 +178,8 @@ fn mul_associativity() {
     let b = elt(0b101_0011); // x^6 + x^4 + x + 1
     let c = FieldOps::mul(&a, &b); // x^7 + x^5 + x^4 + x^3 + x = 0b1011_1010
     assert_eq!(
-        FieldOps::mul(&FieldOps::mul(&a, &b), &c),
-        FieldOps::mul(&a, &FieldOps::mul(&b, &c))
+        &(&a * &b) * &c,
+        &a * &(&b * &c)
     );
 }
 
@@ -188,18 +187,17 @@ fn mul_associativity() {
 fn mul_distributivity() {
     let a = elt(0b1_1001); // x^4 + x^3 + 1
     let b = elt(0b101_0011); // x^6 + x^4 + x + 1
-    let c = FieldOps::mul(&a, &b); // x^7 + x^5 + x^4 + x^3 + x = 0b1011_1010
+    let c = &a * &b; // x^7 + x^5 + x^4 + x^3 + x = 0b1011_1010
     assert_eq!(
-        FieldOps::mul(&a, &FieldOps::add(&b, &c)),
-        FieldOps::add(&FieldOps::mul(&a, &b), &FieldOps::mul(&a, &c))
+        &a * &(&b + &c),
+        &(&a * &b) + &(&a * &c)
     );
 }
 
 #[test]
 fn square_equals_mul_self() {
     let a = elt(0b1_1001); // x^4 + x^3 + 1
-    assert_eq!(a.square(), FieldOps::mul(&a, &a));
-}
+    assert_eq!(a.square(), &a * &a);}
 
 // -----------------------------------------------------------------------
 // Inversion
@@ -364,9 +362,9 @@ fn sqrt_of_product() {
         .expect("(x^6 + x^4 + x + 1) is a square in F_{256}");
 
     // c = x^7 + x^5 + x^4 + x^3 + x,  sqrt_c = x^6 + x^5 + x^4 + x^2 + x = 0b111_0110
-    let c = FieldOps::mul(&a, &b);
+    let c = &a * &b;
     let sqrt_c = c
         .sqrt()
         .expect("(x^7 + x^5 + x^4 + x^3 + x) is a square in F_{256}");
-    assert_eq!(sqrt_c, FieldOps::mul(&sqrt_a, &sqrt_b));
+    assert_eq!(sqrt_c, &sqrt_a * &sqrt_b);
 }

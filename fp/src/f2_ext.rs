@@ -6,6 +6,7 @@ use crypto_bigint::Uint;
 use std::marker::PhantomData;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
+
 // ---------------------------------------------------------------------------
 // IrreduciblePoly — the only thing callers need to implement for a new field
 // ---------------------------------------------------------------------------
@@ -347,45 +348,54 @@ where
 // Operator overloads (delegate to the FieldOps methods below)
 // ===========================================================================
 
-impl<const LIMBS: usize, P> Add for F2Ext<LIMBS, P>
+impl<'a, 'b, const LIMBS: usize, P> Add<&'b F2Ext<LIMBS, P>>
+for &'a F2Ext<LIMBS, P>
 where
     P: BinaryIrreducible<LIMBS>,
 {
-    type Output = Self;
-    fn add(self, rhs: Self) -> Self {
-        FieldOps::add(&self, &rhs)
+    type Output = F2Ext<LIMBS, P>;
+
+    fn add(self, rhs: &'b F2Ext<LIMBS, P>) -> Self::Output {
+        <F2Ext<LIMBS, P> as FieldOps>::add(self, rhs)
     }
 }
 
-impl<const LIMBS: usize, P> Sub for F2Ext<LIMBS, P>
+impl<'a, 'b, const LIMBS: usize, P> Sub<&'b F2Ext<LIMBS, P>>
+for &'a F2Ext<LIMBS, P>
 where
     P: BinaryIrreducible<LIMBS>,
 {
-    type Output = Self;
-    fn sub(self, rhs: Self) -> Self {
-        FieldOps::sub(&self, &rhs)
+    type Output = F2Ext<LIMBS, P>;
+
+    fn sub(self, rhs: &'b F2Ext<LIMBS, P>) -> Self::Output {
+        <F2Ext<LIMBS, P> as FieldOps>::sub(self, rhs)
     }
 }
 
-impl<const LIMBS: usize, P> Mul for F2Ext<LIMBS, P>
+
+impl<'a, 'b, const LIMBS: usize, P> Mul<&'b F2Ext<LIMBS, P>>
+for &'a F2Ext<LIMBS, P>
 where
     P: BinaryIrreducible<LIMBS>,
 {
-    type Output = Self;
-    fn mul(self, rhs: Self) -> Self {
-        FieldOps::mul(&self, &rhs)
+    type Output = F2Ext<LIMBS, P>;
+
+    fn mul(self, rhs: &'b F2Ext<LIMBS, P>) -> Self::Output {
+        <F2Ext<LIMBS, P> as FieldOps>::mul(self, rhs)
     }
 }
 
-impl<const LIMBS: usize, P> Neg for F2Ext<LIMBS, P>
+impl<'a, const LIMBS: usize, P> Neg for &'a F2Ext<LIMBS, P>
 where
     P: BinaryIrreducible<LIMBS>,
 {
-    type Output = Self;
-    fn neg(self) -> Self {
-        FieldOps::negate(&self)
+    type Output = F2Ext<LIMBS, P>;
+
+    fn neg(self) -> Self::Output {
+        <F2Ext<LIMBS, P> as FieldOps>::negate(self)
     }
 }
+
 
 // ===========================================================================
 // FieldOps implementation
@@ -395,7 +405,6 @@ impl<const LIMBS: usize, P> FieldOps for F2Ext<LIMBS, P>
 where
     P: BinaryIrreducible<LIMBS>,
 {
-    // to be done: legendre, sqrt
     fn zero() -> Self {
         Self::from_uint(Uint::<LIMBS>::ZERO)
     }
