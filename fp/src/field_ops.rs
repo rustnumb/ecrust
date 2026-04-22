@@ -335,8 +335,8 @@ macro_rules! ref_field_impl {
 /// For inherent impls like:
 ///
 /// ```ignore
-/// ref_field_impl! {
-///     impl<F> WeierstrassCurve<F> {
+/// ref_field_trait_impl! {
+///     impl<F> Curve for WeierstrassCurve<F> {
 ///         ...
 ///     }
 /// }

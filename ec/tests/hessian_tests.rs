@@ -159,13 +159,11 @@ fn hessian_efd_constructor_matches_paper_parameterization() {
 fn hessian_weierstrass_birational_roundtrip() {
     let curve = HessianCurve::new_hessian(f(15));
     let zeta = F103::one();
-    let jc = curve.j_invariant();
 
     let p = HessianPoint::from_affine(f(3), f(24));
     assert!(curve.is_on_curve(&p));
 
     let wc = curve.to_weierstrass_curve_with_zeta(zeta).unwrap();
-    let jw = wc.j_invariant();
 
     let wp = curve
         .map_point_to_weierstrass_with_zeta(&p, zeta)

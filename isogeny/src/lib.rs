@@ -5,7 +5,5 @@
 //!   * `fp`  – finite field arithmetic
 //!   * `ec`  – elliptic curve group law
 
-pub mod isogeny;
-pub mod kernel;
-mod isogeny_ops;
-mod montgomery;
+pub mod isogeny_ops;
+pub mod montgomery;

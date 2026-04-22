@@ -21,6 +21,7 @@ fp = { workspace = true }
 ec = { workspace = true }
 crypto-bigint = { workspace = true }
 subtle = "2.6"
+primal = "0.3"
 
 [package.metadata.docs.rs]
 rustdoc-args = ["--html-in-header", "katex-header.html"]
