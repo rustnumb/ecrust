@@ -29,14 +29,7 @@ pub trait FieldRandom: Sized {
 ///
 /// Scalars used by exponentiation methods are encoded as little-endian `u64`
 /// limbs, matching the convention used elsewhere in the library.
-pub trait FieldOps:
-    Sized
-    + Clone
-    + PartialEq
-    + Eq
-    + Default
-    + ConditionallySelectable
-{
+pub trait FieldOps: Sized + Clone + PartialEq + Eq + Default + ConditionallySelectable {
     /// Create the constant zero
     fn zero() -> Self;
 
@@ -284,22 +277,33 @@ pub trait FieldFromRepr: FieldOps {
     fn from_repr(x: Self::Repr) -> Self;
 }
 
-
 // -------------------------------------------------------------------
 // Macros for using operator overloads on referenced values
 // -------------------------------------------------------------------
 
-
 /// Helper macro for generic code that wants to use borrowed operators
 /// like `&a + &b`, `&a - &b`, `&a * &b`, and `-&a`.
-
-
-/// For inherent impls like:
 ///
-/// ```ignore
+/// # Example
+///
+/// ```rust
+/// use fp::field_ops::FieldOps;
+/// use fp::ref_field_impl;
+///
+/// pub struct PairOfFieldElts<F: FieldOps> {
+///     a: F,
+///     b: F,
+/// }
+///
 /// ref_field_impl! {
-///     impl<F> WeierstrassCurve<F> {
-///         ...
+///     impl<F> PairOfFieldElts<F> {
+///         pub fn new(a: F, b: F) -> Self {
+///             Self { a, b }
+///         }
+///
+///         pub fn add(&self) -> F {
+///             &self.a + &self.b
+///         }
 ///     }
 /// }
 /// ```
@@ -332,12 +336,31 @@ macro_rules! ref_field_impl {
     };
 }
 
-/// For inherent impls like:
+/// Helper macro for trait implementations that wants to use borrowed
+/// operators like `&a + &b`, `&a - &b`, `&a * &b`, and `-&a`.
 ///
-/// ```ignore
-/// ref_field_impl! {
-///     impl<F> WeierstrassCurve<F> {
-///         ...
+/// # Example
+///
+/// ```
+/// use fp::field_ops::FieldOps;
+/// use fp::ref_field_trait_impl;
+///
+/// pub struct PairOfFieldElts<F: FieldOps> {
+///     a: F,
+///     b: F,
+/// }
+///
+/// pub trait Data {
+///     type BaseField;
+///     fn are_equal(&self) -> bool;
+/// }
+///
+/// ref_field_trait_impl! {
+///     impl<F: FieldOps> Data for PairOfFieldElts<F> {
+///         type BaseField = F;
+///         fn are_equal(&self) -> bool {
+///             self.a == self.b
+///         }
 ///     }
 /// }
 /// ```
@@ -370,13 +393,38 @@ macro_rules! ref_field_trait_impl {
     };
 }
 
-
-/// For trait impls when one wants to specify the path like:
+/// For trait impls when one wants to specify the path and also use
+/// borrowed operators like `&a + &b`, `&a - &b`, `&a * &b`, and
+/// `-&a`.
 ///
-/// ```ignore
+/// # Example
+///
+/// ```
+/// use fp::field_ops::FieldOps;
+/// use fp::ref_field_trait_impl_path;
+///
+/// pub struct PairOfFieldElts<F: FieldOps> {
+///     a: F,
+///     b: F,
+/// }
+///
+/// # mod path {
+/// #     pub mod to {
+/// #         pub mod dependency {
+/// #             pub trait Data {
+/// #                 type BaseField;
+/// #                 fn are_equal(&self) -> bool;
+/// #             }
+/// #         }
+/// #     }
+/// # }
+/// #
 /// ref_field_trait_impl_path! {
-///     impl<F> (crate::point_ops::PointAdd) for AffinePoint<F> {
-///         ...
+///     impl<F> (path::to::dependency::Data) for PairOfFieldElts<F> {
+///         type BaseField = F;
+///         fn are_equal(&self) -> bool {
+///             self.a == self.b
+///         }
 ///     }
 /// }
 /// ```
@@ -409,12 +457,17 @@ macro_rules! ref_field_trait_impl_path {
     };
 }
 
-/// For single free functions like:
+/// Helper macro for functions which wish to use operator overloads
 ///
-/// ```ignore
+/// # Example
+///
+/// ```
+/// use fp::field_ops::FieldOps;
+/// use fp::ref_field_fn;
+///
 /// ref_field_fn! {
-///     fn b2_from_coeffs<F>(a1: &F, a2: &F) -> F {
-///         ...
+///     fn add_elts<F>(a1: &F, a2: &F) -> F {
+///         a1 + a2
 ///     }
 /// }
 /// ```
@@ -443,13 +496,22 @@ macro_rules! ref_field_fn {
     };
 }
 
-/// For batches of free functions like:
+/// For batches of functions which wish to use operator overloads
 ///
-/// ```ignore
+/// # Example
+///
+/// ```
+/// use fp::field_ops::FieldOps;
+/// use fp::ref_field_fns;
+///
 /// ref_field_fns! {
-///     fn b2_from_coeffs<F>(a1: &F, a2: &F) -> F { ... }
-///     ...
-///     fn b4_from_coeffs<F>(a1: &F, a3: &F, a4: &F) -> F { ... }
+///     fn add_elts<F>(a1: &F, a2: &F) -> F {
+///         a1 + a2
+///     }
+///
+///     fn mul_elts<F>(a1: &F, a2: &F) -> F {
+///         a1 * a2
+///     }
 /// }
 /// ```
 #[macro_export]
