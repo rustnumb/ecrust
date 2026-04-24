@@ -20,15 +20,9 @@ pub mod curve_jacobi_intersection;
 pub mod point_jacobi_intersection;
 pub mod curve_hessian;
 pub mod point_hessian;
-/// Point used in the Legendre form.
 pub mod point_legendre;
-///! Elliptic curve definition in Legendre form.
 pub mod curve_legendre;
-/// Twisted Hessian curves.
 pub mod curve_twisted_hessian;
-/// Projective points on twisted Hessian curves.
 pub mod point_twisted_hessian;
-/// Shared small-integer utilities (sieve, trial factorization).
 pub mod num_utils;
-/// Order computations for points (Sutherland 2007).
 pub mod point_order_ops;
