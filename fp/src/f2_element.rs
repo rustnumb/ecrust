@@ -8,7 +8,7 @@ use crypto_bigint::Uint;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 /// Element of the finite field $\mathbb{F}_2$
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone, Hash)]
 pub struct F2Element {
     pub(crate) value: Uint<1>,
 }

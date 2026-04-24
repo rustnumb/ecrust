@@ -87,6 +87,23 @@ where
 
 impl<F: FieldOps> Eq for AffinePoint<F> where F: FieldOps + ConstantTimeEq {}
 
+impl<F> core::hash::Hash for AffinePoint<F>
+where
+    F: FieldOps + ConstantTimeEq + core::hash::Hash,
+{
+    //  Must agree with `PartialEq`: two identities compare equal regardless
+    //  of their (unused) `x`, `y` fields, so they must hash the same.
+    //  We fold `infinity` in first and only hash coordinates for finite
+    //  points.
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        self.infinity.hash(state);
+        if !self.infinity {
+            self.x.hash(state);
+            self.y.hash(state);
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Constructors
 // ---------------------------------------------------------------------------

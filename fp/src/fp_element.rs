@@ -192,6 +192,20 @@ where
     }
 }
 
+// Manual `Hash` via the canonical (non-Montgomery) representative, so that
+// `a == b` ⇒ `hash(a) == hash(b)` independently of any internal Montgomery
+// encoding.  Matches the semantics of the derived `PartialEq` above, which
+// ultimately compares `ConstMontyForm` values (themselves bijective with
+// their canonical form).
+impl<MOD, const LIMBS: usize> core::hash::Hash for FpElement<MOD, LIMBS>
+where
+    MOD: ConstPrimeMontyParams<LIMBS>,
+{
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        self.as_uint().hash(state);
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Operator overloads
 // ---------------------------------------------------------------------------

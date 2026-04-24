@@ -15,7 +15,7 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
 use crate::curve_twisted_hessian::TwistedHessianCurve;
 use crate::point_ops::{PointAdd, PointOps};
-use fp::field_ops::{FieldOps, FieldRandom};
+use fp::field_ops::{FieldOps};
 use fp::{ref_field_impl, ref_field_trait_impl};
 
 /// A projective point `(X:Y:Z)` on a twisted Hessian curve.
@@ -186,7 +186,7 @@ ref_field_trait_impl! {
 }
 
 ref_field_impl! {
-    impl<F: FieldOps + FieldRandom> TwistedHessianPoint<F> {
+    impl<F> TwistedHessianPoint<F> {
         /// Negation on a twisted Hessian curve:
         ///
         /// $$-(X:Y:Z) = (X:Z:Y).$$
@@ -237,7 +237,6 @@ ref_field_impl! {
             if other.is_identity() {
                 return self.clone();
             }
-
             let r = self.add_formula_1(other);
             if !r.is_zero_projective() {
                 return r;
