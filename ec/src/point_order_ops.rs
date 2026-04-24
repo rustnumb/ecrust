@@ -6,7 +6,7 @@
 //! to compute the **order** of $P$: the smallest integer $n \ge 1$ such that
 //!
 //! $$
-//! [n] P = O.
+//! \left[n\right] P = O.
 //! $$
 //!
 //! Following Sutherland (2007), we expose two regimes:
@@ -14,20 +14,20 @@
 //! | Regime                | Input given                                                                          | Cost                                                             |
 //! |-----------------------|--------------------------------------------------------------------------------------|------------------------------------------------------------------|
 //! | Known group order     | $N = \#E(\mathbb{F}_q)$ and its factorization                                        | $O(k \log N)$ scalar muls, where $k = \omega(N)$                 |
-//! | Generic (Hasse bound) | Interval $[\ell_{lo}, \ell_{hi}]$ with $\lvert P \rvert \in [\ell_{lo}, \ell_{hi}]$  | $\widetilde O\!\left(\sqrt{\ell_{hi} - \ell_{lo}}\right)$        |
+//! | Generic (Hasse bound) | Interval $\left[\ell_{lo}, \ell_{hi}\right]$ with $\lvert P \rvert \in \left[\ell_{lo}, \ell_{hi}\right]$  | $\widetilde O\!\left(\sqrt{\ell_{hi} - \ell_{lo}}\right)$        |
 //!
 //! # When to use which
 //!
 //! - If you already know $N = \#E(\mathbb{F}_q)$ (e.g. via SEA in the isogeny
-//!   crate), use [`order_from_group_order`]. This is the usual cryptographic
+//!   crate), use [`crate::point_order_ops::order_from_group_order`]. This is the usual cryptographic
 //!   case and runs in time polynomial in $\log q$.
 //! - Otherwise, bracket $\lvert P \rvert$ by the Hasse interval
-//!   $[q + 1 - 2\sqrt q,\; q + 1 + 2\sqrt q]$ and call
-//!   [`order_in_interval`].
+//!   $\left[q + 1 - 2\sqrt q,\; q + 1 + 2\sqrt q\right]$ and call
+//!   [`crate::point_order_ops::order_in_interval`].
 //!
 //! # On the complexity claim
 //!
-//! The present [`order_in_interval`] gives the textbook $\widetilde O(\sqrt W)$
+//! The present [`crate::point_order_ops::order_in_interval`] gives the textbook $\widetilde O(\sqrt W)$
 //! where $W = \ell_{hi} - \ell_{lo}$ is the Hasse width (so $W \in O(\sqrt q)$
 //! and the total cost is $\widetilde O(q^{1/4})$).
 //!
@@ -42,17 +42,17 @@
 //!
 //! # Model coverage
 //!
-//! The algorithms are written against [`PointOps`] and [`PointAdd`] so they
+//! The algorithms are written against [`crate::point_ops::PointOps`] and [`crate::point_ops::PointAdd`] so they
 //! work for every curve model in this crate that supports full group
 //! addition: Weierstrass, Edwards, Hessian (and twisted Hessian), Jacobi
 //! quartic, Jacobi intersection, and Legendre.
 //!
-//! [`order_in_interval`] additionally requires `P: Eq + Hash` for the
+//! [`crate::point_order_ops::order_in_interval`] additionally requires `P: Eq + Hash` for the
 //! baby-step / giant-step table.  Deriving `Hash` on the point structs is a
 //! one-line change wherever the underlying field element type is `Hash`
 //! (which is the case for `Uint`-backed `FpElement`).
 //!
-//! Montgomery / Kummer points (x-only) do **not** implement [`PointAdd`] and
+//! Montgomery / Kummer points (x-only) do **not** implement [`crate::point_ops::PointAdd`] and
 //! need a dedicated x-only variant using the pseudo-addition ladder; that
 //! specialisation is left for a follow-up.
 
@@ -74,7 +74,7 @@ use std::hash::Hash;
 ///
 /// Since $\lvert P \rvert \mid N$ (Lagrange), start from $n \leftarrow N$
 /// and, for each prime factor $p_i$ of $N$, strip as many copies of $p_i$
-/// from $n$ as possible while still satisfying $[n] P = O$:
+/// from $n$ as possible while still satisfying $\left[n\right] P = O$:
 ///
 /// ```text
 /// n ← N
@@ -136,14 +136,14 @@ where
 // Case B:  generic order in a bracket   (BSGS, O(√W))
 // ---------------------------------------------------------------------------
 
-/// Compute the order of `P` knowing only a bracket $[\ell_{lo}, \ell_{hi}]$
+/// Compute the order of `P` knowing only a bracket $\left[\ell_{lo}, \ell_{hi}\right]$
 /// that contains it.
 ///
 /// For an elliptic curve over $\mathbb{F}_q$ the natural bracket is the
 /// **Hasse interval**:
 ///
 /// $$
-/// \lvert P \rvert \in [\,q + 1 - 2\sqrt q,\; q + 1 + 2\sqrt q\,].
+/// \lvert P \rvert \in \left[q + 1 - 2\sqrt q,\; q + 1 + 2\sqrt q\right].
 /// $$
 ///
 /// # Algorithm (baby-step / giant-step)
@@ -152,17 +152,17 @@ where
 /// We look for a pair $(i, j)$ with $0 \le i, j \le w$ satisfying
 ///
 /// $$
-/// [\ell_{lo} + i \cdot w - j] P = O,
+/// \left[\ell_{lo} + i \cdot w - j\right] P = O,
 /// $$
 ///
 /// which is equivalent to the collision
 ///
 /// $$
-/// [\ell_{lo} + i \cdot w]\, P \;=\; [j]\, P
+/// \left[\ell_{lo} + i \cdot w\right]\, P \;=\; \left[j\right]\, P
 /// $$
 ///
-/// in the group. The baby table $\{[j] P : 0 \le j \le w\}$ is built
-/// once; giant steps walk from $[\ell_{lo}] P$ in strides of $[w] P$
+/// in the group. The baby table $\{\left[j\right] P : 0 \le j \le w\}$ is built
+/// once; giant steps walk from $\left[\ell_{lo}\right] P$ in strides of $\left[w\right] P$
 /// until a collision is found.
 ///
 /// ```text
@@ -181,13 +181,13 @@ where
 ///
 /// # Cost
 ///
-/// `O(\sqrtW)` point additions and a hash table of the same size for the
+/// $O(\sqrt W)$ point additions and a hash table of the same size for the
 /// BSGS itself. Phase 3 additionally trial-factors the resulting
-/// witness `c ≤ hi`, which costs `O(\sqrtc · M)` big-int operations —
+/// witness `c ≤ hi`, which costs $O(\sqrt c \cdot M)$ big-int operations —
 /// practical only when `hi` fits in roughly 80 bits.
 ///
 /// In cryptographic settings ($q \ge 2^{128}$) you should **always**
-/// prefer [`order_from_group_order`], feeding in a factorization you
+/// prefer [`crate::point_order_ops::order_from_group_order`], feeding in a factorization you
 /// obtained separately (e.g. from SEA). `order_in_interval` is
 /// intended for testing, for small-field experimentation, and as the
 /// raw building block that the future Sutherland smoothness
@@ -205,7 +205,7 @@ where
 ///
 /// # Panics
 ///
-/// - If `[k] P ≠ O` for every `k ∈ [lo, hi]`, i.e. the bracket is wrong.
+/// - If `\left[k\right] P ≠ O` for every `k ∈ [lo, hi]`, i.e. the bracket is wrong.
 /// - If the BSGS table size would exceed `u64::MAX` (unreachable in
 ///   practice: for any Hasse interval of a curve over a field fitting in
 ///   `Uint<L>`, $\sqrt W$ fits comfortably in 64 bits).
