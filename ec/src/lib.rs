@@ -28,3 +28,7 @@ pub mod curve_legendre;
 pub mod curve_twisted_hessian;
 /// Projective points on twisted Hessian curves.
 pub mod point_twisted_hessian;
+/// Shared small-integer utilities (sieve, trial factorization).
+pub mod num_utils;
+/// Order computations for points (Sutherland 2007).
+pub mod point_order_ops;
