@@ -22,8 +22,8 @@
 
 use core::fmt;
 use fp::field_ops::{FieldOps, FieldRandom};
-use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 use fp::{ref_field_fns, ref_field_impl, ref_field_trait_impl};
+use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
 use crate::curve_ops::Curve;
 use crate::point_weierstrass::AffinePoint;
@@ -179,7 +179,7 @@ ref_field_impl! {
     }
 }
 
-ref_field_impl!{
+ref_field_impl! {
     impl<F: FieldOps + FieldRandom> WeierstrassCurve<F> {
         /// Sample a random affine point on this curve using the provided RNG.
         ///
@@ -230,7 +230,6 @@ ref_field_impl!{
         }
     }
 }
-
 
 // -------------------------------------------------------------------
 // Discriminant private helpers  (Silverman, §III.1)
@@ -355,7 +354,7 @@ ref_field_fns! {
 // Invariants attached to the model
 // -------------------------------------------------------------------
 
-ref_field_impl!{
+ref_field_impl! {
     impl<F: FieldOps> WeierstrassCurve<F> {
         /// Returns the invariant $b_2 = a_1^2 + 4a_2$.
         pub fn b2(&self) -> F {
@@ -390,12 +389,11 @@ ref_field_impl!{
     }
 }
 
-
 // -------------------------------------------------------------------
 // Curve predicates
 // -------------------------------------------------------------------
 
-ref_field_trait_impl!{
+ref_field_trait_impl! {
     impl<F: FieldOps + FieldRandom> Curve for WeierstrassCurve<F> {
     type BaseField = F;
     type Point = AffinePoint<F>;
@@ -429,7 +427,6 @@ ref_field_trait_impl!{
     }
 }
 }
-
 
 // ---------------------------------------------------------------------------
 // Constant-time functionalities

@@ -22,7 +22,7 @@
 //!
 //! The twisted Hessian curve is nonsingular when
 //!
-//! $$a \neq 0 \quad\text{and}\quad d^3 \neq a.$$ 
+//! $$a \neq 0 \quad\text{and}\quad d^3 \neq a.$$
 //!
 //! # References
 //!

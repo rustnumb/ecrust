@@ -6,7 +6,6 @@ use crypto_bigint::Uint;
 use std::marker::PhantomData;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
-
 // ---------------------------------------------------------------------------
 // IrreduciblePoly — the only thing callers need to implement for a new field
 // ---------------------------------------------------------------------------
@@ -348,8 +347,7 @@ where
 // Operator overloads (delegate to the FieldOps methods below)
 // ===========================================================================
 
-impl<'a, 'b, const LIMBS: usize, P> Add<&'b F2Ext<LIMBS, P>>
-for &'a F2Ext<LIMBS, P>
+impl<'a, 'b, const LIMBS: usize, P> Add<&'b F2Ext<LIMBS, P>> for &'a F2Ext<LIMBS, P>
 where
     P: BinaryIrreducible<LIMBS>,
 {
@@ -360,8 +358,7 @@ where
     }
 }
 
-impl<'a, 'b, const LIMBS: usize, P> Sub<&'b F2Ext<LIMBS, P>>
-for &'a F2Ext<LIMBS, P>
+impl<'a, 'b, const LIMBS: usize, P> Sub<&'b F2Ext<LIMBS, P>> for &'a F2Ext<LIMBS, P>
 where
     P: BinaryIrreducible<LIMBS>,
 {
@@ -372,9 +369,7 @@ where
     }
 }
 
-
-impl<'a, 'b, const LIMBS: usize, P> Mul<&'b F2Ext<LIMBS, P>>
-for &'a F2Ext<LIMBS, P>
+impl<'a, 'b, const LIMBS: usize, P> Mul<&'b F2Ext<LIMBS, P>> for &'a F2Ext<LIMBS, P>
 where
     P: BinaryIrreducible<LIMBS>,
 {
@@ -395,7 +390,6 @@ where
         <F2Ext<LIMBS, P> as FieldOps>::negate(self)
     }
 }
-
 
 // ===========================================================================
 // FieldOps implementation

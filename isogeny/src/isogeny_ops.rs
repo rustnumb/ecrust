@@ -33,9 +33,9 @@
 //! So we keep both associated types explicit instead of assuming that the
 //! same point type is used on both sides.
 
-use fp::field_ops::FieldOps;
-use ec::point_ops::PointOps;
 use ec::curve_ops::Curve;
+use ec::point_ops::PointOps;
+use fp::field_ops::FieldOps;
 use subtle::Choice;
 
 /// Generic interface for an isogeny.
@@ -62,16 +62,10 @@ pub trait IsogenyOps: Clone {
     type CodomainCurve: Curve<BaseField = Self::BaseField>;
 
     /// Native point representation used when evaluating points on the domain.
-    type DomainPoint: PointOps<
-        Curve = Self::DomainCurve,
-        BaseField = Self::BaseField,
-    >;
+    type DomainPoint: PointOps<Curve = Self::DomainCurve, BaseField = Self::BaseField>;
 
     /// Native point representation produced when evaluating the isogeny.
-    type CodomainPoint: PointOps<
-        Curve = Self::CodomainCurve,
-        BaseField = Self::BaseField,
-    >;
+    type CodomainPoint: PointOps<Curve = Self::CodomainCurve, BaseField = Self::BaseField>;
 
     /// Return the domain curve of the isogeny.
     fn domain(&self) -> &Self::DomainCurve;
@@ -122,12 +116,12 @@ pub trait DualIsogenyOps: IsogenyOps {
     /// Note how domain and codomain are swapped, and likewise the point
     /// representations on the source and target.
     type Dual: IsogenyOps<
-        BaseField = Self::BaseField,
-        DomainCurve = Self::CodomainCurve,
-        CodomainCurve = Self::DomainCurve,
-        DomainPoint = Self::CodomainPoint,
-        CodomainPoint = Self::DomainPoint,
-    >;
+            BaseField = Self::BaseField,
+            DomainCurve = Self::CodomainCurve,
+            CodomainCurve = Self::DomainCurve,
+            DomainPoint = Self::CodomainPoint,
+            CodomainPoint = Self::DomainPoint,
+        >;
 
     /// Return the dual isogeny.
     fn dual(&self) -> Self::Dual;
@@ -167,25 +161,24 @@ pub struct CompositeIsogeny<I1, I2> {
 
 impl<I1, I2> IsogenyOps for CompositeIsogeny<I1, I2>
 where
-// The first map is an arbitrary isogeny
+    // The first map is an arbitrary isogeny
     I1: IsogenyOps,
-
-// The second map must start where the first one ends.
-//
-// Concretely, if
-//   first  : E  -> E'
-// then we require
-//   second : E' -> E''
-//
-// This means:
-// - same base field,
-// - domain curve of `second` = codomain curve of `first`,
-// - domain point type of `second` = codomain point type of `first`.
+    // The second map must start where the first one ends.
+    //
+    // Concretely, if
+    //   first  : E  -> E'
+    // then we require
+    //   second : E' -> E''
+    //
+    // This means:
+    // - same base field,
+    // - domain curve of `second` = codomain curve of `first`,
+    // - domain point type of `second` = codomain point type of `first`.
     I2: IsogenyOps<
-        BaseField = I1::BaseField,
-        DomainCurve = I1::CodomainCurve,
-        DomainPoint = I1::CodomainPoint,
-    >,
+            BaseField = I1::BaseField,
+            DomainCurve = I1::CodomainCurve,
+            DomainPoint = I1::CodomainPoint,
+        >,
 {
     /// The composite map is still defined over the same base field.
     type BaseField = I1::BaseField;

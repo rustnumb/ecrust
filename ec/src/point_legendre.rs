@@ -70,8 +70,8 @@ use core::fmt;
 use crate::curve_legendre::LegendreCurve;
 use crate::point_ops::{PointAdd, PointOps};
 use fp::field_ops::FieldOps;
-use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 use fp::{ref_field_impl, ref_field_trait_impl};
+use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
 /// A point on a Legendre elliptic curve over `F`.
 ///
@@ -127,7 +127,11 @@ impl<F: FieldOps> LegendrePoint<F> {
     /// [`LegendreCurve::contains`] or [`crate::curve_ops::Curve::is_on_curve`]
     /// if validation is needed.
     pub fn new(x: F, y: F) -> Self {
-        Self { x, y, infinity: false }
+        Self {
+            x,
+            y,
+            infinity: false,
+        }
     }
 
     /// Returns the identity element `O`.
@@ -206,7 +210,7 @@ where
     }
 }
 
-ref_field_impl!{
+ref_field_impl! {
     impl<F: FieldOps> LegendrePoint<F> {
         ///
         /// For a finite affine point `(x, y)` on a Legendre curve, the inverse is
@@ -338,7 +342,7 @@ ref_field_impl!{
 
 }
 
-ref_field_trait_impl!{
+ref_field_trait_impl! {
     impl<F: FieldOps> PointOps for LegendrePoint<F> {
         type BaseField = F;
         type Curve = LegendreCurve<F>;
@@ -361,7 +365,7 @@ ref_field_trait_impl!{
     }
 }
 
-ref_field_trait_impl!{
+ref_field_trait_impl! {
     impl<F: FieldOps> PointAdd for LegendrePoint<F> {
         fn add(&self, other: &Self, curve: &Self::Curve) -> Self {
             LegendrePoint::<F>::add(self, other, curve)

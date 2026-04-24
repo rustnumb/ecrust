@@ -94,7 +94,11 @@ fn montgomery_known_x_coordinates_are_on_curve() {
 
     for x in all_x_coords_montgomery_19(fp(3), fp(5)) {
         let p = KummerPoint::from_x(x);
-        assert!(c.is_on_curve(&p), "x = {:?} should lie on the Montgomery curve", x);
+        assert!(
+            c.is_on_curve(&p),
+            "x = {:?} should lie on the Montgomery curve",
+            x
+        );
     }
 }
 

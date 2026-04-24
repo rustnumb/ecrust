@@ -1,4 +1,4 @@
-use crypto_bigint::{const_prime_monty_params, Uint};
+use crypto_bigint::{Uint, const_prime_monty_params};
 use fp::field_ops::{FieldOps, FieldRandom};
 use fp::fp_element::FpElement;
 use fp::fp_ext::{FpExt, IrreduciblePoly, TonelliShanksConstants}; // ← was missing IrreduciblePoly
@@ -31,8 +31,6 @@ impl TonelliShanksConstants<Fp19Mod, 1, 2, 1> for TSQuad {
 }
 
 type F19_2 = FpExt<Fp19Mod, 1, 2, 1, QuadPoly, TSQuad>;
-
-
 
 fn fp(n: u64) -> Fp19 {
     Fp19::from_u64(n)
@@ -77,7 +75,6 @@ impl TonelliShanksConstants<Fp97283Mod, 1, 3, 1> for TS97283Cubic {
 }
 
 type Fp97283_3 = FpExt<Fp97283Mod, 1, 3, 1, Poly97283Cubic, TS97283Cubic>;
-
 
 #[test]
 fn random_elements_test() {
@@ -215,10 +212,7 @@ fn mul_associativity() {
     let a = el(2, 1);
     let b = el(3, 4);
     let c = el(5, 6);
-    assert_eq!(
-        &(&a * &b) * &c,
-        &a * &(&b * &c)
-    );
+    assert_eq!(&(&a * &b) * &c, &a * &(&b * &c));
 }
 
 #[test]
@@ -226,10 +220,7 @@ fn mul_distributivity() {
     let a = el(3, 2);
     let b = el(1, 5);
     let c = el(4, 7);
-    assert_eq!(
-        &a * &(&b + &c),
-        &(&a * &b) + &(&a * &c)
-    );
+    assert_eq!(&a * &(&b + &c), &(&a * &b) + &(&a * &c));
 }
 
 #[test]
@@ -567,9 +558,7 @@ fn cubic_mul_commutativity() {
 #[test]
 fn cubic_invert_correctness() {
     let a = el3(1, 2, 3);
-    assert!(bool::from(
-        (&a * &a.invert().expect("invertible")).is_one()
-    ));
+    assert!(bool::from((&a * &a.invert().expect("invertible")).is_one()));
 }
 
 #[test]
@@ -689,5 +678,3 @@ fn sqrtratio_nr_cubic() {
     let mysqrt = a.sqrt_ratio(&b);
     assert!(bool::from(mysqrt.is_none()));
 }
-
-

@@ -7,8 +7,8 @@
 //! Each concrete curve type chooses its base field and its native point type
 //! through associated types.
 
-use fp::field_ops::FieldOps;
 use crate::point_ops::PointOps;
+use fp::field_ops::FieldOps;
 
 /// Generic elliptic-curve model.
 ///

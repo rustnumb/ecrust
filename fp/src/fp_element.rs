@@ -6,8 +6,8 @@ use std::fmt;
 
 use crate::field_ops::{FieldFromRepr, FieldOps, FieldRandom};
 use crypto_bigint::{
-    modular::{ConstMontyForm, ConstPrimeMontyParams},
     NonZero, RandomMod, Uint,
+    modular::{ConstMontyForm, ConstPrimeMontyParams},
 };
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
@@ -196,8 +196,7 @@ where
 // Operator overloads
 // ---------------------------------------------------------------------------
 
-impl<'a, 'b, MOD, const LIMBS: usize> Add<&'b FpElement<MOD, LIMBS>>
-for &'a FpElement<MOD, LIMBS>
+impl<'a, 'b, MOD, const LIMBS: usize> Add<&'b FpElement<MOD, LIMBS>> for &'a FpElement<MOD, LIMBS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
 {
@@ -208,8 +207,7 @@ where
     }
 }
 
-impl<'a, 'b, MOD, const LIMBS: usize> Sub<&'b FpElement<MOD, LIMBS>>
-for &'a FpElement<MOD, LIMBS>
+impl<'a, 'b, MOD, const LIMBS: usize> Sub<&'b FpElement<MOD, LIMBS>> for &'a FpElement<MOD, LIMBS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
 {
@@ -220,9 +218,7 @@ where
     }
 }
 
-
-impl<'a, 'b, MOD, const LIMBS: usize> Mul<&'b FpElement<MOD, LIMBS>>
-for &'a FpElement<MOD, LIMBS>
+impl<'a, 'b, MOD, const LIMBS: usize> Mul<&'b FpElement<MOD, LIMBS>> for &'a FpElement<MOD, LIMBS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
 {

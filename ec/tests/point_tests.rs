@@ -5,7 +5,7 @@
 //!   2. Short Weierstrass over a quadratic extension  (F₁₉²)
 //!   3. General Weierstrass over a binary extension field  (F₂⁴)
 
-use crypto_bigint::{const_prime_monty_params, Uint};
+use crypto_bigint::{Uint, const_prime_monty_params};
 
 use fp::field_ops::FieldOps;
 use fp::fp_element::FpElement;

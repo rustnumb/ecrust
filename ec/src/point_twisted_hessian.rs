@@ -121,9 +121,7 @@ impl<F: FieldOps> TwistedHessianPoint<F> {
 
     /// Return `true` if this is the invalid projective triple `(0:0:0)`.
     pub fn is_zero_projective(&self) -> bool {
-        bool::from(self.x.is_zero())
-            && bool::from(self.y.is_zero())
-            && bool::from(self.z.is_zero())
+        bool::from(self.x.is_zero()) && bool::from(self.y.is_zero()) && bool::from(self.z.is_zero())
     }
 
     /// Return `true` if the point lies on the line at infinity.

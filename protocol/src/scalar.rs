@@ -49,7 +49,9 @@ impl<const LIMBS: usize> SecretScalar<LIMBS> {
 
 impl<const LIMBS: usize> Default for SecretScalar<LIMBS> {
     fn default() -> Self {
-        Self { limbs: [0u64; LIMBS] }
+        Self {
+            limbs: [0u64; LIMBS],
+        }
     }
 }
 

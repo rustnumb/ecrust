@@ -371,7 +371,7 @@ ref_field_impl! {
 // PointOps bridge
 // ---------------------------------------------------------------------------
 
-ref_field_trait_impl!{
+ref_field_trait_impl! {
     impl<F: FieldOps> PointOps for EdwardsPoint<F> {
         type BaseField = F;
         type Curve = EdwardsCurve<F>;

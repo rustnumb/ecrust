@@ -55,7 +55,7 @@ ref_field_impl! {
                 xk
             }
         }
-    
+
         fn new_codomain_helper(domain: & MontgomeryCurve<F>, xk: KummerPoint<F>) -> (F, F) {
             todo!()
         }

@@ -71,14 +71,18 @@ where
                 write!(f, "({}, {})", x_aff, y_aff)
             }
         } else if f.alternate() {
-            write!(f, "HessianPoint {{ X:Y:Z = ({}:{}:{}) }}", self.x, self.y, self.z)
+            write!(
+                f,
+                "HessianPoint {{ X:Y:Z = ({}:{}:{}) }}",
+                self.x, self.y, self.z
+            )
         } else {
             write!(f, "({}:{}:{})", self.x, self.y, self.z)
         }
     }
 }
 
-ref_field_trait_impl!{
+ref_field_trait_impl! {
     impl<F: FieldOps> PartialEq for HessianPoint<F> {
         /// Equality of projective points.
         fn eq(&self, other: &Self) -> bool {
@@ -95,7 +99,7 @@ ref_field_trait_impl!{
     }
 }
 
-ref_field_trait_impl!{
+ref_field_trait_impl! {
     impl<F: FieldOps> Eq for HessianPoint<F> {}
 }
 
@@ -141,26 +145,19 @@ impl<F: FieldOps> HessianPoint<F> {
 
     /// Return `true` if this is the invalid projective triple `(0:0:0)`.
     pub fn is_zero_projective(&self) -> bool {
-        bool::from(self.x.is_zero())
-            && bool::from(self.y.is_zero())
-            && bool::from(self.z.is_zero())
+        bool::from(self.x.is_zero()) && bool::from(self.y.is_zero()) && bool::from(self.z.is_zero())
     }
 
     /// Convert a finite projective point to affine coordinates.
     pub fn to_affine(&self) -> Option<(F, F)> {
-        self.z
-            .invert()
-            .into_option()
-            .map(|zinv| {
-                (
-                    <F as FieldOps>::mul(&self.x, &zinv),
-                    <F as FieldOps>::mul(&self.y, &zinv),
-                    )
-            })
+        self.z.invert().into_option().map(|zinv| {
+            (
+                <F as FieldOps>::mul(&self.x, &zinv),
+                <F as FieldOps>::mul(&self.y, &zinv),
+            )
+        })
     }
 }
-
-
 
 impl<F> ConditionallySelectable for HessianPoint<F>
 where
@@ -187,7 +184,7 @@ where
     }
 }
 
-ref_field_trait_impl!{
+ref_field_trait_impl! {
     impl<F: FieldOps + Copy + ConstantTimeEq> ConstantTimeEq for HessianPoint<F> {
         fn ct_eq(&self, other: &Self) -> Choice {
             let self_zero = self.is_zero_projective();
@@ -207,7 +204,7 @@ ref_field_trait_impl!{
     }
 }
 
-ref_field_impl!{
+ref_field_impl! {
     impl<F: FieldOps> HessianPoint<F> {
         /// Negation on a Hessian curve:
         ///
@@ -326,7 +323,7 @@ ref_field_impl!{
     }
 }
 
-ref_field_trait_impl!{
+ref_field_trait_impl! {
     impl<F: FieldOps> PointOps for HessianPoint<F> {
         type BaseField = F;
         type Curve = HessianCurve<F>;
@@ -349,8 +346,7 @@ ref_field_trait_impl!{
     }
 }
 
-
-ref_field_trait_impl!{
+ref_field_trait_impl! {
     impl<F: FieldOps> PointAdd for HessianPoint<F> {
         fn add(&self, other: &Self, curve: &Self::Curve) -> Self {
             HessianPoint::<F>::add(self, other, curve)

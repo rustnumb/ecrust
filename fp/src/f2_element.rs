@@ -89,9 +89,7 @@ impl ConstantTimeEq for F2Element {
 // Operator overloads
 // ---------------------------------------------------------------------------
 
-impl<'a, 'b> Add<&'b F2Element>
-for &'a F2Element
-{
+impl<'a, 'b> Add<&'b F2Element> for &'a F2Element {
     type Output = F2Element;
 
     fn add(self, rhs: &'b F2Element) -> Self::Output {
@@ -99,9 +97,7 @@ for &'a F2Element
     }
 }
 
-impl<'a, 'b> Sub<&'b F2Element>
-for &'a F2Element
-{
+impl<'a, 'b> Sub<&'b F2Element> for &'a F2Element {
     type Output = F2Element;
 
     fn sub(self, rhs: &'b F2Element) -> Self::Output {
@@ -109,10 +105,7 @@ for &'a F2Element
     }
 }
 
-
-impl<'a, 'b> Mul<&'b F2Element>
-for &'a F2Element
-{
+impl<'a, 'b> Mul<&'b F2Element> for &'a F2Element {
     type Output = F2Element;
 
     fn mul(self, rhs: &'b F2Element) -> Self::Output {
@@ -120,16 +113,13 @@ for &'a F2Element
     }
 }
 
-impl<'a> Neg for &'a F2Element
-{
+impl<'a> Neg for &'a F2Element {
     type Output = F2Element;
 
     fn neg(self) -> Self::Output {
         <F2Element as FieldOps>::negate(self)
     }
 }
-
-
 
 // ---------------------------------------------------------------------------
 // FieldOps implementation

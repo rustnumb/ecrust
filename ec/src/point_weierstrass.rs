@@ -31,8 +31,8 @@ use core::fmt;
 use crate::curve_weierstrass::WeierstrassCurve;
 use crate::point_ops::PointOps;
 use fp::field_ops::FieldOps;
-use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 use fp::{ref_field_impl, ref_field_trait_impl, ref_field_trait_impl_path};
+use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
 /// An affine point on a Weierstrass elliptic curve over `F`.
 ///
@@ -85,13 +85,7 @@ where
     }
 }
 
-
-
-impl<F: FieldOps> Eq for AffinePoint<F>
-where
-    F: FieldOps + ConstantTimeEq,
-{
-}
+impl<F: FieldOps> Eq for AffinePoint<F> where F: FieldOps + ConstantTimeEq {}
 
 // ---------------------------------------------------------------------------
 // Constructors

@@ -46,12 +46,12 @@
 //! - HongFeng Wu and RongQuan Feng,
 //!   *On the isomorphism classes of Legendre elliptic curves over finite fields*,
 //!   Sci. China Math. 54(9) (2011), 1885–1890.
+use crate::curve_ops::Curve;
+use crate::curve_weierstrass::WeierstrassCurve;
+use crate::point_legendre::LegendrePoint;
 use core::fmt;
 use fp::field_ops::{FieldOps, FieldRandom};
 use fp::{ref_field_impl, ref_field_trait_impl};
-use crate::curve_ops::Curve;
-use crate::point_legendre::LegendrePoint;
-use crate::curve_weierstrass::WeierstrassCurve;
 
 /// A Legendre elliptic curve over a field `F`.
 ///
@@ -73,7 +73,7 @@ pub struct LegendreCurve<F: FieldOps> {
     pub lambda: F,
 }
 
-ref_field_impl!{
+ref_field_impl! {
     impl<F: FieldOps + FieldRandom> LegendreCurve<F> {
         /// Construct the Legendre curve $y^2 = x(x-1)(x-\lambda).$
         pub fn new(lambda: F) -> Self {
@@ -280,7 +280,7 @@ where
     }
 }
 
-ref_field_trait_impl!{
+ref_field_trait_impl! {
     impl<F: FieldOps + FieldRandom> Curve for LegendreCurve<F> {
         type BaseField = F;
         type Point = LegendrePoint<F>;

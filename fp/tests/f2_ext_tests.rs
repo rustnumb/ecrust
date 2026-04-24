@@ -29,7 +29,6 @@ impl BinaryIrreducible<8> for F2511Poly {
 
 type GF2_511 = F2Ext<8, F2511Poly>;
 
-
 #[test]
 fn random_elements_test() {
     let mut rng = rand::rng();
@@ -103,7 +102,7 @@ fn inv_zero_is_none() {
 fn add_coefficient_wise() {
     let a = elt(0b1_1111); // x^4 + x^3 + x^2 + x + 1
     let b = elt(0b101_0111); // x^6 + x^4 + x^2 + x + 1
-    let c =  &a + &b; // x^6 + x^3 = 0b100_1000
+    let c = &a + &b; // x^6 + x^3 = 0b100_1000
     assert_eq!(c, elt(0b100_1000));
 
     let d = elt(0b10_1010); // x^5 + x^3 + x
@@ -170,17 +169,15 @@ fn mul_concrete_values() {
 fn mul_commutativity() {
     let a = elt(0b1_1001); // x^4 + x^3 + 1
     let b = elt(0b101_0011); // x^6 + x^4 + x + 1
-    assert_eq!(&a * &b, &b * &a);}
+    assert_eq!(&a * &b, &b * &a);
+}
 
 #[test]
 fn mul_associativity() {
     let a = elt(0b1_1001); // x^4 + x^3 + 1
     let b = elt(0b101_0011); // x^6 + x^4 + x + 1
     let c = FieldOps::mul(&a, &b); // x^7 + x^5 + x^4 + x^3 + x = 0b1011_1010
-    assert_eq!(
-        &(&a * &b) * &c,
-        &a * &(&b * &c)
-    );
+    assert_eq!(&(&a * &b) * &c, &a * &(&b * &c));
 }
 
 #[test]
@@ -188,16 +185,14 @@ fn mul_distributivity() {
     let a = elt(0b1_1001); // x^4 + x^3 + 1
     let b = elt(0b101_0011); // x^6 + x^4 + x + 1
     let c = &a * &b; // x^7 + x^5 + x^4 + x^3 + x = 0b1011_1010
-    assert_eq!(
-        &a * &(&b + &c),
-        &(&a * &b) + &(&a * &c)
-    );
+    assert_eq!(&a * &(&b + &c), &(&a * &b) + &(&a * &c));
 }
 
 #[test]
 fn square_equals_mul_self() {
     let a = elt(0b1_1001); // x^4 + x^3 + 1
-    assert_eq!(a.square(), &a * &a);}
+    assert_eq!(a.square(), &a * &a);
+}
 
 // -----------------------------------------------------------------------
 // Inversion

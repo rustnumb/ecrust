@@ -1,4 +1,4 @@
-use crypto_bigint::{const_prime_monty_params, Uint};
+use crypto_bigint::{Uint, const_prime_monty_params};
 use fp::field_ops::FieldOps;
 use fp::fp_element::FpElement;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};

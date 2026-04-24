@@ -97,7 +97,7 @@ use std::marker::PhantomData;
 
 use crate::field_ops::{FieldFromRepr, FieldOps, FieldRandom};
 use crate::fp_element::FpElement;
-use crypto_bigint::{modular::ConstPrimeMontyParams, Uint};
+use crypto_bigint::{Uint, modular::ConstPrimeMontyParams};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 // ===========================================================================
@@ -697,8 +697,7 @@ where
 // ===========================================================================
 
 impl<'a, 'b, MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS>
-Add<&'b FpExt<MOD, LIMBS, M, N, P, TSCONSTS>>
-for &'a FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
+    Add<&'b FpExt<MOD, LIMBS, M, N, P, TSCONSTS>> for &'a FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
@@ -711,8 +710,7 @@ where
 }
 
 impl<'a, 'b, MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS>
-Sub<&'b FpExt<MOD, LIMBS, M, N, P, TSCONSTS>>
-for &'a FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
+    Sub<&'b FpExt<MOD, LIMBS, M, N, P, TSCONSTS>> for &'a FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
@@ -725,8 +723,7 @@ where
 }
 
 impl<'a, 'b, MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS>
-Mul<&'b FpExt<MOD, LIMBS, M, N, P, TSCONSTS>>
-for &'a FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
+    Mul<&'b FpExt<MOD, LIMBS, M, N, P, TSCONSTS>> for &'a FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
@@ -738,9 +735,8 @@ where
     }
 }
 
-impl<'a, MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS>
-Neg
-for &'a FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
+impl<'a, MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS> Neg
+    for &'a FpExt<MOD, LIMBS, M, N, P, TSCONSTS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
@@ -751,9 +747,6 @@ where
         <FpExt<MOD, LIMBS, M, N, P, TSCONSTS> as FieldOps>::negate(self)
     }
 }
-
-
-
 
 // ===========================================================================
 // Helper functions for Tonelli-Shanks algorithm
@@ -785,9 +778,9 @@ fn ts_loop<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS>
     TSCONSTS: TonelliShanksConstants<MOD, LIMBS, M, N>,
 {
     let mut v = TSCONSTS::S as u32;
-    *x = &*x * w ;     // to take the prod of a &mut one has to dereference it (so it isn't mut anymore) and then reference to it
+    *x = &*x * w; // to take the prod of a &mut one has to dereference it (so it isn't mut anymore) and then reference to it
     let mut b = &*x * w;
-        //x.mul(*w);
+    //x.mul(*w);
     let mut z = FpExt::new(TSCONSTS::root_of_unity());
 
     for max_v in (1..=TSCONSTS::S as u32).rev() {
@@ -1070,13 +1063,13 @@ where
         let is_invertible = !self.is_zero();
 
         let x = rhs * &(self * self);
-            //self.mul(self).mul(*rhs);
+        //self.mul(self).mul(*rhs);
         let (myinv, mysqrt) = x.inverse_and_sqrt();
 
         let myinv_value = myinv.unwrap_or(Self::zero());
         let mysqrt_value = mysqrt.unwrap_or(Self::zero());
         let inv_value = self * &(rhs * &myinv_value);
-        let sqrt_value = &inv_value  * &mysqrt_value;
+        let sqrt_value = &inv_value * &mysqrt_value;
 
         let inv_is_some = is_invertible & myinv.is_some();
 
@@ -1113,8 +1106,7 @@ where
         let ans_value = &self.square() * &(&myinv_value * &mysqrt_value);
 
         let inv_is_some = myinv.is_some();
-        let ans_is_some =
-            inv_is_some & mysqrt.is_some() & (mysqrt_value.square()).ct_eq(&x);
+        let ans_is_some = inv_is_some & mysqrt.is_some() & (mysqrt_value.square()).ct_eq(&x);
 
         CtOption::new(ans_value, ans_is_some)
     }

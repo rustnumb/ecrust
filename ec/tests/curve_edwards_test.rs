@@ -16,14 +16,14 @@
 //! R.<x>=GF(2)[]; F.<a>=GF(2^4,modulus=x^4+x+1); assert (a^3).trace()==1
 //! ```
 
-use crypto_bigint::{const_prime_monty_params, Uint};
+use crypto_bigint::{Uint, const_prime_monty_params};
 
 use fp::field_ops::FieldOps;
 use fp::fp_element::FpElement;
 
 use ec::curve_edwards::EdwardsCurve;
-use ec::point_edwards::EdwardsPoint;
 use ec::curve_ops::Curve;
+use ec::point_edwards::EdwardsPoint;
 
 // ===========================================================================
 // Field definitions
@@ -31,21 +31,31 @@ use ec::curve_ops::Curve;
 
 const_prime_monty_params!(Fp761Mod, Uint<1>, "00000000000002F9", 2);
 type F761 = FpElement<Fp761Mod, 1>;
-fn fp761(n: u64) -> F761 { F761::from_u64(n) }
+fn fp761(n: u64) -> F761 {
+    F761::from_u64(n)
+}
 
 const_prime_monty_params!(Fp65537Mod, Uint<1>, "0000000000010001", 3);
 type F65537 = FpElement<Fp65537Mod, 1>;
-fn fp65537(n: u64) -> F65537 { F65537::from_u64(n) }
+fn fp65537(n: u64) -> F65537 {
+    F65537::from_u64(n)
+}
 
-use fp::f2_ext::{F2Ext, BinaryIrreducible};
+use fp::f2_ext::{BinaryIrreducible, F2Ext};
 
 struct Poly2_4;
 impl BinaryIrreducible<1> for Poly2_4 {
-    fn modulus() -> Uint<1> { Uint::from_u64(0x13) }
-    fn degree() -> usize { 4 }
+    fn modulus() -> Uint<1> {
+        Uint::from_u64(0x13)
+    }
+    fn degree() -> usize {
+        4
+    }
 }
 type GF16 = F2Ext<1, Poly2_4>;
-fn gf(n: u64) -> GF16 { GF16::from_u64(n) }
+fn gf(n: u64) -> GF16 {
+    GF16::from_u64(n)
+}
 
 // ===========================================================================
 // 1.  F₇₆₁, d = 3
