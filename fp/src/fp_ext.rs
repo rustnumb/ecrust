@@ -97,7 +97,7 @@ use std::marker::PhantomData;
 
 use crate::field_ops::{FieldFromRepr, FieldOps, FieldRandom};
 use crate::fp_element::FpElement;
-use crypto_bigint::{Uint, modular::ConstPrimeMontyParams};
+use crypto_bigint::{modular::ConstPrimeMontyParams, Uint};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 // ===========================================================================
@@ -431,11 +431,12 @@ where
 
     /// Returns an element $\sum_{i=0}^{M-1} c_i x^i \in
     /// \mathbb{F}\_{p^M} = \mathbb{F}\_{p}\[x\] / (f(x))$ from a
-    /// coefficient array $[c_0, ..., c_{M-1}]$ of `u64` integers.
+    /// coefficient array $[c_0, ..., c_{M-1}]$ of `Uint<LIMBS>`
+    /// integers.
     ///
     /// # Arguments
     ///
-    /// * `coeffs` - The coefficient array (type: `[u64; M]`).
+    /// * `coeffs` - The coefficient array (type: `[Uint<LIMBS>; M]`).
     ///
     /// # Returns
     ///
