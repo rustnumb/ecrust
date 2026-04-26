@@ -15,7 +15,7 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
 use crate::curve_twisted_hessian::TwistedHessianCurve;
 use crate::point_ops::{PointAdd, PointOps};
-use fp::field_ops::{FieldOps};
+use fp::field_ops::FieldOps;
 use fp::{ref_field_impl, ref_field_trait_impl};
 
 /// A projective point `(X:Y:Z)` on a twisted Hessian curve.
