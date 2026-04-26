@@ -97,7 +97,7 @@ use std::marker::PhantomData;
 
 use crate::field_ops::{FieldFromRepr, FieldOps, FieldRandom};
 use crate::fp_element::FpElement;
-use crypto_bigint::{modular::ConstPrimeMontyParams, Uint};
+use crypto_bigint::{Uint, modular::ConstPrimeMontyParams};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 // ===========================================================================
