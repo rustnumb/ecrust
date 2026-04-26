@@ -97,7 +97,7 @@ use std::marker::PhantomData;
 
 use crate::field_ops::{FieldFromRepr, FieldOps, FieldRandom};
 use crate::fp_element::FpElement;
-use crypto_bigint::{Uint, modular::ConstPrimeMontyParams};
+use crypto_bigint::{modular::ConstPrimeMontyParams, Uint};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 // ===========================================================================
@@ -426,6 +426,60 @@ where
     /// ```
     pub fn from_u64(coeffs: [u64; M]) -> Self {
         let coeffs_fp = std::array::from_fn(|i| FpElement::from_u64(coeffs[i]));
+        Self::new(coeffs_fp)
+    }
+
+    /// Returns an element $\sum_{i=0}^{M-1} c_i x^i \in
+    /// \mathbb{F}\_{p^M} = \mathbb{F}\_{p}\[x\] / (f(x))$ from a
+    /// coefficient array $[c_0, ..., c_{M-1}]$ of `u64` integers.
+    ///
+    /// # Arguments
+    ///
+    /// * `coeffs` - The coefficient array (type: `[u64; M]`).
+    ///
+    /// # Returns
+    ///
+    /// The element $\sum_{i=0}^{M-1} c_i x^i \in \mathbb{F}\_{p^M}$
+    /// (type: `Self`).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use crypto_bigint::{const_prime_monty_params, Uint};
+    /// # use fp::field_ops::{FieldOps, FieldRandom};
+    /// # use fp::fp_element::FpElement;
+    /// # use fp::fp_ext::{FpExt, IrreduciblePoly, TonelliShanksConstants};
+    /// # const_prime_monty_params!(Fp19Mod, Uint<1>, "0000000000000013", 2);
+    /// # type Fp19 = FpElement<Fp19Mod, 1>;
+    /// #
+    /// # struct QuadPoly;
+    /// # struct TSQuad;
+    /// #
+    /// # impl IrreduciblePoly<Fp19Mod, 1, 2> for QuadPoly {
+    /// #    fn modulus() -> [Fp19; 2] {
+    /// #        [Fp19::one(), Fp19::zero()]
+    /// #    }
+    /// # }
+    /// #
+    /// # impl TonelliShanksConstants<Fp19Mod, 1, 2, 1> for TSQuad {
+    /// #    const ORDER: Uint<1> = Uint::<1>::from_u64(360);
+    /// #    const HALF_ORDER: Uint<1> = Uint::<1>::from_u64(180);
+    /// #    const S: u64 = 3;
+    /// #    const T: Uint<1> = Uint::<1>::from_u64(45);
+    /// #    const PROJENATOR_EXP: Uint<1> = Uint::<1>::from_u64(22);
+    /// #    const TWOSM1: Uint<1> = Uint::<1>::from_u64(4);
+    /// #    fn root_of_unity() -> [FpElement<Fp19Mod, 1>; 2] {
+    /// #        [Fp19::from_u64(3), Fp19::from_u64(3)]
+    /// #    }
+    /// # }
+    /// #
+    /// # type F19_2 = FpExt<Fp19Mod, 1, 2, 1, QuadPoly, TSQuad>;
+    /// let a = F19_2::from_u64([3, 5]);
+    /// let b = F19_2::from_uint([Uint::<1>::from_u64(3), Uint::<1>::from_u64(5)]);
+    /// assert_eq!(a, b);
+    /// ```
+    pub fn from_uint(coeffs: [Uint<LIMBS>; M]) -> Self {
+        let coeffs_fp = std::array::from_fn(|i| FpElement::from_uint(coeffs[i]));
         Self::new(coeffs_fp)
     }
 
