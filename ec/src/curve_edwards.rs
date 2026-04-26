@@ -28,10 +28,10 @@
 //! - Binary Edwards curves (characteristic $2$): Bernstein–Lange–Rezaeian Farashahi (2008)
 //! - Odd characteristic: <https://hyperelliptic.org/EFD/g1p/auto-edwards.html>
 
-use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
-use fp::{ref_field_impl, ref_field_trait_impl};
 use core::fmt;
 use fp::field_ops::{FieldOps, FieldRandom};
+use fp::{ref_field_impl, ref_field_trait_impl};
+use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
 use crate::curve_ops::Curve;
 use crate::point_edwards::EdwardsPoint;
@@ -47,7 +47,6 @@ pub struct EdwardsCurve<F: FieldOps> {
     /// The invariant d2 in the equation
     pub d2: F,
 }
-
 
 impl<F> fmt::Display for EdwardsCurve<F>
 where
@@ -81,7 +80,6 @@ where
         }
     }
 }
-
 
 ref_field_impl! {
     impl<F: FieldOps + FieldRandom> EdwardsCurve<F> {
@@ -181,26 +179,7 @@ ref_field_impl! {
     }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-ref_field_trait_impl!{
+ref_field_trait_impl! {
     impl<F: FieldOps + FieldRandom> Curve for EdwardsCurve<F> {
         type BaseField = F;
         type Point = EdwardsPoint<F>;
@@ -260,7 +239,6 @@ ref_field_trait_impl!{
         }
     }
 }
-
 
 // ---------------------------------------------------------------------------
 // Constant-time functionalities

@@ -98,7 +98,12 @@ fn twisted_hessian_double_matches_add_self() {
     let curve = test_curve();
 
     for p in all_points(&curve) {
-        assert_eq!(p.double(&curve), p.add(&p, &curve), "[2]P mismatch for P={:?}", p);
+        assert_eq!(
+            p.double(&curve),
+            p.add(&p, &curve),
+            "[2]P mismatch for P={:?}",
+            p
+        );
     }
 }
 

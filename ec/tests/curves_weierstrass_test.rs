@@ -2,11 +2,10 @@
 // Unit tests
 // ---------------------------------------------------------------------------
 
-
 use crypto_bigint::{Uint, const_prime_monty_params};
-use fp::fp_element::FpElement;
-use fp::field_ops::FieldOps;
 use ec::curve_weierstrass::WeierstrassCurve;
+use fp::field_ops::FieldOps;
+use fp::fp_element::FpElement;
 
 const_prime_monty_params!(Fp19Mod, Uint<1>, "0000000000000013", 2);
 type F19 = FpElement<Fp19Mod, 1>;

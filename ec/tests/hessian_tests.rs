@@ -127,7 +127,12 @@ fn hessian_double_matches_add_self() {
     let curve = complete_curve();
 
     for p in all_points(&curve) {
-        assert_eq!(p.double(&curve), p.add(&p, &curve), "[2]P mismatch for P={:?}", p);
+        assert_eq!(
+            p.double(&curve),
+            p.add(&p, &curve),
+            "[2]P mismatch for P={:?}",
+            p
+        );
     }
 }
 

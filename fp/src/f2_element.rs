@@ -1,5 +1,4 @@
-//! Base binary field element $\mathbb{F}_2 = \mathbb{Z} /
-//! 2\mathbb{Z}$
+//! The binary field $\mathbb{F}_2 = \mathbb{Z} / 2\mathbb{Z}$
 
 use crate::field_ops::FieldFromRepr;
 use crate::field_ops::{FieldOps, FieldRandom};
@@ -18,17 +17,26 @@ pub struct F2Element {
 // ---------------------------------------------------------------------------
 
 impl F2Element {
-    /// The constant zero
+    /// The constant $0 \in \mathbb{F}_2$ (type: `Self`)
     pub const ZERO: Self = Self {
         value: Uint::<1>::ZERO,
     };
 
-    /// The constant one
+    /// The constant $1 \in \mathbb{F}_2$ (type: `Self`)
     pub const ONE: Self = Self {
         value: Uint::<1>::ONE,
     };
 
-    /// Create a new element of $\mathbb{F}_2$
+    /// Create a new element of $\mathbb{F}_2$ from a `Uint<1>`
+    ///
+    /// # Arguments
+    ///
+    /// * `x` - An integer (type: `Uint<1>`)
+    ///
+    /// # Returns
+    ///
+    /// An element of $\mathbb{F}_2$, the reduction of `x` mod 2
+    /// (type: `Self`)
     fn new(x: Uint<1>) -> Self {
         Self {
             value: x & Uint::<1>::ONE,
@@ -36,16 +44,43 @@ impl F2Element {
     }
 
     /// Create a new element of $\mathbb{F}_2$ from a `u64`
+    ///
+    /// # Arguments
+    ///
+    /// * `x` - An integer (type: `u64`)
+    ///
+    /// # Returns
+    ///
+    /// An element of $\mathbb{F}_2$, the reduction of `x` mod 2
+    /// (type: `Self`)
     pub fn from_u64(x: u64) -> Self {
         Self::new(Uint::from(x & 1))
     }
 
     /// Get the `Uint<1>` from an element of $\mathbb{F}_2$
+    ///
+    /// # Arguments
+    ///
+    /// * `x` - An element of $\mathbb{F}_2$ (type: `Self`)
+    ///
+    /// # Returns
+    ///
+    /// The integer in $\{ 0, 1 \}$ reducing to `x` mod 2 (type:
+    /// `Uint<1>`)
     pub fn value(&self) -> Uint<1> {
         self.value
     }
 
     /// Get the `u8` from an element of $\mathbb{F}_2$
+    ///
+    /// # Arguments
+    ///
+    /// * `x` - An element of $\mathbb{F}_2$ (type: `Self`)
+    ///
+    /// # Returns
+    ///
+    /// The integer in $\{ 0, 1 \}$ reducing to `x` mod 2 (type:
+    /// `u8`)
     pub fn as_u8(&self) -> u8 {
         self.value.to_words()[0] as u8
     }
@@ -89,9 +124,7 @@ impl ConstantTimeEq for F2Element {
 // Operator overloads
 // ---------------------------------------------------------------------------
 
-impl<'a, 'b> Add<&'b F2Element>
-for &'a F2Element
-{
+impl<'a, 'b> Add<&'b F2Element> for &'a F2Element {
     type Output = F2Element;
 
     fn add(self, rhs: &'b F2Element) -> Self::Output {
@@ -99,9 +132,7 @@ for &'a F2Element
     }
 }
 
-impl<'a, 'b> Sub<&'b F2Element>
-for &'a F2Element
-{
+impl<'a, 'b> Sub<&'b F2Element> for &'a F2Element {
     type Output = F2Element;
 
     fn sub(self, rhs: &'b F2Element) -> Self::Output {
@@ -109,10 +140,7 @@ for &'a F2Element
     }
 }
 
-
-impl<'a, 'b> Mul<&'b F2Element>
-for &'a F2Element
-{
+impl<'a, 'b> Mul<&'b F2Element> for &'a F2Element {
     type Output = F2Element;
 
     fn mul(self, rhs: &'b F2Element) -> Self::Output {
@@ -120,16 +148,13 @@ for &'a F2Element
     }
 }
 
-impl<'a> Neg for &'a F2Element
-{
+impl<'a> Neg for &'a F2Element {
     type Output = F2Element;
 
     fn neg(self) -> Self::Output {
         <F2Element as FieldOps>::negate(self)
     }
 }
-
-
 
 // ---------------------------------------------------------------------------
 // FieldOps implementation
@@ -139,6 +164,7 @@ impl FieldOps for F2Element {
     fn zero() -> Self {
         Self::ZERO
     }
+
     fn one() -> Self {
         Self::ONE
     }
@@ -146,30 +172,40 @@ impl FieldOps for F2Element {
     fn from_u64(x: u64) -> Self {
         Self::from_u64(x)
     }
+
     fn is_zero(&self) -> Choice {
         Self::ct_eq(self, &Self::zero())
     }
+
     fn is_one(&self) -> Choice {
         Self::ct_eq(self, &Self::one())
     }
+
     fn negate(&self) -> Self {
         *self
     }
+
     fn add(&self, rhs: &Self) -> Self {
         Self::new(self.value ^ rhs.value)
     }
+
     fn sub(&self, rhs: &Self) -> Self {
         Self::new(self.value ^ rhs.value)
     }
+
     fn mul(&self, rhs: &Self) -> Self {
         Self::new(self.value & rhs.value)
     }
+
     fn square(&self) -> Self {
+        // x = x^2 for every x in F_2
         *self
-    } // x = x^2 for every x in F_2
+    }
+
     fn double(&self) -> Self {
         Self::ZERO
     }
+
     fn invert(&self) -> CtOption<Self> {
         let is_invertible = !self.is_zero();
         CtOption::new(*self, is_invertible)
@@ -178,9 +214,11 @@ impl FieldOps for F2Element {
     fn frobenius(&self) -> Self {
         *self
     }
+
     fn norm(&self) -> Self {
         *self
     }
+
     fn trace(&self) -> Self {
         *self
     }
@@ -197,6 +235,7 @@ impl FieldOps for F2Element {
     fn characteristic() -> Vec<u64> {
         vec![2]
     }
+
     fn degree() -> u32 {
         1
     }

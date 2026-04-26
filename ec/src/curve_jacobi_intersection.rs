@@ -19,10 +19,10 @@
 //!
 
 use core::fmt;
-use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 use fp::field_ops::{FieldOps, FieldRandom};
 use fp::{ref_field_impl, ref_field_trait_impl};
 use rand::{CryptoRng, Rng};
+use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
 use crate::curve_ops::Curve;
 use crate::curve_weierstrass::WeierstrassCurve;
@@ -100,7 +100,7 @@ ref_field_impl! {
     }
 }
 
-ref_field_impl!{
+ref_field_impl! {
     impl<F: FieldOps + FieldRandom> JacobiIntersectionCurve<F> {
         /// Sample a random affine point on this Jacobi‑intersection curve using the
         /// provided RNG.

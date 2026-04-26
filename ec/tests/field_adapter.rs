@@ -1,6 +1,6 @@
 //! Concrete field adapter for the Jacobi vector tests.
 
-use crypto_bigint::{const_prime_monty_params, Uint};
+use crypto_bigint::{Uint, const_prime_monty_params};
 use fp::fp_element::FpElement;
 
 // Use the same pattern as your Weierstrass tests, but over GF(101).

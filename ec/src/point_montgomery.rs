@@ -29,13 +29,12 @@
 //! - scalar multiplication via the Montgomery ladder.
 
 use core::fmt;
-use subtle::{Choice, CtOption, ConditionallySelectable, ConstantTimeEq};
+use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 use crate::curve_montgomery::MontgomeryCurve;
 use crate::point_ops::PointOps;
 use fp::field_ops::FieldOps;
 use fp::{ref_field_impl, ref_field_trait_impl};
-
 
 /// A point on the Kummer line of a Montgomery curve, represented by `(X : Z)`.
 ///
@@ -76,7 +75,6 @@ ref_field_trait_impl! {
     { }
 }
 
-
 impl<F> fmt::Display for KummerPoint<F>
 where
     F: FieldOps + Copy + fmt::Display,
@@ -95,11 +93,7 @@ where
                     "KummerPoint {{ X:Z = ({}:{}), x = {} }}",
                     self.x, self.z, x_aff
                 ),
-                None => write!(
-                    f,
-                    "KummerPoint {{ X:Z = ({}:{}) }}",
-                    self.x, self.z
-                ),
+                None => write!(f, "KummerPoint {{ X:Z = ({}:{}) }}", self.x, self.z),
             }
         } else {
             write!(f, "({}:{})", self.x, self.z)
@@ -107,28 +101,29 @@ where
     }
 }
 
-
 // ---------------------------------------------------------------------------
 // Constructors
 // ---------------------------------------------------------------------------
-
 
 impl<F: FieldOps> KummerPoint<F> {
     /// Construct a projective x-line point `(X : Z)` without validation.
     pub fn new(x: F, z: F) -> Self {
         assert!(!bool::from(x.mul(&z).is_zero()));
-        Self{ x, z }
+        Self { x, z }
     }
 
     /// Construct the finite x-line point corresponding to the affine
     /// x-coordinate `x`, i.e. `(x : 1)`.
     pub fn from_x(x: F) -> Self {
-        Self{ x, z: F::one() }
+        Self { x, z: F::one() }
     }
 
     /// The image of the identity point on the Kummer line.
     pub fn identity() -> Self {
-        Self{ x: F::one(), z: F::zero()}
+        Self {
+            x: F::one(),
+            z: F::zero(),
+        }
     }
 
     /// Return `true` if this point is the image of identity.
@@ -141,9 +136,7 @@ impl<F: FieldOps> KummerPoint<F> {
         let z_inv = self.z.invert();
         z_inv.map(|zinv| self.x.mul(&zinv))
     }
-
 }
-
 
 // ---------------------------------------------------------------------------
 // Constant-time functionalities

@@ -1,9 +1,9 @@
 use crypto_bigint::{Uint, const_prime_monty_params};
-use fp::fp_element::FpElement;
-use fp::field_ops::FieldOps;
 use ec::curve_legendre::LegendreCurve;
 use ec::curve_ops::Curve;
 use ec::point_legendre::LegendrePoint;
+use fp::field_ops::FieldOps;
+use fp::fp_element::FpElement;
 
 const_prime_monty_params!(Fp19Mod, Uint<1>, "0000000000000013", 2);
 type F19 = FpElement<Fp19Mod, 1>;
@@ -49,7 +49,6 @@ fn legendre_curve_visible_two_torsion_is_on_curve() {
     let c = curve();
     let three = F19::from(FpElement::from_u64(3));
 
-
     assert!(c.is_on_curve(&LegendrePoint::new(F19::zero(), F19::zero())));
     assert!(c.is_on_curve(&LegendrePoint::new(F19::one(), F19::zero())));
     assert!(c.is_on_curve(&LegendrePoint::new(three, F19::zero())));
@@ -70,7 +69,6 @@ fn legendre_curve_j_invariant_matches_closed_formula() {
     println!("lambda = {}", lambda.as_uint().to_words()[0]);
     let two_five_six = F19::from(FpElement::from_u64(256));
 
-
     let lambda_sq = <F19 as FieldOps>::square(&lambda);
     let t = &(&lambda_sq - &lambda) + &F19::one();
     println!("t = {}", t.as_uint().to_words()[0]);
@@ -86,7 +84,6 @@ fn legendre_curve_j_invariant_matches_closed_formula() {
 
     assert_eq!(c.j_invariant(), expected);
 }
-
 
 #[test]
 fn legendre_to_general_weierstrass_matches_a_invariants() {

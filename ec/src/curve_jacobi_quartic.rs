@@ -16,9 +16,9 @@
 //! `d(a²-d) ≠ 0`.
 
 use core::fmt;
-use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 use fp::field_ops::{FieldOps, FieldRandom};
 use fp::{ref_field_impl, ref_field_trait_impl};
+use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
 use crate::curve_ops::Curve;
 use crate::point_jacobi_quartic::JacobiQuarticPoint;
@@ -48,11 +48,7 @@ where
                 self.a, self.d
             )
         } else {
-            write!(
-                f,
-                "y^2 = ({})x^4 + 2({})x^2 + 1",
-                self.d, self.a
-            )
+            write!(f, "y^2 = ({})x^4 + 2({})x^2 + 1", self.d, self.a)
         }
     }
 }
@@ -108,7 +104,7 @@ ref_field_impl! {
     }
 }
 
-ref_field_impl!{
+ref_field_impl! {
     impl<F: FieldOps + FieldRandom> JacobiQuarticCurve<F> {
         /// Sample a random affine point on this Jacobi quartic using the provided RNG.
         ///
@@ -133,7 +129,6 @@ ref_field_impl!{
         }
     }
 }
-
 
 ref_field_trait_impl! {
     impl<F: FieldOps + FieldRandom> Curve for JacobiQuarticCurve<F> {

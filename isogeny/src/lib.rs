@@ -6,6 +6,6 @@
 //!   * `ec`  – elliptic curve group law
 
 pub mod isogeny;
-pub mod kernel;
 mod isogeny_ops;
+pub mod kernel;
 mod montgomery;

@@ -5,14 +5,14 @@
 //!   2. F₆₅₅₃₇ (p = 65537, d = 3, non-square → complete)
 //!   3. GF(2⁴)  (d₁ = 1, d₂ = α³ = 8, Tr(d₂) = 1 → complete)
 
-use crypto_bigint::{const_prime_monty_params, Uint};
+use crypto_bigint::{Uint, const_prime_monty_params};
 
 use fp::field_ops::FieldOps;
 use fp::fp_element::FpElement;
 
 use ec::curve_edwards::EdwardsCurve;
-use ec::point_edwards::EdwardsPoint;
 use ec::curve_ops::Curve;
+use ec::point_edwards::EdwardsPoint;
 
 // ===========================================================================
 // Field definitions
@@ -20,21 +20,31 @@ use ec::curve_ops::Curve;
 
 const_prime_monty_params!(Fp761Mod, Uint<1>, "00000000000002F9", 2);
 type F761 = FpElement<Fp761Mod, 1>;
-fn fp761(n: u64) -> F761 { F761::from_u64(n) }
+fn fp761(n: u64) -> F761 {
+    F761::from_u64(n)
+}
 
 const_prime_monty_params!(Fp65537Mod, Uint<1>, "0000000000010001", 3);
 type F65537 = FpElement<Fp65537Mod, 1>;
-fn fp65537(n: u64) -> F65537 { F65537::from_u64(n) }
+fn fp65537(n: u64) -> F65537 {
+    F65537::from_u64(n)
+}
 
-use fp::f2_ext::{F2Ext, BinaryIrreducible};
+use fp::f2_ext::{BinaryIrreducible, F2Ext};
 
 struct Poly2_4;
 impl BinaryIrreducible<1> for Poly2_4 {
-    fn modulus() -> Uint<1> { Uint::from_u64(0x13) }
-    fn degree() -> usize { 4 }
+    fn modulus() -> Uint<1> {
+        Uint::from_u64(0x13)
+    }
+    fn degree() -> usize {
+        4
+    }
 }
 type GF16 = F2Ext<1, Poly2_4>;
-fn gf(n: u64) -> GF16 { GF16::from_u64(n) }
+fn gf(n: u64) -> GF16 {
+    GF16::from_u64(n)
+}
 
 // ===========================================================================
 // Helpers
@@ -131,7 +141,9 @@ fn f761_negate_then_add() {
         let neg = p.negate(&c);
         assert!(
             p.add(&neg, &c).is_identity(),
-            "P + (-P) ≠ O for ({},{})", xv, yv,
+            "P + (-P) ≠ O for ({},{})",
+            xv,
+            yv,
         );
     }
 }
@@ -180,10 +192,7 @@ fn f761_associativity() {
     let p = EdwardsPoint::new(fp761(pts[0].0), fp761(pts[0].1));
     let q = EdwardsPoint::new(fp761(pts[1].0), fp761(pts[1].1));
     let r = EdwardsPoint::new(fp761(pts[2].0), fp761(pts[2].1));
-    assert_eq!(
-        p.add(&q, &c).add(&r, &c),
-        p.add(&q.add(&r, &c), &c),
-    );
+    assert_eq!(p.add(&q, &c).add(&r, &c), p.add(&q.add(&r, &c), &c),);
 }
 
 #[test]
@@ -194,7 +203,8 @@ fn f761_scalar_mul_order() {
     let p = EdwardsPoint::new(fp761(pts[0].0), fp761(pts[0].1));
     assert!(
         p.scalar_mul(&[order], &c).is_identity(),
-        "[{}]P should be O", order,
+        "[{}]P should be O",
+        order,
     );
 }
 
@@ -274,10 +284,7 @@ fn f65537_associativity() {
     let p = EdwardsPoint::new(fp65537(1), fp65537(0));
     let q = p.double(&c);
     let r = q.double(&c);
-    assert_eq!(
-        p.add(&q, &c).add(&r, &c),
-        p.add(&q.add(&r, &c), &c),
-    );
+    assert_eq!(p.add(&q, &c).add(&r, &c), p.add(&q.add(&r, &c), &c),);
 }
 
 #[test]
@@ -406,7 +413,8 @@ fn gf16_scalar_mul_order() {
     for p in &pts {
         assert!(
             p.scalar_mul(&[order], &c).is_identity(),
-            "[{}]P should be O", order,
+            "[{}]P should be O",
+            order,
         );
     }
 }
@@ -444,7 +452,8 @@ fn gf16_w_double() {
         let w_expected = &dbl.x + &dbl.y;
         let w_got = EdwardsPoint::<GF16>::w_double(&w, &c);
         assert_eq!(
-            w_got, w_expected,
+            w_got,
+            w_expected,
             "w-double mismatch for P=({:?},{:?})",
             p.x.as_uint().to_words()[0],
             p.y.as_uint().to_words()[0],
@@ -460,8 +469,8 @@ fn gf16_w_diff_add() {
         // Pick P, Q such that Q-P is also known
         let p = &pts[1];
         let q = &pts[2];
-        let diff = q.add(&p.negate(&c), &c);  // Q - P
-        let sum = p.add(q, &c);                // P + Q
+        let diff = q.add(&p.negate(&c), &c); // Q - P
+        let sum = p.add(q, &c); // P + Q
 
         let w1 = &diff.x + &diff.y;
         let w2 = &p.x + &p.y;

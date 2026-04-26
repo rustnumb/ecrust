@@ -28,7 +28,6 @@ pub struct JacobiIntersectionPoint<F: FieldOps> {
     pub d: F,
 }
 
-
 impl<F> fmt::Display for JacobiIntersectionPoint<F>
 where
     F: FieldOps + fmt::Display,
@@ -143,7 +142,6 @@ where
     }
 }
 
-
 ref_field_impl! {
     impl<F> JacobiIntersectionPoint<F> {
         /// Negation: `-(s, c, d) = (-s, c, d)`.
@@ -235,7 +233,6 @@ ref_field_impl! {
         }
     }
 }
-
 
 ref_field_trait_impl! {
     impl<F> PointOps for JacobiIntersectionPoint<F> {

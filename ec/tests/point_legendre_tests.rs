@@ -7,7 +7,7 @@
 //! This curve has 16 rational points in total, and the point P = (2,6)
 //! has order 8. The visible 2-torsion points are (0,0), (1,0), and (3,0).
 
-use crypto_bigint::{const_prime_monty_params, Uint};
+use crypto_bigint::{Uint, const_prime_monty_params};
 
 use fp::field_ops::FieldOps;
 use fp::fp_element::FpElement;
@@ -92,11 +92,7 @@ fn f19_negate_then_add_for_all_points() {
     let c = curve();
     for p in all_legendre_19(&c) {
         let neg = p.negate(&c);
-        assert!(
-            p.add(&neg, &c).is_identity(),
-            "P + (-P) != O for P = {}",
-            p
-        );
+        assert!(p.add(&neg, &c).is_identity(), "P + (-P) != O for P = {}", p);
     }
 }
 
@@ -188,10 +184,7 @@ fn f19_associativity_small_sample() {
     let q = pts[1];
     let r = pts[2];
 
-    assert_eq!(
-        p.add(&q, &c).add(&r, &c),
-        p.add(&q.add(&r, &c), &c),
-    );
+    assert_eq!(p.add(&q, &c).add(&r, &c), p.add(&q.add(&r, &c), &c),);
 }
 
 #[test]

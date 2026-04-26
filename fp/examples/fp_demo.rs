@@ -2,8 +2,7 @@
 //!
 //! Run with:  cargo run --bin demo
 //!
-use crypto_bigint::{const_prime_monty_params, Uint};
-
+use crypto_bigint::{Uint, const_prime_monty_params};
 
 // Pull in the library types
 use fp::f2_element::F2Element;
@@ -54,7 +53,6 @@ impl TonelliShanksConstants<Fp19Mod, 1, 2, 1> for TS19Quad {
 }
 
 type Fp19_2 = FpExt<Fp19Mod, 1, 2, 1, Poly19Quad, TS19Quad>;
-
 
 // ===================================================================
 // 5. Prime field  F_97283
@@ -160,22 +158,17 @@ struct TS97283Quartic;
 
 impl TonelliShanksConstants<Fp97283Mod, 1, 4, 2> for TS97283Quartic {
     // p^4 - 1 = 89566956980912803920 = 2^4 * 5597934811307050245
-    const ORDER: Uint<2> =
-        Uint::<2>::from_words([0xdafdc0d3fc005050, 0x0000000000000004]);
+    const ORDER: Uint<2> = Uint::<2>::from_words([0xdafdc0d3fc005050, 0x0000000000000004]);
 
-    const HALF_ORDER: Uint<2> =
-        Uint::<2>::from_words([0x6d7ee069fe002828, 0x0000000000000002]);
+    const HALF_ORDER: Uint<2> = Uint::<2>::from_words([0x6d7ee069fe002828, 0x0000000000000002]);
 
     const S: u64 = 4;
 
-    const T: Uint<2> =
-        Uint::<2>::from_words([0x4dafdc0d3fc00505, 0x0000000000000000]);
+    const T: Uint<2> = Uint::<2>::from_words([0x4dafdc0d3fc00505, 0x0000000000000000]);
 
-    const PROJENATOR_EXP: Uint<2> =
-        Uint::<2>::from_words([0x26d7ee069fe00282, 0x0000000000000000]);
+    const PROJENATOR_EXP: Uint<2> = Uint::<2>::from_words([0x26d7ee069fe00282, 0x0000000000000000]);
 
-    const TWOSM1: Uint<2> =
-        Uint::<2>::from_words([0x0000000000000008, 0x0000000000000000]);
+    const TWOSM1: Uint<2> = Uint::<2>::from_words([0x0000000000000008, 0x0000000000000000]);
 
     fn root_of_unity() -> [FpElement<Fp97283Mod, 1>; 4] {
         // An element of exact order 16 in F_{p^4}
@@ -324,5 +317,4 @@ fn main() {
     println!("  sanity  a  = {a4}");
     println!("  sanity 1/a = {a4_inv}");
     println!("  a * 1/a    = {}  (should be 1)", &a4 * &a4_inv);
-
 }

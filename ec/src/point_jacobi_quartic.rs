@@ -59,7 +59,6 @@ impl<F: FieldOps> PartialEq for JacobiQuarticPoint<F> {
 
 impl<F: FieldOps> Eq for JacobiQuarticPoint<F> {}
 
-
 impl<F: FieldOps> JacobiQuarticPoint<F> {
     /// Constructs a finite affine point `(x, y)`.
     pub fn new(x: F, y: F) -> Self {
