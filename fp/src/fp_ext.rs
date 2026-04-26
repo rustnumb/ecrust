@@ -156,6 +156,12 @@ where
     MOD: ConstPrimeMontyParams<LIMBS>,
 {
     /// Non-leading coefficients `[c_0, c_1, ..., c_{M-1}]` of the defining polynomial.
+    ///
+    /// # Returns
+    ///
+    /// The non-leading coefficients of the defining polynomial of the
+    /// field $\mathbb{F}\_{p^M} = \mathbb{F}_p\[x\] / (f(x))$ (type:
+    /// `[FpElement<MOD, LIMBS>; M]`)
     fn modulus() -> [FpElement<MOD, LIMBS>; M];
 }
 
@@ -203,6 +209,7 @@ implement for a new field
 ///
 /// # Todo
 ///
+/// - [ ] Implement `root_of_unity` as a `const`.
 /// - [ ] Compute these constants at compile time to bury this from
 ///   the end user.
 pub trait TonelliShanksConstants<MOD, const LIMBS: usize, const M: usize, const N: usize>:
@@ -210,25 +217,34 @@ pub trait TonelliShanksConstants<MOD, const LIMBS: usize, const M: usize, const 
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
 {
-    /// Multiplicative group order $p^M - 1$
+    /// The order of the multiplicative $\mathbb{F}\_{p^M}^*$, that is
+    /// the integer $p^M - 1$.
     const ORDER: Uint<N>;
 
-    /// Half mult group order $(p^M - 1) / 2$
+    /// Half of `ORDER`, that is the integer $(p^M - 1) / 2$.
     const HALF_ORDER: Uint<N>;
 
-    /// Write $p^M - 1 = 2^S T$ with $T$ odd
+    /// The constant $S$ in the 2-primary factorisation of `ORDER`,
+    /// that is where $p^M - 1 = 2^S T$ with $T$ odd.
     const S: u64;
 
-    /// Write $p^M - 1 = 2^S T$ with $T$ odd
+    /// The constant $T$ in the 2-primary factorisation of `ORDER`,
+    /// that is where $p^M - 1 = 2^S T$ with $T$ odd.
     const T: Uint<N>;
 
-    /// Constant $2^{S - 1}$
+    /// The integer $2^{S - 1}$.
     const TWOSM1: Uint<N>;
 
-    /// Projenator exponent of the TS algorithm this is $(T - 1) / 2$
+    /// The integer $(T - 1) / 2$ which is the exponent of the
+    /// "projenator" in the Tonelli--Shanks algorithm.
     const PROJENATOR_EXP: Uint<N>;
 
-    /// $2^S$ root of unity
+    /// A choice of $2^S$ root of unity in $\mathbb{F}\_{p^M}$,
+    /// respresented as a vector of `FpElement` of length $M$.
+    ///
+    /// # Todo
+    ///
+    /// - [ ] Write this to be a `const`.
     fn root_of_unity() -> [FpElement<MOD, LIMBS>; M];
 }
 
@@ -239,16 +255,55 @@ where
 /// An element of the extension field $\mathbb{F}_{p^M} =
 /// \mathbb{F}_p\[x\] / (f(x))$.
 ///
-/// `P` is a zero-size marker type implementing [`IrreduciblePoly`].
-/// `M` is the extension degree (number of base-field coefficients stored).
-/// `N` is the number limbs needed to store p^M
+/// # Generics
+///
+/// * `P` is a zero-size marker type implementing [`IrreduciblePoly`].
+/// * `M` is the extension degree (number of base-field coefficients
+///   stored).
+/// * `N` is the number limbs needed to store $p^M$.
+///
+/// # Examples
+///
+/// ```
+/// use crypto_bigint::{const_prime_monty_params, Uint};
+/// use fp::field_ops::FieldOps;
+/// use fp::fp_element::FpElement;
+/// use fp::fp_ext::{FpExt, IrreduciblePoly, TonelliShanksConstants};
+///
+/// const_prime_monty_params!(Fp19Mod, Uint<1>, "0000000000000013", 2);
+/// type Fp19 = FpElement<Fp19Mod, 1>;
+///
+/// struct QuadPoly;
+/// struct TSQuad;
+///
+/// impl IrreduciblePoly<Fp19Mod, 1, 2> for QuadPoly {
+///     fn modulus() -> [Fp19; 2] {
+///         [Fp19::one(), Fp19::zero()]
+///     }
+/// }
+///
+/// impl TonelliShanksConstants<Fp19Mod, 1, 2, 1> for TSQuad {
+///     const ORDER: Uint<1> = Uint::<1>::from_u64(360);
+///     const HALF_ORDER: Uint<1> = Uint::<1>::from_u64(180);
+///     const S: u64 = 3;
+///     const T: Uint<1> = Uint::<1>::from_u64(45);
+///     const PROJENATOR_EXP: Uint<1> = Uint::<1>::from_u64(22);
+///     const TWOSM1: Uint<1> = Uint::<1>::from_u64(4);
+///     fn root_of_unity() -> [FpElement<Fp19Mod, 1>; 2] {
+///         [Fp19::from_u64(3), Fp19::from_u64(3)]
+///     }
+/// }
+///
+/// type F19_2 = FpExt<Fp19Mod, 1, 2, 1, QuadPoly, TSQuad>;
+/// ```
 pub struct FpExt<MOD, const LIMBS: usize, const M: usize, const N: usize, P, TSCONSTS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
     P: IrreduciblePoly<MOD, LIMBS, M>,
     TSCONSTS: TonelliShanksConstants<MOD, LIMBS, M, N>,
 {
-    /// Coefficients in ascending degree, that is `coeffs[i]` is
+    /// Coefficients of the element $\sum_{i=0}^{M-1} c_i x^{i} \in
+    /// \mathbb{F}\_{p^M}$ in ascending degree. That is, `coeffs[i]` is
     /// the coefficient of $x^i$ (zero indexed).
     pub coeffs: [FpElement<MOD, LIMBS>; M],
     _phantom: PhantomData<P>,
@@ -266,7 +321,52 @@ where
     P: IrreduciblePoly<MOD, LIMBS, M>,
     TSCONSTS: TonelliShanksConstants<MOD, LIMBS, M, N>,
 {
-    /// Construct from a coefficient array `[a_0, ..., a_{M-1}]`.
+    /// Construct an element $\sum_{i=0}^{M-1} c_i x^i \in
+    /// \mathbb{F}\_{p^M} = \mathbb{F}\_{p}\[x\] / (f(x))$ from a
+    /// coefficient array $[c_0, ..., c_{M-1}]$.
+    ///
+    /// # Arguments
+    ///
+    /// * `coeffs` - Coefficients of the element (type: `[FpElement<MOD, LIMBS>; M]`).
+    ///
+    /// # Returns
+    ///
+    /// A constructed element of $\mathbb{F}\_{p^M}$ (type: `Self`).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use crypto_bigint::{const_prime_monty_params, Uint};
+    /// # use fp::field_ops::{FieldOps, FieldRandom};
+    /// # use fp::fp_element::FpElement;
+    /// # use fp::fp_ext::{FpExt, IrreduciblePoly, TonelliShanksConstants};
+    /// # const_prime_monty_params!(Fp19Mod, Uint<1>, "0000000000000013", 2);
+    /// # type Fp19 = FpElement<Fp19Mod, 1>;
+    /// #
+    /// # struct QuadPoly;
+    /// # struct TSQuad;
+    /// #
+    /// # impl IrreduciblePoly<Fp19Mod, 1, 2> for QuadPoly {
+    /// #    fn modulus() -> [Fp19; 2] {
+    /// #        [Fp19::one(), Fp19::zero()]
+    /// #    }
+    /// # }
+    /// #
+    /// # impl TonelliShanksConstants<Fp19Mod, 1, 2, 1> for TSQuad {
+    /// #    const ORDER: Uint<1> = Uint::<1>::from_u64(360);
+    /// #    const HALF_ORDER: Uint<1> = Uint::<1>::from_u64(180);
+    /// #    const S: u64 = 3;
+    /// #    const T: Uint<1> = Uint::<1>::from_u64(45);
+    /// #    const PROJENATOR_EXP: Uint<1> = Uint::<1>::from_u64(22);
+    /// #    const TWOSM1: Uint<1> = Uint::<1>::from_u64(4);
+    /// #    fn root_of_unity() -> [FpElement<Fp19Mod, 1>; 2] {
+    /// #        [Fp19::from_u64(3), Fp19::from_u64(3)]
+    /// #    }
+    /// # }
+    /// #
+    /// # type F19_2 = FpExt<Fp19Mod, 1, 2, 1, QuadPoly, TSQuad>;
+    /// let a = F19_2::new([Fp19::from_u64(3), Fp19::from_u64(5)]); // a = 3 + 5 x
+    /// ```
     pub fn new(coeffs: [FpElement<MOD, LIMBS>; M]) -> Self {
         Self {
             coeffs,
@@ -275,14 +375,162 @@ where
         }
     }
 
-    /// Embed a base-field element as $a + 0x + ... + 0x^{M-1}$.
+    /// Returns an element $\sum_{i=0}^{M-1} c_i x^i \in
+    /// \mathbb{F}\_{p^M} = \mathbb{F}\_{p}\[x\] / (f(x))$ from a
+    /// coefficient array $[c_0, ..., c_{M-1}]$ of `u64` integers.
+    ///
+    /// # Arguments
+    ///
+    /// * `coeffs` - The coefficient array (type: `[u64; M]`).
+    ///
+    /// # Returns
+    ///
+    /// The element $\sum_{i=0}^{M-1} c_i x^i \in \mathbb{F}\_{p^M}$
+    /// (type: `Self`).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use crypto_bigint::{const_prime_monty_params, Uint};
+    /// # use fp::field_ops::{FieldOps, FieldRandom};
+    /// # use fp::fp_element::FpElement;
+    /// # use fp::fp_ext::{FpExt, IrreduciblePoly, TonelliShanksConstants};
+    /// # const_prime_monty_params!(Fp19Mod, Uint<1>, "0000000000000013", 2);
+    /// # type Fp19 = FpElement<Fp19Mod, 1>;
+    /// #
+    /// # struct QuadPoly;
+    /// # struct TSQuad;
+    /// #
+    /// # impl IrreduciblePoly<Fp19Mod, 1, 2> for QuadPoly {
+    /// #    fn modulus() -> [Fp19; 2] {
+    /// #        [Fp19::one(), Fp19::zero()]
+    /// #    }
+    /// # }
+    /// #
+    /// # impl TonelliShanksConstants<Fp19Mod, 1, 2, 1> for TSQuad {
+    /// #    const ORDER: Uint<1> = Uint::<1>::from_u64(360);
+    /// #    const HALF_ORDER: Uint<1> = Uint::<1>::from_u64(180);
+    /// #    const S: u64 = 3;
+    /// #    const T: Uint<1> = Uint::<1>::from_u64(45);
+    /// #    const PROJENATOR_EXP: Uint<1> = Uint::<1>::from_u64(22);
+    /// #    const TWOSM1: Uint<1> = Uint::<1>::from_u64(4);
+    /// #    fn root_of_unity() -> [FpElement<Fp19Mod, 1>; 2] {
+    /// #        [Fp19::from_u64(3), Fp19::from_u64(3)]
+    /// #    }
+    /// # }
+    /// #
+    /// # type F19_2 = FpExt<Fp19Mod, 1, 2, 1, QuadPoly, TSQuad>;
+    /// let a = F19_2::new([Fp19::from_u64(3), Fp19::from_u64(5)]);
+    /// let b = F19_2::from_u64([3, 5]);
+    /// assert_eq!(a, b);
+    /// ```
+    pub fn from_u64(coeffs: [u64; M]) -> Self {
+        let coeffs_fp = std::array::from_fn(|i| FpElement::from_u64(coeffs[i]));
+        Self::new(coeffs_fp)
+    }
+
+    /// Embed an element of the base-field $\mathbb{F}\_p$ as $a + 0x +
+    /// \dots + 0x^{M-1} \in \mathbb{F}\_{p^M}$.
+    ///
+    /// # Arguments
+    ///
+    /// * `a` - Element of $\mathbb{F}_p$ (type: `FpElement<MOD, LIMBS>`).
+    ///
+    /// # Returns
+    ///
+    /// The element `a` embedded in $\mathbb{F}\_{p^M}$ in the unique
+    /// way (type: `Self`).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use crypto_bigint::{const_prime_monty_params, Uint};
+    /// # use fp::field_ops::{FieldOps, FieldRandom};
+    /// # use fp::fp_element::FpElement;
+    /// # use fp::fp_ext::{FpExt, IrreduciblePoly, TonelliShanksConstants};
+    /// # const_prime_monty_params!(Fp19Mod, Uint<1>, "0000000000000013", 2);
+    /// # type Fp19 = FpElement<Fp19Mod, 1>;
+    /// #
+    /// # struct QuadPoly;
+    /// # struct TSQuad;
+    /// #
+    /// # impl IrreduciblePoly<Fp19Mod, 1, 2> for QuadPoly {
+    /// #    fn modulus() -> [Fp19; 2] {
+    /// #        [Fp19::one(), Fp19::zero()]
+    /// #    }
+    /// # }
+    /// #
+    /// # impl TonelliShanksConstants<Fp19Mod, 1, 2, 1> for TSQuad {
+    /// #    const ORDER: Uint<1> = Uint::<1>::from_u64(360);
+    /// #    const HALF_ORDER: Uint<1> = Uint::<1>::from_u64(180);
+    /// #    const S: u64 = 3;
+    /// #    const T: Uint<1> = Uint::<1>::from_u64(45);
+    /// #    const PROJENATOR_EXP: Uint<1> = Uint::<1>::from_u64(22);
+    /// #    const TWOSM1: Uint<1> = Uint::<1>::from_u64(4);
+    /// #    fn root_of_unity() -> [FpElement<Fp19Mod, 1>; 2] {
+    /// #        [Fp19::from_u64(3), Fp19::from_u64(3)]
+    /// #    }
+    /// # }
+    /// #
+    /// # type F19_2 = FpExt<Fp19Mod, 1, 2, 1, QuadPoly, TSQuad>;
+    /// let a = F19_2::from_base(Fp19::from_u64(3));
+    /// let b = F19_2::from_u64([3, 0]);
+    /// assert_eq!(a, b); // a = 3 + 0 x
+    /// ```
     pub fn from_base(a: FpElement<MOD, LIMBS>) -> Self {
         let mut coeffs = std::array::from_fn(|_| FpElement::zero());
         coeffs[0] = a;
         Self::new(coeffs)
     }
 
-    /// Return the coefficient of $x^i$.
+    /// Return the coefficient of $x^i$ in the representation of
+    /// `self` in $\mathbb{F}\_{p^M} = \mathbb{F}\_{p}\[x\] / (f(x))$.
+    ///
+    /// # Arguments
+    ///
+    /// * `i` - The exponent of $x$ (type: `usize`).
+    ///
+    /// # Returns
+    ///
+    /// The coefficient of $x^i$ as an element of $\mathbb{F}\_p$
+    /// (type: `&FpElement<MOD, LIMBS>`).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use crypto_bigint::{const_prime_monty_params, Uint};
+    /// # use fp::field_ops::{FieldOps, FieldRandom};
+    /// # use fp::fp_element::FpElement;
+    /// # use fp::fp_ext::{FpExt, IrreduciblePoly, TonelliShanksConstants};
+    /// # const_prime_monty_params!(Fp19Mod, Uint<1>, "0000000000000013", 2);
+    /// # type Fp19 = FpElement<Fp19Mod, 1>;
+    /// #
+    /// # struct QuadPoly;
+    /// # struct TSQuad;
+    /// #
+    /// # impl IrreduciblePoly<Fp19Mod, 1, 2> for QuadPoly {
+    /// #    fn modulus() -> [Fp19; 2] {
+    /// #        [Fp19::one(), Fp19::zero()]
+    /// #    }
+    /// # }
+    /// #
+    /// # impl TonelliShanksConstants<Fp19Mod, 1, 2, 1> for TSQuad {
+    /// #    const ORDER: Uint<1> = Uint::<1>::from_u64(360);
+    /// #    const HALF_ORDER: Uint<1> = Uint::<1>::from_u64(180);
+    /// #    const S: u64 = 3;
+    /// #    const T: Uint<1> = Uint::<1>::from_u64(45);
+    /// #    const PROJENATOR_EXP: Uint<1> = Uint::<1>::from_u64(22);
+    /// #    const TWOSM1: Uint<1> = Uint::<1>::from_u64(4);
+    /// #    fn root_of_unity() -> [FpElement<Fp19Mod, 1>; 2] {
+    /// #        [Fp19::from_u64(3), Fp19::from_u64(3)]
+    /// #    }
+    /// # }
+    /// #
+    /// # type F19_2 = FpExt<Fp19Mod, 1, 2, 1, QuadPoly, TSQuad>;
+    /// let a = F19_2::from_u64([3, 5]);
+    /// assert_eq!(*a.coeff(0), Fp19::from_u64(3));
+    /// assert_eq!(*a.coeff(1), Fp19::from_u64(5));
+    /// ```
     pub fn coeff(&self, i: usize) -> &FpElement<MOD, LIMBS> {
         &self.coeffs[i]
     }

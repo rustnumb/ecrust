@@ -10,12 +10,46 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 // IrreduciblePoly — the only thing callers need to implement for a new field
 // ---------------------------------------------------------------------------
 
-/// An irreducible polynomial over $\mathbb{F}_2$.
+/// Irreducible polynomial defined over $\mathbb{F}_{2}$
+///
+/// # Required Methods
+///
+/// * `modulus` - The polynomial defining the extension field
+///   implemented as a `Uint<LIMBS>` one box for each coefficient
+/// * `degree` - The degree of the extension.
+///
+/// # Examples
+///
+/// ```
+/// # use crypto_bigint::Uint;
+/// # use fp::f2_element::F2Element;
+/// # use fp::f2_ext::{BinaryIrreducible, F2Ext};
+/// struct MyPoly;
+///
+/// impl BinaryIrreducible<1> for MyPoly {
+///    fn modulus() -> Uint<1> {
+///        Uint::<1>::from_u64(0b1_0001_1011) // x^8 + x^4 + x^3 + x + 1
+///    }
+///
+///    fn degree() -> usize {
+///        8usize
+///    }
+/// }
+/// ```
 pub trait BinaryIrreducible<const LIMBS: usize>: 'static {
-    /// Full polynomial bitmask, including the leading term x^m
+    /// Full polynomial bitmask, including the leading term $x^m$
+    ///
+    /// # Returns
+    ///
+    /// The irreducible polynomial (type: `Uint<LIMBS>`).
     fn modulus() -> Uint<LIMBS>;
 
     /// Degree m of the irreducible polynomial
+    ///
+    /// # Returns
+    ///
+    /// The degree of the irreducible polynomial `modulus` (type:
+    /// `usize`)
     fn degree() -> usize;
 }
 
@@ -23,7 +57,30 @@ pub trait BinaryIrreducible<const LIMBS: usize>: 'static {
 // F2Ext — element of F_{2^M}
 // ---------------------------------------------------------------------------
 
-/// An extension of $\mathbb{F}_2$ given by a polynomial `P`.
+/// An extension of $\mathbb{F}_2$ given by an irreducible binary
+/// polynomial $P \in \mathbb{F}_2\[x\]$.
+///
+/// # Examples
+///
+/// ```
+/// # use crypto_bigint::Uint;
+/// # use fp::f2_element::F2Element;
+/// # use fp::f2_ext::{BinaryIrreducible, F2Ext};
+/// struct F2511Poly;
+///
+/// impl BinaryIrreducible<8> for F2511Poly {
+///    fn modulus() -> Uint<8> {
+///        let one = Uint::<8>::from_u64(1);
+///        (one << 511) | (one << 10) | one
+///    }
+///
+///    fn degree() -> usize {
+///        511
+///    }
+/// }
+///
+/// type GF2_511 = F2Ext<8, F2511Poly>;
+/// ```
 pub struct F2Ext<const LIMBS: usize, P>
 where
     P: BinaryIrreducible<LIMBS>,
