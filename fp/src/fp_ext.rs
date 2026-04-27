@@ -118,12 +118,16 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 ///
 /// The polynomial $f(x) = x^2 + 1$ is irreducible over $\mathbb{F}_{19}$.
 /// ```
-/// # use crypto_bigint::{const_prime_monty_params, Uint};
-/// # use fp::fp_element::FpElement;
-/// # use fp::field_ops::FieldOps;
-/// # use fp::fp_ext::{FpExt, IrreduciblePoly, TonelliShanksConstants};
+/// use crypto_bigint::{const_prime_monty_params, Uint};
+/// use fp::fp_element::FpElement;
+/// use fp::field_ops::FieldOps;
+/// use fp::fp_ext::{FpExt, IrreduciblePoly, TonelliShanksConstants};
+///
+/// /* Setup the underlying prime field */
 /// const_prime_monty_params!(Fp19Mod, Uint<1>, "0000000000000013", 2);
 /// type Fp19 = FpElement<Fp19Mod, 1>;
+///
+/// /* Define an irreducible polynomial */
 /// struct MyQuadPoly;
 /// impl IrreduciblePoly<Fp19Mod, 1, 2> for MyQuadPoly {
 ///     fn modulus() -> [FpElement<Fp19Mod, 1>; 2] {
@@ -137,11 +141,15 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 ///
 /// Note that $f(x) = x^3 + 17$ is irreducible over $\mathbb{F}_{19}$.
 /// ```
-/// # use crypto_bigint::{const_prime_monty_params, Uint};
-/// # use fp::fp_element::FpElement;
-/// # use fp::field_ops::FieldOps;
-/// # use fp::fp_ext::{FpExt, IrreduciblePoly, TonelliShanksConstants};
+/// use crypto_bigint::{const_prime_monty_params, Uint};
+/// use fp::fp_element::FpElement;
+/// use fp::field_ops::FieldOps;
+/// use fp::fp_ext::{FpExt, IrreduciblePoly, TonelliShanksConstants};
+///
+/// /* Setup the underlying prime field */
 /// const_prime_monty_params!(Fp19Mod, Uint<1>, "0000000000000013", 2);
+///
+/// /* Define an irreducible polynomial */
 /// type Fp19 = FpElement<Fp19Mod, 1>;
 /// struct MyCubicPoly;
 /// impl IrreduciblePoly<Fp19Mod, 1, 3> for MyCubicPoly {
@@ -182,11 +190,15 @@ implement for a new field
 /// # Example: $\mathbb{F}_{19^2}$
 /// Note that we have a factorisation $19^2 - 1 = 2^3 \cdot 45$
 /// ```
-/// # use crypto_bigint::{const_prime_monty_params, Uint};
-/// # use fp::fp_element::FpElement;
-/// # use fp::fp_ext::{FpExt, IrreduciblePoly, TonelliShanksConstants};
+/// use crypto_bigint::{const_prime_monty_params, Uint};
+/// use fp::fp_element::FpElement;
+/// use fp::fp_ext::{FpExt, IrreduciblePoly, TonelliShanksConstants};
+///
+/// /* Setup the underlying prime field */
 /// const_prime_monty_params!(Fp19Mod, Uint<1>, "0000000000000013", 2);
 /// type Fp19 = FpElement<Fp19Mod, 1>;
+///
+/// /* Write out the precomputed Tonelli--Shanks constants */
 /// struct TSQuad;
 /// impl TonelliShanksConstants<Fp19Mod, 1, 2, 1> for TSQuad {
 ///     // p^2 - 1
@@ -270,18 +282,20 @@ where
 /// use fp::fp_element::FpElement;
 /// use fp::fp_ext::{FpExt, IrreduciblePoly, TonelliShanksConstants};
 ///
+/// /* Setup the underlying prime field */
 /// const_prime_monty_params!(Fp19Mod, Uint<1>, "0000000000000013", 2);
 /// type Fp19 = FpElement<Fp19Mod, 1>;
 ///
+/// /* Setup the irreducible poynomial */
 /// struct QuadPoly;
-/// struct TSQuad;
-///
 /// impl IrreduciblePoly<Fp19Mod, 1, 2> for QuadPoly {
 ///     fn modulus() -> [Fp19; 2] {
 ///         [Fp19::one(), Fp19::zero()]
 ///     }
 /// }
 ///
+/// /* Write out the precomputed Tonelli--Shanks constants */
+/// struct TSQuad;
 /// impl TonelliShanksConstants<Fp19Mod, 1, 2, 1> for TSQuad {
 ///     const ORDER: Uint<1> = Uint::<1>::from_u64(360);
 ///     const HALF_ORDER: Uint<1> = Uint::<1>::from_u64(180);
@@ -336,35 +350,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// # use crypto_bigint::{const_prime_monty_params, Uint};
-    /// # use fp::field_ops::{FieldOps, FieldRandom};
-    /// # use fp::fp_element::FpElement;
-    /// # use fp::fp_ext::{FpExt, IrreduciblePoly, TonelliShanksConstants};
-    /// # const_prime_monty_params!(Fp19Mod, Uint<1>, "0000000000000013", 2);
-    /// # type Fp19 = FpElement<Fp19Mod, 1>;
-    /// #
-    /// # struct QuadPoly;
-    /// # struct TSQuad;
-    /// #
-    /// # impl IrreduciblePoly<Fp19Mod, 1, 2> for QuadPoly {
-    /// #    fn modulus() -> [Fp19; 2] {
-    /// #        [Fp19::one(), Fp19::zero()]
-    /// #    }
-    /// # }
-    /// #
-    /// # impl TonelliShanksConstants<Fp19Mod, 1, 2, 1> for TSQuad {
-    /// #    const ORDER: Uint<1> = Uint::<1>::from_u64(360);
-    /// #    const HALF_ORDER: Uint<1> = Uint::<1>::from_u64(180);
-    /// #    const S: u64 = 3;
-    /// #    const T: Uint<1> = Uint::<1>::from_u64(45);
-    /// #    const PROJENATOR_EXP: Uint<1> = Uint::<1>::from_u64(22);
-    /// #    const TWOSM1: Uint<1> = Uint::<1>::from_u64(4);
-    /// #    fn root_of_unity() -> [FpElement<Fp19Mod, 1>; 2] {
-    /// #        [Fp19::from_u64(3), Fp19::from_u64(3)]
-    /// #    }
-    /// # }
-    /// #
-    /// # type F19_2 = FpExt<Fp19Mod, 1, 2, 1, QuadPoly, TSQuad>;
+    /// # use fp::_doctest_support::_doctest_fp_ext::*;
     /// let a = F19_2::new([Fp19::from_u64(3), Fp19::from_u64(5)]); // a = 3 + 5 x
     /// ```
     pub fn new(coeffs: [FpElement<MOD, LIMBS>; M]) -> Self {
@@ -391,35 +377,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// # use crypto_bigint::{const_prime_monty_params, Uint};
-    /// # use fp::field_ops::{FieldOps, FieldRandom};
-    /// # use fp::fp_element::FpElement;
-    /// # use fp::fp_ext::{FpExt, IrreduciblePoly, TonelliShanksConstants};
-    /// # const_prime_monty_params!(Fp19Mod, Uint<1>, "0000000000000013", 2);
-    /// # type Fp19 = FpElement<Fp19Mod, 1>;
-    /// #
-    /// # struct QuadPoly;
-    /// # struct TSQuad;
-    /// #
-    /// # impl IrreduciblePoly<Fp19Mod, 1, 2> for QuadPoly {
-    /// #    fn modulus() -> [Fp19; 2] {
-    /// #        [Fp19::one(), Fp19::zero()]
-    /// #    }
-    /// # }
-    /// #
-    /// # impl TonelliShanksConstants<Fp19Mod, 1, 2, 1> for TSQuad {
-    /// #    const ORDER: Uint<1> = Uint::<1>::from_u64(360);
-    /// #    const HALF_ORDER: Uint<1> = Uint::<1>::from_u64(180);
-    /// #    const S: u64 = 3;
-    /// #    const T: Uint<1> = Uint::<1>::from_u64(45);
-    /// #    const PROJENATOR_EXP: Uint<1> = Uint::<1>::from_u64(22);
-    /// #    const TWOSM1: Uint<1> = Uint::<1>::from_u64(4);
-    /// #    fn root_of_unity() -> [FpElement<Fp19Mod, 1>; 2] {
-    /// #        [Fp19::from_u64(3), Fp19::from_u64(3)]
-    /// #    }
-    /// # }
-    /// #
-    /// # type F19_2 = FpExt<Fp19Mod, 1, 2, 1, QuadPoly, TSQuad>;
+    /// # use fp::_doctest_support::_doctest_fp_ext::*;
     /// let a = F19_2::new([Fp19::from_u64(3), Fp19::from_u64(5)]);
     /// let b = F19_2::from_u64([3, 5]);
     /// assert_eq!(a, b);
@@ -446,35 +404,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// # use crypto_bigint::{const_prime_monty_params, Uint};
-    /// # use fp::field_ops::{FieldOps, FieldRandom};
-    /// # use fp::fp_element::FpElement;
-    /// # use fp::fp_ext::{FpExt, IrreduciblePoly, TonelliShanksConstants};
-    /// # const_prime_monty_params!(Fp19Mod, Uint<1>, "0000000000000013", 2);
-    /// # type Fp19 = FpElement<Fp19Mod, 1>;
-    /// #
-    /// # struct QuadPoly;
-    /// # struct TSQuad;
-    /// #
-    /// # impl IrreduciblePoly<Fp19Mod, 1, 2> for QuadPoly {
-    /// #    fn modulus() -> [Fp19; 2] {
-    /// #        [Fp19::one(), Fp19::zero()]
-    /// #    }
-    /// # }
-    /// #
-    /// # impl TonelliShanksConstants<Fp19Mod, 1, 2, 1> for TSQuad {
-    /// #    const ORDER: Uint<1> = Uint::<1>::from_u64(360);
-    /// #    const HALF_ORDER: Uint<1> = Uint::<1>::from_u64(180);
-    /// #    const S: u64 = 3;
-    /// #    const T: Uint<1> = Uint::<1>::from_u64(45);
-    /// #    const PROJENATOR_EXP: Uint<1> = Uint::<1>::from_u64(22);
-    /// #    const TWOSM1: Uint<1> = Uint::<1>::from_u64(4);
-    /// #    fn root_of_unity() -> [FpElement<Fp19Mod, 1>; 2] {
-    /// #        [Fp19::from_u64(3), Fp19::from_u64(3)]
-    /// #    }
-    /// # }
-    /// #
-    /// # type F19_2 = FpExt<Fp19Mod, 1, 2, 1, QuadPoly, TSQuad>;
+    /// # use fp::_doctest_support::_doctest_fp_ext::*;
     /// let a = F19_2::from_u64([3, 5]);
     /// let b = F19_2::from_uint([Uint::<1>::from_u64(3), Uint::<1>::from_u64(5)]);
     /// assert_eq!(a, b);
@@ -499,35 +429,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// # use crypto_bigint::{const_prime_monty_params, Uint};
-    /// # use fp::field_ops::{FieldOps, FieldRandom};
-    /// # use fp::fp_element::FpElement;
-    /// # use fp::fp_ext::{FpExt, IrreduciblePoly, TonelliShanksConstants};
-    /// # const_prime_monty_params!(Fp19Mod, Uint<1>, "0000000000000013", 2);
-    /// # type Fp19 = FpElement<Fp19Mod, 1>;
-    /// #
-    /// # struct QuadPoly;
-    /// # struct TSQuad;
-    /// #
-    /// # impl IrreduciblePoly<Fp19Mod, 1, 2> for QuadPoly {
-    /// #    fn modulus() -> [Fp19; 2] {
-    /// #        [Fp19::one(), Fp19::zero()]
-    /// #    }
-    /// # }
-    /// #
-    /// # impl TonelliShanksConstants<Fp19Mod, 1, 2, 1> for TSQuad {
-    /// #    const ORDER: Uint<1> = Uint::<1>::from_u64(360);
-    /// #    const HALF_ORDER: Uint<1> = Uint::<1>::from_u64(180);
-    /// #    const S: u64 = 3;
-    /// #    const T: Uint<1> = Uint::<1>::from_u64(45);
-    /// #    const PROJENATOR_EXP: Uint<1> = Uint::<1>::from_u64(22);
-    /// #    const TWOSM1: Uint<1> = Uint::<1>::from_u64(4);
-    /// #    fn root_of_unity() -> [FpElement<Fp19Mod, 1>; 2] {
-    /// #        [Fp19::from_u64(3), Fp19::from_u64(3)]
-    /// #    }
-    /// # }
-    /// #
-    /// # type F19_2 = FpExt<Fp19Mod, 1, 2, 1, QuadPoly, TSQuad>;
+    /// # use fp::_doctest_support::_doctest_fp_ext::*;
     /// let a = F19_2::from_base(Fp19::from_u64(3));
     /// let b = F19_2::from_u64([3, 0]);
     /// assert_eq!(a, b); // a = 3 + 0 x
@@ -553,35 +455,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// # use crypto_bigint::{const_prime_monty_params, Uint};
-    /// # use fp::field_ops::{FieldOps, FieldRandom};
-    /// # use fp::fp_element::FpElement;
-    /// # use fp::fp_ext::{FpExt, IrreduciblePoly, TonelliShanksConstants};
-    /// # const_prime_monty_params!(Fp19Mod, Uint<1>, "0000000000000013", 2);
-    /// # type Fp19 = FpElement<Fp19Mod, 1>;
-    /// #
-    /// # struct QuadPoly;
-    /// # struct TSQuad;
-    /// #
-    /// # impl IrreduciblePoly<Fp19Mod, 1, 2> for QuadPoly {
-    /// #    fn modulus() -> [Fp19; 2] {
-    /// #        [Fp19::one(), Fp19::zero()]
-    /// #    }
-    /// # }
-    /// #
-    /// # impl TonelliShanksConstants<Fp19Mod, 1, 2, 1> for TSQuad {
-    /// #    const ORDER: Uint<1> = Uint::<1>::from_u64(360);
-    /// #    const HALF_ORDER: Uint<1> = Uint::<1>::from_u64(180);
-    /// #    const S: u64 = 3;
-    /// #    const T: Uint<1> = Uint::<1>::from_u64(45);
-    /// #    const PROJENATOR_EXP: Uint<1> = Uint::<1>::from_u64(22);
-    /// #    const TWOSM1: Uint<1> = Uint::<1>::from_u64(4);
-    /// #    fn root_of_unity() -> [FpElement<Fp19Mod, 1>; 2] {
-    /// #        [Fp19::from_u64(3), Fp19::from_u64(3)]
-    /// #    }
-    /// # }
-    /// #
-    /// # type F19_2 = FpExt<Fp19Mod, 1, 2, 1, QuadPoly, TSQuad>;
+    /// # use fp::_doctest_support::_doctest_fp_ext::*;
     /// let a = F19_2::from_u64([3, 5]);
     /// assert_eq!(*a.coeff(0), Fp19::from_u64(3));
     /// assert_eq!(*a.coeff(1), Fp19::from_u64(5));

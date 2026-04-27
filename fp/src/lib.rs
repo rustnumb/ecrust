@@ -22,3 +22,6 @@ pub mod field_ops;
 pub mod fp_element;
 /// Prime-field extension towers and related helper traits.
 pub mod fp_ext;
+
+#[doc(hidden)]
+pub mod _doctest_support;

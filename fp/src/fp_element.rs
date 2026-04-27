@@ -6,8 +6,8 @@ use std::fmt;
 
 use crate::field_ops::{FieldFromRepr, FieldOps, FieldRandom};
 use crypto_bigint::{
-    NonZero, RandomMod, Uint,
     modular::{ConstMontyForm, ConstPrimeMontyParams},
+    NonZero, RandomMod, Uint,
 };
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
