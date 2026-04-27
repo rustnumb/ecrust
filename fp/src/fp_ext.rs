@@ -25,10 +25,6 @@
 //! const_prime_monty_params!(Fp19Mod, Uint<1>, "0000000000000013", 2);
 //! type Fp19 = FpElement<Fp19Mod, 1>;
 //!
-//! fn fp(n: u64) -> Fp19 {
-//!    Fp19::from_u64(n)
-//! }
-//!
 //! /* Setput the irreducible polynomial */
 //! struct QuadPoly;
 //! impl IrreduciblePoly<Fp19Mod, 1, 2> for QuadPoly {
@@ -61,9 +57,9 @@
 //! type F19_2 = FpExt<Fp19Mod, 1, 2, 1, QuadPoly, TSQuad>;
 //!
 //! /* Some standard tests */
-//! let a = F19_2::new([fp(3), fp(2)]);
-//! let ainv = F19_2::new([fp(9), fp(13)]);
-//! let asquare = F19_2::new([fp(5), fp(12)]);
+//! let a = F19_2::from_u64_vec([3, 2]);
+//! let ainv = F19_2::from_u64_vec([9, 13]);
+//! let asquare = F19_2::from_u64_vec([5, 12]);
 //! assert_eq!(a.invert().unwrap(), ainv);
 //! assert_eq!(a.square(), asquare);
 //! assert_eq!(asquare.sqrt().unwrap().square(), asquare);
@@ -379,10 +375,10 @@ where
     /// ```
     /// # use fp::_doctest_support::_doctest_fp_ext::*;
     /// let a = F19_2::new([Fp19::from_u64(3), Fp19::from_u64(5)]);
-    /// let b = F19_2::from_u64([3, 5]);
+    /// let b = F19_2::from_u64_vec([3, 5]);
     /// assert_eq!(a, b);
     /// ```
-    pub fn from_u64(coeffs: [u64; M]) -> Self {
+    pub fn from_u64_vec(coeffs: [u64; M]) -> Self {
         let coeffs_fp = std::array::from_fn(|i| FpElement::from_u64(coeffs[i]));
         Self::new(coeffs_fp)
     }
@@ -405,7 +401,8 @@ where
     ///
     /// ```
     /// # use fp::_doctest_support::_doctest_fp_ext::*;
-    /// let a = F19_2::from_u64([3, 5]);
+    /// # use crypto_bigint::Uint; // unclear why this is needed, it should be imported above
+    /// let a = F19_2::from_u64_vec([3, 5]);
     /// let b = F19_2::from_uint([Uint::<1>::from_u64(3), Uint::<1>::from_u64(5)]);
     /// assert_eq!(a, b);
     /// ```
@@ -431,7 +428,7 @@ where
     /// ```
     /// # use fp::_doctest_support::_doctest_fp_ext::*;
     /// let a = F19_2::from_base(Fp19::from_u64(3));
-    /// let b = F19_2::from_u64([3, 0]);
+    /// let b = F19_2::from_u64_vec([3, 0]);
     /// assert_eq!(a, b); // a = 3 + 0 x
     /// ```
     pub fn from_base(a: FpElement<MOD, LIMBS>) -> Self {
@@ -456,7 +453,7 @@ where
     ///
     /// ```
     /// # use fp::_doctest_support::_doctest_fp_ext::*;
-    /// let a = F19_2::from_u64([3, 5]);
+    /// let a = F19_2::from_u64_vec([3, 5]);
     /// assert_eq!(*a.coeff(0), Fp19::from_u64(3));
     /// assert_eq!(*a.coeff(1), Fp19::from_u64(5));
     /// ```
@@ -1040,7 +1037,30 @@ where
         }))
     }
 
+    ///
     /// Schoolbook multiplication followed by reduction modulo $f(x)$.
+    ///
+    /// # Arguments
+    ///
+    /// * `rhs` - An element of $\mathbb{F}\_{p^M}$ to multiply by
+    /// (type: `&Self`).
+    ///
+    /// # Returns
+    ///
+    /// The product `self * rhs` (type: `Self`).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use fp::_doctest_support::_doctest_fp_ext::*;
+    /// # use fp::field_ops::FieldOps;
+    /// let a = F19_2::from_u64_vec([3, 5]);
+    /// let b = F19_2::from_u64_vec([7, 11]);
+    /// let prod = F19_2::from_u64_vec([4, 11]);
+    /// assert_eq!(a.mul(&b), prod);
+    /// ```
+    ///
+    /// # Note
     ///
     /// Product has degree $\leq 2M−2$, then each high-degree term is
     /// replaced using $x^M \equiv −\sum_j \texttt{modulus}\[j\] x^j$
@@ -1063,6 +1083,23 @@ where
     // --- Inversion ----------------------------------------------------------
 
     /// Inversion via polynomial extended GCD.
+    ///
+    /// # Returns
+    ///
+    /// Either the inverse of `self` or `none` if `self == 0` (type:
+    /// `CtOption<Self>`).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use fp::_doctest_support::_doctest_fp_ext::*;
+    /// # use fp::field_ops::FieldOps;
+    /// let a = F19_2::from_u64_vec([3, 5]);
+    /// let inv = F19_2::from_u64_vec([4, 6]);
+    /// assert_eq!(a.invert().unwrap(), inv);
+    /// ```
+    ///
+    /// # Note
     ///
     /// Finds $s$ such that $\texttt{self} \times s \equiv 1 \pmod{f}$
     /// by computing $\gcd(\texttt{self}, f) = g$ (a nonzero constant
@@ -1092,21 +1129,60 @@ where
 
     // --- Frobenius ----------------------------------------------------------
 
-    /// `φ_p(a) = a^p` — the p-power Frobenius endomorphism.
+    /// Computes the $p$-power Frobenius endomorphism $\phi_p(a) = a^p$.
     ///
-    /// Computed via square-and-multiply using the characteristic p retrieved
-    /// from the base field.
+    /// # Returns
+    ///
+    /// The $p$-power of `self` (type: Self)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use fp::_doctest_support::_doctest_fp_ext::*;
+    /// # use fp::field_ops::FieldOps;
+    /// let a = F19_2::from_u64_vec([3, 5]);
+    /// let frob_a = F19_2::from_u64_vec([3, 14]);
+    /// assert_eq!(a.frobenius(), frob_a);
+    /// ```
+    ///
+    /// # Note
+    ///
+    /// Computed via square-and-multiply using the characteristic $p$
+    /// retrieved from the base field.
     fn frobenius(&self) -> Self {
         let p = FpElement::<MOD, LIMBS>::characteristic();
-        <Self as FieldOps>::pow(self, &p)
+        // can use pow_vartime since the exponent is always the same
+        <Self as FieldOps>::pow_vartime(self, &p)
     }
 
     // --- Norm and trace -----------------------------------------------------
 
-    /// `N_{Fp^M/Fp}(a) = ∏_{i=0}^{M-1} φ_p^i(a)` — product of all Galois conjugates.
+    /// Computes the norm of `self` to $\mathbb{F}\_{p}$ embedded as an element
+    /// of $\mathbb{F}\_{p^M}$.
     ///
-    /// The result lies in Fp (all higher coefficients are 0), but is returned
-    /// embedded in Fp^M for uniformity with the [`FieldOps`] signature.
+    /// As a reminder the norm is defined as the product over all the
+    /// Galois conjugates that is
+    /// $$ N\_{\mathbb{F}\_{p^M}/\mathbb{F}\_p}(a) = \prod\_{i=0}^{M-1} \phi\_p^i(a) $$
+    ///
+    /// # Returns
+    ///
+    /// The norm of self (type: `Self`).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use fp::_doctest_support::_doctest_fp_ext::*;
+    /// # use fp::field_ops::FieldOps;
+    /// let a = F19_2::from_u64_vec([3, 5]);
+    /// let nm_a = F19_2::from_u64_vec([15, 0]);
+    /// assert_eq!(a.norm(), nm_a);
+    /// ```
+    ///
+    /// # Note
+    ///
+    /// The result lies in $\mathbb{F}\_p$ (all higher coefficients
+    /// are 0), but is returned embedded in $\mathbb{F}\_{p^M}$ for
+    /// uniformity with the [`FieldOps`] signature.
     fn norm(&self) -> Self {
         let mut result = self.clone();
         let mut conj = self.frobenius();
@@ -1117,9 +1193,32 @@ where
         result
     }
 
-    /// `Tr_{Fp^M/Fp}(a) = Σ_{i=0}^{M-1} φ_p^i(a)` — sum of all Galois conjugates.
+    /// Computes the trace of `self` to $\mathbb{F}\_{p}$ embedded as an element
+    /// of $\mathbb{F}\_{p^M}$.
     ///
-    /// Like `norm`, the result lies in Fp but is returned embedded in Fp^M.
+    /// As a reminder the trace is defined as the sum over all the
+    /// Galois conjugates that is
+    /// $$ \mathrm{tr}\_{\mathbb{F}\_{p^M}/\mathbb{F}\_p}(a) = \sum\_{i=0}^{M-1} \phi\_p^i(a) $$
+    ///
+    /// # Returns
+    ///
+    /// The trace of self (type: `Self`).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use fp::_doctest_support::_doctest_fp_ext::*;
+    /// # use fp::field_ops::FieldOps;
+    /// let a = F19_2::from_u64_vec([3, 5]);
+    /// let tr_a = F19_2::from_u64_vec([6, 0]);
+    /// assert_eq!(a.trace(), tr_a);
+    /// ```
+    ///
+    /// # Note
+    ///
+    /// The result lies in $\mathbb{F}\_p$ (all higher coefficients
+    /// are 0), but is returned embedded in $\mathbb{F}\_{p^M}$ for
+    /// uniformity with the [`FieldOps`] signature.
     fn trace(&self) -> Self {
         let mut result = self.clone();
         let mut conj = self.frobenius();
@@ -1132,25 +1231,37 @@ where
 
     // --- Square root --------------------------------------------------------
 
-    /// Tonelli--Shanks squareroot algorithm
-    ///
-    /// Implementation of the Tonelli--Shanks square root algorithm. Requires
-    /// only a factorisation as $p^M - 1 = 2^K N$ so can compute this at
-    /// compile time by truncating zeros.
-    ///
-    /// # Arguments
-    ///
-    /// * `&self` - An element of Fp^M (type: &self)
+    /// Computes the square root of `self`
     ///
     /// # Returns
     ///
-    /// `self^(1/2)` a choice of squareroot (type: Self)
+    /// $\sqrt{\texttt{self}}$ a choice of squareroot (type: `Self`)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use fp::_doctest_support::_doctest_fp_ext::*;
+    /// # use fp::field_ops::FieldOps;
+    /// let a = F19_2::from_u64_vec([3, 11]);
+    /// let sqrt_a = a.sqrt().unwrap();
+    /// assert_eq!(sqrt_a.mul(&sqrt_a), a);
+    /// ```
+    ///
+    /// # Note
+    ///
+    /// This is an implementation of the Tonelli--Shanks squareroot
+    /// algorithm.
+    ///
+    /// # TODO
+    ///
+    /// - [ ] Generate the addition chain for the projenator exponent
+    ///   this is constant time since the projenator exponent is
+    ///   always(!) the same (for a fixed field).
     fn sqrt(&self) -> CtOption<Self> {
         let mut x = *self;
         let exp = TSCONSTS::PROJENATOR_EXP;
         let exp_limbs = exp.as_limbs().map(|limb| limb.0);
-        // TODO: generate the addition chain for this specific constant
-        // this is constant time since exp_limbs is always(!) the same
+
         let w = x.pow_vartime(&exp_limbs);
         ts_loop(&mut x, &w);
         CtOption::new(
@@ -1159,19 +1270,32 @@ where
         )
     }
 
-    /// Inverse and sqrt in one exponentiation
-    ///
-    /// Computes the inverse and squareroot of `self` in one
-    /// exponentiation using the tricks in Scott's article
-    ///
-    /// # Arguments
-    ///
-    /// * `&self` - An element of Fp^M (type: &self)
+    /// Returns both the inverse and sqrt of `self`
     ///
     /// # Returns
     ///
-    /// `(myinv, mysqrt)` which is `self.invert()` and `self.sqrt()`
-    /// (type: `CtOption<Self>`, `CtOption<Self>`)
+    /// $(1/\texttt{self}, \sqrt{\texttt{self}})$ which is
+    /// `self.invert()` and `self.sqrt()` (type: `CtOption<Self>`,
+    /// `CtOption<Self>`)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use fp::_doctest_support::_doctest_fp_ext::*;
+    /// # use fp::field_ops::FieldOps;
+    /// let a = F19_2::from_u64_vec([3, 11]);
+    /// let (inv_a, sqrt_a) = a.inverse_and_sqrt();
+    /// let inv_a = inv_a.unwrap();
+    /// let sqrt_a = sqrt_a.unwrap();
+    /// assert!(bool::from(inv_a.mul(&a).is_one()));
+    /// assert_eq!(sqrt_a.mul(&sqrt_a), a);
+    /// ```
+    ///
+    /// # Note
+    ///
+    /// Computes the inverse and squareroot of `self` in one
+    /// exponentiation using the tricks in Scott's article
+    /// <https://eprint.iacr.org/2020/1497>.
     fn inverse_and_sqrt(&self) -> (CtOption<Self>, CtOption<Self>) {
         let is_invertible = !self.is_zero();
 
@@ -1189,7 +1313,6 @@ where
         let e1_limbs = e1.as_limbs().map(|limb| limb.0);
 
         // Compute x^(2^(S - 1) - 1) * (x * w^4)^(2^(S - 1))
-        // pow_vartime?
 
         let first_term = self.pow_vartime(&e1_limbs);
         let xw4 = self * &w.pow_vartime(&[4 as u64]);
@@ -1206,36 +1329,65 @@ where
         )
     }
 
-    /// Inverse of squareroot of `self` in 1 exponentiation
-    ///
-    /// Computes 1/sqrt(self) using the trick from Mike Scott's
-    /// "Tricks of the trade" article Section 2
-    /// <https://eprint.iacr.org/2020/1497>
-    ///
-    /// # Arguments
-    ///
-    /// * `&self` - Description of &self (type: self)
+    /// Computes the inverse and squareroot of `self`.
     ///
     /// # Returns
     ///
-    /// The inverse of the squareroot of `self` (type: `CtOption<Self>`)
+    /// $1 / \sqrt{\texttt{self}}$, the inverse of the squareroot of
+    /// `self` (type: `CtOption<Self>`)
+    ///
+    /// ```
+    /// # use fp::_doctest_support::_doctest_fp_ext::*;
+    /// # use fp::field_ops::FieldOps;
+    /// let a = F19_2::from_u64_vec([3, 11]);
+    /// let inv_sqrt_a = a.inv_sqrt();
+    /// let inv_sqrt_a = inv_sqrt_a.unwrap();
+    /// assert_eq!(inv_sqrt_a.mul(&inv_sqrt_a), a.invert().unwrap());
+    /// ```
+    ///
+    /// # Note
+    ///
+    /// Computes $1/\sqrt{\texttt{self}$ using the trick from Scott's
+    /// "Tricks of the trade" article Section 2
+    /// <https://eprint.iacr.org/2020/1497>
     fn inv_sqrt(&self) -> CtOption<Self> {
         let (inv, sqrt) = self.inverse_and_sqrt();
         inv.and_then(|a| sqrt.map(|b| &a * &b))
     }
 
-    /// Inverse of `self` and squareroot of `rhs` in 1 exponentiation
+    /// Inverse of `self` and squareroot of `rhs`.
     ///
-    /// Computes `1/self` and `rhs.sqrt()` simulaineously using the
-    /// trick from Mike Scott's "Tricks of the trade" article Section
-    /// 2 <https://eprint.iacr.org/2020/1497>
+    /// # Arguments
+    ///
+    /// * `rhs` - element of $\mathbb{F}\_{p^M}$ (type: `&Self`)
     ///
     /// # Returns
     ///
-    /// The inverse of `self` and square root fo `rhs`. Theq former is
-    /// none if and only if `self` is nonzero and the latter is not
-    /// none if and only if there exists a squareroot of `rhs` in FpM
-    /// (type: (`CtOption<Self>`, `CtOption<Self>`))
+    /// The pair $(1 / \texttt{self}, \sqrt{\texttt{rhs}})$. The
+    /// former is none if and only if `self` is nonzero and the latter
+    /// is none if and only if there is no squareroot of `rhs` in
+    /// $\mathbb{F}\_{p^M}$ (type: (`CtOption<Self>`,
+    /// `CtOption<Self>`))
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use fp::_doctest_support::_doctest_fp_ext::*;
+    /// # use fp::field_ops::FieldOps;
+    /// let a = F19_2::from_u64_vec([3, 11]);
+    /// let b = F19_2::from_u64_vec([2, 11]);
+    /// let (inv_a, sqrt_b) = a.invertme_sqrtother(&b);
+    /// let inv_a = inv_a.unwrap();
+    /// let sqrt_b = sqrt_b.unwrap();
+    /// assert!(bool::from(inv_a.mul(&a).is_one()));
+    /// assert_eq!(sqrt_b.square(), b);
+    /// ```
+    ///
+    /// # Note
+    ///
+    /// Computes `1/self` and `rhs.sqrt()` simulaineously using the
+    /// trick from Scott's article Section 2
+    /// <https://eprint.iacr.org/2020/1497>
     fn invertme_sqrtother(&self, rhs: &Self) -> (CtOption<Self>, CtOption<Self>) {
         let is_invertible = !self.is_zero();
 
@@ -1260,20 +1412,33 @@ where
 
     /// Computes the squareroot of a ratio `self/rhs`
     ///
-    /// Computes `sqrt(self/rhs)` in one exponentiation using the
-    /// trick from Mike Scott's "Tricks of the trade" article Section
-    /// 2 <https://eprint.iacr.org/2020/1497>
-    ///
     /// # Arguments
-    ///
-    /// * `&self` - Element of FpM (type: self)
-    /// * `rhs` - Element of FpM (type: &Self)
+    /// * `rhs` - Element of $\mathbb{F}\_{p^M}$ (type: `&Self`)
     ///
     /// # Returns
     ///
-    /// The squareroot of the ratio `self/rhs` is not none if and only
-    /// if `rhs` is invertible and the ratio has an FpM squareroot
-    /// (type: `CtOption<Self>`)
+    /// $\sqrt{\texttt{self}/\texttt{rhs}}$, the squareroot of the
+    /// ratio which is not none if and only if `rhs` is invertible and
+    /// the ratio has an $\mathbb{F}\_{p^M}$ rational squareroot (type:
+    /// `CtOption<Self>`)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use fp::_doctest_support::_doctest_fp_ext::*;
+    /// # use fp::field_ops::FieldOps;
+    /// let a = F19_2::from_u64_vec([3, 11]);
+    /// let b = F19_2::from_u64_vec([2, 11]);
+    /// let sqrt_a_over_b = a.sqrt_ratio(&b);
+    /// let sqrt_a_over_b = sqrt_a_over_b.unwrap();
+    /// assert_eq!(sqrt_a_over_b.square().mul(&b), a);
+    /// ```
+    ///
+    /// # Note
+    ///
+    /// Computes $\sqrt{\texttt{self}/\texttt{rhs}}$ in one
+    /// exponentiation using the trick from Scott's "Tricks of the
+    /// trade" article Section 2 <https://eprint.iacr.org/2020/1497>
     fn sqrt_ratio(&self, rhs: &Self) -> CtOption<Self> {
         let x = self * &(&(self.square()) * rhs);
         let (myinv, mysqrt) = x.inverse_and_sqrt();
@@ -1288,20 +1453,25 @@ where
         CtOption::new(ans_value, ans_is_some)
     }
 
-    /// a is a QR in Fp^M iff a^{(p^M-1)/2} = 1.
+    /// Implements the "Legendre symbol" which is 1 if and only if
+    /// `self` is a quadratic residue in $\mathbb{F}\_{p^M}$.
     ///
-    /// Implements the "Legendre symbol" which is 1 if and only if we
-    /// have a quadratic residue in FpM
-    /// WARNING: Not constant time if `self` is zero
-    ///
-    /// # Arguments
-    ///
-    /// * `&self` - Element of FpM (type: self)
+    /// As a reminder the "Legendre symbol" for $a \in \mathbb{F}\_{p^M}$ is defined as
+    /// $$ \begin{cases} 0 & \text{ if $a = 0$,} \\\\ 1 & \text{if $a$
+    /// is a QR,} \\\\ -1 & \text{if $a$ is not a QR.} \end{cases} $$
     ///
     /// # Returns
     ///
-    /// Either `0` if `&self` is `0`, `1` if `&self` is a QR or `-1` if
-    /// `&self` is not a QR. (type: i8)
+    /// The Legendre symbol of `self` (type: `i8`)
+    ///
+    /// # WARNING
+    ///
+    /// Not constant time if `self` is zero
+    ///
+    /// # Note
+    ///
+    /// Implemented using the fact that $a$ is a QR in
+    /// $\mathbb{F}\_{p^M}$ if and only if $a^{(p^M-1)/2} = 1$.
     fn legendre(&self) -> i8 {
         let exp = TSCONSTS::HALF_ORDER;
         let exp_limbs = exp.as_limbs().map(|limb| limb.0);
