@@ -1,3 +1,4 @@
+#![allow(dead_code)] // TODO: Make the code not dead...
 //! Generic isogeny abstraction.
 //!
 //! # Overview
@@ -47,7 +48,6 @@ use subtle::Choice;
 /// functionality of isogenies, without forcing a particular internal
 /// representation (kernel-based, Vélu formulas, $x$-only formulas,
 /// chains, etc.).
-#[expect(dead_code)] // TODO: REMOVE
 pub trait IsogenyOps: Clone {
     /// Base field over which both the domain and codomain curves are defined.
     type BaseField: FieldOps;
@@ -96,7 +96,6 @@ pub trait IsogenyOps: Clone {
 /// $$\phi^\vee : E \to E'$$
 /// goes in the opposite direction, has the same degree, and satisfies
 /// the standard duality relations.
-#[expect(dead_code)] // TODO: REMOVE
 pub trait DualIsogenyOps: IsogenyOps {
     /// Type of the dual isogeny.
     ///
@@ -134,7 +133,6 @@ pub trait DualIsogenyOps: IsogenyOps {
 /// This is often the cleanest first design, especially when different
 /// concrete isogeny families may be composed together.
 #[derive(Clone)]
-#[expect(dead_code)] // TODO: REMOVE
 pub struct CompositeIsogeny<I1, I2> {
     /// The first isogeny in the composition.
     pub first: I1,
