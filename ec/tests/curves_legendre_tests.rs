@@ -1,4 +1,4 @@
-use crypto_bigint::{Uint, const_prime_monty_params};
+use crypto_bigint::{const_prime_monty_params, Uint};
 use ec::curve_legendre::LegendreCurve;
 use ec::curve_ops::Curve;
 use ec::point_legendre::LegendrePoint;
@@ -119,6 +119,7 @@ fn legendre_short_weierstrass_coordinate_shift_works() {
     let jc = c.j_invariant();
     let w = c.to_short_weierstrass();
     let jw = w.j_invariant();
+    assert_eq!(jc, jw);
 
     let p = LegendrePoint::new(fp(2), fp(6));
     assert!(c.is_on_curve(&p));
