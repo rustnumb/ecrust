@@ -1,10 +1,9 @@
 //! Integration tests for twisted Hessian curves.
 
-use crypto_bigint::{Uint, const_prime_monty_params};
+use crypto_bigint::{const_prime_monty_params, Uint};
 
 use ec::curve_ops::Curve;
 use ec::curve_twisted_hessian::TwistedHessianCurve;
-use ec::point_ops::{PointAdd, PointOps};
 use ec::point_twisted_hessian::TwistedHessianPoint;
 use fp::field_ops::FieldOps;
 use fp::fp_element::FpElement;

@@ -1,6 +1,6 @@
 //! Integration tests for generalized Hessian curves.
 
-use crypto_bigint::{Uint, const_prime_monty_params};
+use crypto_bigint::{const_prime_monty_params, Uint};
 
 use ec::curve_hessian::HessianCurve;
 use ec::curve_ops::Curve;
@@ -180,6 +180,8 @@ fn hessian_weierstrass_birational_roundtrip() {
 
     let wc = curve.to_weierstrass_curve_with_zeta(zeta).unwrap();
     let jw = wc.j_invariant();
+
+    assert_eq!(jc, jw);
 
     let wp = curve
         .map_point_to_weierstrass_with_zeta(&p, zeta)

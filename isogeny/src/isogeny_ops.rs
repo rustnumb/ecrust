@@ -2,13 +2,10 @@
 //!
 //! # Overview
 //!
-//! An isogeny is a morphism of elliptic curves
-//!
-//! ```text
-//! φ : E -> E'
-//! ```
-//!
-//! that is also a group homomorphism.
+//! An isogeny is a finite morphism of curves
+//! $$\phi : E -> E'$$
+//! for which $\phi(O\_E) = O\_{E'}$. This implies that $\phi$ is also
+//! a group homomorphism.
 //!
 //! This trait is meant to capture the **minimal common interface**
 //! that any concrete isogeny implementation should expose:
@@ -28,7 +25,7 @@
 //! For example:
 //! - the domain could use affine Weierstrass points,
 //! - the codomain could use projective points,
-//! - or an x-only Montgomery/Kummer representation.
+//! - or an $x$-only Montgomery/Kummer representation.
 //!
 //! So we keep both associated types explicit instead of assuming that the
 //! same point type is used on both sides.
@@ -41,24 +38,22 @@ use subtle::Choice;
 /// Generic interface for an isogeny.
 ///
 /// An implementation of this trait represents a map
-///
-/// ```text
-/// φ : E -> E'
-/// ```
-///
+/// $$\phi : E \to E'$$
 /// together with the information needed to evaluate it on points.
+///
+/// # Note
 ///
 /// The trait is intentionally small: it only describes the common
 /// functionality of isogenies, without forcing a particular internal
-/// representation (kernel-based, Vélu formulas, x-only formulas, chains, etc.).
+/// representation (kernel-based, Vélu formulas, $x$-only formulas, chains, etc.).
 pub trait IsogenyOps: Clone {
     /// Base field over which both the domain and codomain curves are defined.
     type BaseField: FieldOps;
 
-    /// Domain curve `E` of the isogeny `φ : E -> E'`.
+    /// Domain curve $E$ of the isogeny $\phi : E \to E'$.
     type DomainCurve: Curve<BaseField = Self::BaseField>;
 
-    /// Codomain curve `E'` of the isogeny `φ : E -> E'`.
+    /// Codomain curve $E'$ of the isogeny $\phi : E \to E'$.
     type CodomainCurve: Curve<BaseField = Self::BaseField>;
 
     /// Native point representation used when evaluating points on the domain.
@@ -75,16 +70,13 @@ pub trait IsogenyOps: Clone {
 
     /// Return the degree of the isogeny.
     ///
-    /// For a composition `ψ ∘ φ`, the degree should be
-    ///
-    /// ```text
-    /// deg(ψ ∘ φ) = deg(ψ) deg(φ).
-    /// ```
+    /// For a composition $\phi \circ \phi$, the degree should be
+    /// $$ \deg(\psi \circ \phi) = \deg(\psi) $deg(\phi)$$
     fn degree(&self) -> u64;
 
     /// Evaluate the isogeny at a point of the domain curve.
     ///
-    /// If `φ : E -> E'` and `P ∈ E`, this returns `φ(P) ∈ E'`.
+    /// If $\phi : E \to E'$ and $P \in E$, this returns $\phi(P) \in E'$.
     fn evaluate(&self, p: &Self::DomainPoint) -> Self::CodomainPoint;
 
     /// Return whether the isogeny is separable.
@@ -97,17 +89,9 @@ pub trait IsogenyOps: Clone {
 /// Extension trait for isogenies whose dual isogeny is available.
 ///
 /// If
-///
-/// ```text
-/// φ : E -> E'
-/// ```
-///
+/// $$\phi : E \to E'$$
 /// is an isogeny, then its dual
-///
-/// ```text
-/// φ^∨ : E' -> E
-/// ```
-///
+/// $$\phi^\vee : E \to E'$$
 /// goes in the opposite direction, has the same degree, and satisfies
 /// the standard duality relations.
 pub trait DualIsogenyOps: IsogenyOps {
@@ -116,12 +100,12 @@ pub trait DualIsogenyOps: IsogenyOps {
     /// Note how domain and codomain are swapped, and likewise the point
     /// representations on the source and target.
     type Dual: IsogenyOps<
-            BaseField = Self::BaseField,
-            DomainCurve = Self::CodomainCurve,
-            CodomainCurve = Self::DomainCurve,
-            DomainPoint = Self::CodomainPoint,
-            CodomainPoint = Self::DomainPoint,
-        >;
+        BaseField = Self::BaseField,
+        DomainCurve = Self::CodomainCurve,
+        CodomainCurve = Self::DomainCurve,
+        DomainPoint = Self::CodomainPoint,
+        CodomainPoint = Self::DomainPoint,
+    >;
 
     /// Return the dual isogeny.
     fn dual(&self) -> Self::Dual;
@@ -130,23 +114,19 @@ pub trait DualIsogenyOps: IsogenyOps {
 /// A wrapper representing the composition of two isogenies.
 ///
 /// If
-///
-/// ```text
-/// first  : E  -> E'
-/// second : E' -> E'',
-/// ```
+/// $$\texttt{first} : E \to E'$$
+/// $$\texttt{second} : E' \to E''$$
 ///
 /// then `CompositeIsogeny { first, second }` represents
 ///
-/// ```text
-/// second ∘ first : E -> E''.
-/// ```
+/// $$ \texttt{second} \circ \texttt{first} : E -> E''.$$
 ///
-/// # Why a wrapper?
+/// # Note
 ///
-/// This is a very convenient generic representation of composition:
-/// instead of trying to "simplify" the composite into a single special
-/// formula, we just store the two maps and evaluate them one after the other.
+/// Why a wrapper? This is a very convenient generic representation of
+/// composition: instead of trying to "simplify" the composite into a
+/// single special formula, we just store the two maps and evaluate
+/// them one after the other.
 ///
 /// This is often the cleanest first design, especially when different
 /// concrete isogeny families may be composed together.
@@ -175,18 +155,18 @@ where
     // - domain curve of `second` = codomain curve of `first`,
     // - domain point type of `second` = codomain point type of `first`.
     I2: IsogenyOps<
-            BaseField = I1::BaseField,
-            DomainCurve = I1::CodomainCurve,
-            DomainPoint = I1::CodomainPoint,
-        >,
+        BaseField = I1::BaseField,
+        DomainCurve = I1::CodomainCurve,
+        DomainPoint = I1::CodomainPoint,
+    >,
 {
     /// The composite map is still defined over the same base field.
     type BaseField = I1::BaseField;
 
-    /// The domain of `second ∘ first` is the domain of `first`.
+    /// The domain of $\texttt{second} \circ \texttt{first}$ is the domain of `first`.
     type DomainCurve = I1::DomainCurve;
 
-    /// The codomain of `second ∘ first` is the codomain of `second`.
+    /// The codomain of \texttt{second} \circ \texttt{first} is the codomain of `second`.
     type CodomainCurve = I2::CodomainCurve;
 
     /// Points fed into the composite are points of the domain of `first`.
