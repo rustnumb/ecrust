@@ -32,3 +32,36 @@ pub mod _doctest_fp_ext {
 
     pub type F19_2 = FpExt<Fp19Mod, 1, 2, 1, QuadPoly, TSQuad>;
 }
+
+pub mod _doctest_field_ops {
+    use crate::field_ops::FieldOps;
+    use crate::fp_element::FpElement;
+    use crate::fp_ext::{FpExt, IrreduciblePoly, TonelliShanksConstants};
+    use crypto_bigint::{const_prime_monty_params, Uint};
+
+    const_prime_monty_params!(Fp19Modulus, Uint<1>, "0000000000000013", 2);
+    pub type F19 = FpElement<Fp19Modulus, 1>;
+
+    pub struct QuadPoly;
+    pub struct TSQuad;
+
+    impl IrreduciblePoly<Fp19Modulus, 1, 2> for QuadPoly {
+        fn modulus() -> [F19; 2] {
+            [F19::one(), F19::zero()]
+        }
+    }
+
+    impl TonelliShanksConstants<Fp19Modulus, 1, 2, 1> for TSQuad {
+        const ORDER: Uint<1> = Uint::<1>::from_u64(360);
+        const HALF_ORDER: Uint<1> = Uint::<1>::from_u64(180);
+        const S: u64 = 3;
+        const T: Uint<1> = Uint::<1>::from_u64(45);
+        const PROJENATOR_EXP: Uint<1> = Uint::<1>::from_u64(22);
+        const TWOSM1: Uint<1> = Uint::<1>::from_u64(4);
+        fn root_of_unity() -> [FpElement<Fp19Modulus, 1>; 2] {
+            [F19::from_u64(3), F19::from_u64(3)]
+        }
+    }
+
+    pub type F19_2 = FpExt<Fp19Modulus, 1, 2, 1, QuadPoly, TSQuad>;
+}
