@@ -1037,7 +1037,6 @@ where
         }))
     }
 
-    ///
     /// Schoolbook multiplication followed by reduction modulo $f(x)$.
     ///
     /// # Arguments
@@ -1235,7 +1234,8 @@ where
     ///
     /// # Returns
     ///
-    /// $\sqrt{\texttt{self}}$ a choice of squareroot (type: `Self`)
+    /// $\sqrt{\texttt{self}}$ a choice of squareroot which is not
+    /// `none` if the squareroot exists (type: `CtOption<Self>`)
     ///
     /// # Examples
     ///
@@ -1363,11 +1363,10 @@ where
     ///
     /// # Returns
     ///
-    /// The pair $(1 / \texttt{self}, \sqrt{\texttt{rhs}})$. The
-    /// former is none if and only if `self` is nonzero and the latter
-    /// is none if and only if there is no squareroot of `rhs` in
-    /// $\mathbb{F}\_{p^M}$ (type: (`CtOption<Self>`,
-    /// `CtOption<Self>`))
+    /// $(1 / \texttt{self}, \sqrt{\texttt{rhs}})$, the former is none
+    /// if and only if `self` is nonzero and the latter is none if and
+    /// only if there is no squareroot of `rhs` in $\mathbb{F}\_{p^M}$
+    /// (type: (`CtOption<Self>`, `CtOption<Self>`))
     ///
     /// # Examples
     ///
