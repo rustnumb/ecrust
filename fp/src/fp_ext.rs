@@ -1037,6 +1037,7 @@ where
         }))
     }
 
+    ///
     /// Schoolbook multiplication followed by reduction modulo $f(x)$.
     ///
     /// # Arguments
