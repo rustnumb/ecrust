@@ -408,7 +408,7 @@ impl<MOD, const LIMBS: usize> FieldRandom for FpElement<MOD, LIMBS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
 {
-    /// Sample a uniformly random element of Fp using a CSPRNG.
+    /// Sample a uniformly random element of $\mathbb{F}\_p$ using a CSPRNG.
     fn random(rng: &mut (impl rand::CryptoRng + rand::Rng)) -> Self {
         let minus_one = ConstMontyForm::<MOD, LIMBS>::ZERO - ConstMontyForm::<MOD, LIMBS>::ONE;
         let p_minus_1: Uint<LIMBS> = minus_one.retrieve();

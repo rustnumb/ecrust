@@ -65,3 +65,22 @@ pub mod _doctest_field_ops {
 
     pub type F19_2 = FpExt<Fp19Modulus, 1, 2, 1, QuadPoly, TSQuad>;
 }
+
+pub mod _doctest_f2_ext {
+    use crate::f2_ext::{BinaryIrreducible, F2Ext};
+    use crypto_bigint::Uint;
+
+    pub struct F4Poly;
+
+    impl BinaryIrreducible<1> for F4Poly {
+        fn modulus() -> Uint<1> {
+            Uint::<1>::from_u64(0b111) // x^2 + x + 1
+        }
+
+        fn degree() -> usize {
+            2usize
+        }
+    }
+
+    pub type F4 = F2Ext<1, F4Poly>;
+}

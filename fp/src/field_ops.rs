@@ -7,8 +7,49 @@ use subtle::{Choice, ConditionallySelectable, CtOption};
 ///
 /// Separated from [`FieldOps`] so that downstream code that doesn't
 /// need randomness is free of the `rand` dependency.
+///
+/// # Required Methods
+///
+/// * `random` - Generate a random field element.
+///
+/// # Examples
+///
+/// ```
+/// use crypto_bigint::{const_prime_monty_params, Uint};
+/// use fp::fp_element::FpElement;
+/// use fp::field_ops::{FieldOps, FieldRandom};
+///
+/// /*
+/// We will set up the field F_19 using FpElement, see the docs
+/// of fp_element::FpElement.
+/// */
+///
+/// const_prime_monty_params!(Fp19Modulus, Uint<1>, "0000000000000013", 2);
+/// type F19 = FpElement<Fp19Modulus, 1>;
+///
+/// let mut rng = rand::rng();
+/// let a = F19::random(&mut rng);
+/// ```
 pub trait FieldRandom: Sized {
-    /// Sample a uniformly random element using a cryptographic RNG.
+    /// Sample a uniformly random element using a cryptographic random
+    /// number generator.
+    ///
+    /// # Arguments
+    ///
+    /// * `rng` a cryptographic rng (type: `&mut (impl rand::CryptoRng + rand::Rng)`)
+    ///
+    /// # Returns
+    ///
+    /// A random element of $\mathbb{F}\_{q}$ (type: `Self`)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use fp::_doctest_support::_doctest_field_ops::*;
+    /// # use fp::field_ops::{FieldOps, FieldRandom};
+    /// let mut rng = rand::rng();
+    /// let a = F19::random(&mut rng);
+    /// ```
     fn random(rng: &mut (impl rand::CryptoRng + rand::Rng)) -> Self;
 }
 
