@@ -1,4 +1,18 @@
 //! The binary field $\mathbb{F}_2 = \mathbb{Z} / 2\mathbb{Z}$
+//!
+//! # Examples
+//!
+//! ```
+//! use fp::f2_element::F2Element;
+//! use fp::field_ops::FieldOps;
+//! use crypto_bigint::Uint;
+//!
+//! let x = F2Element::from_u64(0);
+//! let y = F2Element::from_u64(1);
+//! assert!(bool::from(x.is_zero()));
+//! assert!(bool::from(y.is_one()));
+//! assert_eq!(F2Element::characteristic(), [2]);
+//! ```
 
 use crate::field_ops::FieldFromRepr;
 use crate::field_ops::{FieldOps, FieldRandom};
@@ -28,15 +42,6 @@ impl F2Element {
     };
 
     /// Create a new element of $\mathbb{F}_2$ from a `Uint<1>`
-    ///
-    /// # Arguments
-    ///
-    /// * `x` - An integer (type: `Uint<1>`)
-    ///
-    /// # Returns
-    ///
-    /// An element of $\mathbb{F}_2$, the reduction of `x` mod 2
-    /// (type: `Self`)
     fn new(x: Uint<1>) -> Self {
         Self {
             value: x & Uint::<1>::ONE,
@@ -53,11 +58,22 @@ impl F2Element {
     ///
     /// An element of $\mathbb{F}_2$, the reduction of `x` mod 2
     /// (type: `Self`)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use fp::f2_element::F2Element;
+    /// # use fp::field_ops::FieldOps;
+    /// # use crypto_bigint::Uint;
+    /// let x = F2Element::from_u64(1);
+    /// let y = F2Element::from_u64(7);
+    /// assert_eq!(x, y);
+    /// ```
     pub fn from_u64(x: u64) -> Self {
         Self::new(Uint::from(x & 1))
     }
 
-    /// Get the `Uint<1>` from an element of $\mathbb{F}_2$
+    /// Get the `Uint<1>` from an element of $\mathbb{F}_2$ i.e.,
     ///
     /// # Arguments
     ///
@@ -67,6 +83,15 @@ impl F2Element {
     ///
     /// The integer in $\{ 0, 1 \}$ reducing to `x` mod 2 (type:
     /// `Uint<1>`)
+    ///
+    /// ```
+    /// # use fp::f2_element::F2Element;
+    /// # use fp::field_ops::FieldOps;
+    /// # use crypto_bigint::Uint;
+    /// let x = F2Element::from_u64(7);
+    /// let my_int = x.value();
+    /// assert_eq!(my_int, Uint::<1>::from_u64(1));
+    /// ```    
     pub fn value(&self) -> Uint<1> {
         self.value
     }
@@ -80,7 +105,16 @@ impl F2Element {
     /// # Returns
     ///
     /// The integer in $\{ 0, 1 \}$ reducing to `x` mod 2 (type:
-    /// `u8`)
+    /// `Uint<1>`)
+    ///
+    /// ```
+    /// # use fp::f2_element::F2Element;
+    /// # use fp::field_ops::FieldOps;
+    /// # use crypto_bigint::Uint;
+    /// let x = F2Element::from_u64(45);
+    /// let my_int = x.as_u8();
+    /// assert_eq!(my_int, 1_u8);
+    /// ```    
     pub fn as_u8(&self) -> u8 {
         self.value.to_words()[0] as u8
     }
