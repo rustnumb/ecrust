@@ -1,4 +1,38 @@
 //! Generic binary fields $\mathbb{F}\_{2^m} = \mathbb{F}\_2\[x\] / (f(x))$
+//!
+//! # Examples
+//!
+//! ```
+//! use crypto_bigint::Uint;
+//! use fp::f2_element::F2Element;
+//! use fp::f2_ext::{BinaryIrreducible, F2Ext};
+//! use fp::field_ops::FieldOps;
+//!
+//! /* Make the finite field F_4 */
+//! struct F4Poly;
+//! impl BinaryIrreducible<1> for F4Poly {
+//!    fn modulus() -> Uint<1> {
+//!        Uint::<1>::from_u64(0b111) // x^2 + x + 1
+//!    }
+//!
+//!    fn degree() -> usize {
+//!        2usize
+//!    }
+//! }
+//! type F4 = F2Ext<1, F4Poly>;
+//!
+//! /* Elements are written down by binary integers */
+//! let zero = F4::from_u64(0);
+//! let one = F4::from_u64(1);
+//! let a = F4::from_u64(0b11);
+//! let b = F4::from_u64(0b10);
+//!
+//! let also_zero = F4::from_u64(0b111); // x^2 + x + 1 = 0
+//! let also_one = F4::from_u64(0b1000); // x^3 = x*x^2 = x^2 + x = 1
+//! assert_eq!(also_zero, zero);
+//! assert_eq!(also_one, one);
+//! assert_eq!(a.mul(&b), one);
+//! ```
 
 use crate::field_ops::{FieldFromRepr, FieldOps, FieldRandom};
 use core::ops::{Add, Mul, Neg, Sub};
@@ -21,9 +55,10 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 /// # Examples
 ///
 /// ```
-/// # use crypto_bigint::Uint;
-/// # use fp::f2_element::F2Element;
-/// # use fp::f2_ext::{BinaryIrreducible, F2Ext};
+/// use crypto_bigint::Uint;
+/// use fp::f2_element::F2Element;
+/// use fp::f2_ext::{BinaryIrreducible, F2Ext};
+///
 /// struct MyPoly;
 ///
 /// impl BinaryIrreducible<1> for MyPoly {
@@ -63,11 +98,25 @@ pub trait BinaryIrreducible<const LIMBS: usize>: 'static {
 /// # Examples
 ///
 /// ```
-/// # use crypto_bigint::Uint;
-/// # use fp::f2_element::F2Element;
-/// # use fp::f2_ext::{BinaryIrreducible, F2Ext};
-/// struct F2511Poly;
+/// use crypto_bigint::Uint;
+/// use fp::f2_element::F2Element;
+/// use fp::f2_ext::{BinaryIrreducible, F2Ext};
 ///
+/// /* Make the finite field F_4 */
+/// struct F4Poly;
+/// impl BinaryIrreducible<1> for F4Poly {
+///    fn modulus() -> Uint<1> {
+///        Uint::<1>::from_u64(0b111) // x^2 + x + 1
+///    }
+///
+///    fn degree() -> usize {
+///        2usize
+///    }
+/// }
+/// type F4 = F2Ext<1, F4Poly>;
+///
+/// /* Make the finite field F_{2^511} */
+/// struct F2511Poly;
 /// impl BinaryIrreducible<8> for F2511Poly {
 ///    fn modulus() -> Uint<8> {
 ///        let one = Uint::<8>::from_u64(1);
@@ -78,8 +127,7 @@ pub trait BinaryIrreducible<const LIMBS: usize>: 'static {
 ///        511
 ///    }
 /// }
-///
-/// type GF2_511 = F2Ext<8, F2511Poly>;
+/// type F2_511 = F2Ext<8, F2511Poly>;
 /// ```
 pub struct F2Ext<const LIMBS: usize, P>
 where
@@ -98,30 +146,145 @@ impl<const LIMBS: usize, P> F2Ext<LIMBS, P>
 where
     P: BinaryIrreducible<LIMBS>,
 {
-    /// Make an element from the limbs
-    pub fn new(x: Uint<LIMBS>) -> Self {
+    /// Make an element of the extension from the limbs
+    ///
+    /// # Arguments
+    ///
+    /// * `a` - An integer written in binary as $a_0 \dots a_{64 *
+    ///   \texttt{LIMBS}}$ and padded with 0s if nessicary (type:
+    ///   `Uint<LIMBS>`).
+    ///
+    /// # Returns
+    ///
+    /// The element $\sum_{i=0}^M a_i x^i \in \mathbb{F}\_{2}\[x\] /
+    /// (f(x)) = \mathbb{F}\_{2^M}$ (type: `Self`).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use fp::_doctest_support::_doctest_f2_ext::*;
+    /// # use crypto_bigint::Uint;
+    /// # use fp::field_ops::FieldOps;
+    /// let a = F4::new(Uint::<1>::from_u64(0b111)); // x^2 + x + 1 should be zero
+    /// let b = F4::new(Uint::<1>::from_u64(0b11)); // x + 1 = x^2
+    /// let c = F4::new(Uint::<1>::from_u64(0b100)); // x^2 = x + 1
+    /// let d = F4::new(Uint::<1>::from_u64(0b1000)); // x^3 = x^2 * x = x^2 + x = 1
+    /// assert!(bool::from(a.is_zero()));
+    /// assert_eq!(b, c);
+    /// assert!(bool::from(d.is_one()));
+    /// ```
+    pub fn new(a: Uint<LIMBS>) -> Self {
         Self {
-            value: reduce::<LIMBS, P>(x),
+            value: reduce::<LIMBS, P>(a),
             _phantom: PhantomData,
         }
     }
 
-    /// Make an element from a `u64`
+    /// Make an element of the extension from a `u64`
+    ///
+    /// # Arguments
+    ///
+    /// * `a` - An integer written in binary as $a_0 \dots a_{64}$ and
+    /// padded with 0s to 64 bits if nessicary (type: `u64`).
+    ///
+    /// # Returns
+    ///
+    /// The element $\sum_{i=0}^{64} a_i x^i \in \mathbb{F}\_{2}\[x\] /
+    /// (f(x)) = \mathbb{F}\_{2^M}$ (type: `Self`).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use fp::_doctest_support::_doctest_f2_ext::*;
+    /// # use crypto_bigint::Uint;
+    /// # use fp::field_ops::FieldOps;
+    /// let a = F4::from_u64(0b111); // x^2 + x + 1 should be zero
+    /// let b = F4::from_u64(0b11); // x + 1 should be x^2
+    /// let c = F4::from_u64(0b100); // x + 1 should be x^2
+    /// let d = F4::from_u64(0b1000); // x^3 = x^2 * x = x^2 + x = 1
+    /// assert!(bool::from(a.is_zero()));
+    /// assert_eq!(b, c);
+    /// assert!(bool::from(d.is_one()));
+    /// ```
     pub fn from_u64(x: u64) -> Self {
         Self::new(Uint::from(x))
     }
 
-    /// Make an element from a `Uint<LIMBS>`
+    /// Make an element of the extension from the limbs
+    ///
+    /// # Arguments
+    ///
+    /// * `a` - An integer written in binary as $a_0 a_1 a_2 \dots
+    ///   a_{M}$ and then padded to the nearest 64 bits (type:
+    ///   `Uint<LIMBS>`).
+    ///
+    /// # Returns
+    ///
+    /// The element $\sum_{i=0}^M a_i x^i \in \mathbb{F}\_{2}\[x\] /
+    /// (f(x)) = \mathbb{F}\_{2^M}$ (type: `Self`).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use fp::_doctest_support::_doctest_f2_ext::*;
+    /// # use crypto_bigint::Uint;
+    /// # use fp::field_ops::FieldOps;
+    /// let a = F4::from_uint(Uint::<1>::from_u64(0b111)); // x^2 + x + 1 should be zero
+    /// let b = F4::from_uint(Uint::<1>::from_u64(0b11)); // x + 1 = x^2
+    /// let c = F4::from_uint(Uint::<1>::from_u64(0b100)); // x^2 = x + 1
+    /// let d = F4::from_uint(Uint::<1>::from_u64(0b1000)); // x^3 = x^2 * x = x^2 + x = 1
+    /// assert!(bool::from(a.is_zero()));
+    /// assert_eq!(b, c);
+    /// assert!(bool::from(d.is_one()));
+    /// ```
+    ///
+    /// # Note
+    ///
+    /// This is just an alias for [`F2Ext::new`]
     pub fn from_uint(x: Uint<LIMBS>) -> Self {
         Self::new(x)
     }
 
-    /// Get a `Unit<LIMBS>` from an element
+    /// Get a `Uint<LIMBS>` from an element, inverting [`F2Ext::new`].
+    ///
+    /// # Returns
+    ///
+    /// The integer $a$ of at most $M$ bits such that applying `new`
+    /// gives `self`. That is, if $a$ is written in binary as $a_0
+    /// \dots a_M$ then $\texttt{self} = \sum_{i=0}^M a_i x^i \in
+    /// \mathbb{F}\_{2}\[x\] / (f(x)) = \mathbb{F}\_{2^M}$ (type:
+    /// `Uint<LIMBS>`).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use fp::_doctest_support::_doctest_f2_ext::*;
+    /// # use crypto_bigint::Uint;
+    /// # use fp::field_ops::FieldOps;
+    /// let a = F4::from_uint(Uint::<1>::from_u64(0b11)); // x + 1
+    /// let b = F4::from_uint(Uint::<1>::from_u64(0b1000)); // x^3 = x^2 * x = x^2 + x = 1
+    /// assert_eq!(a.as_uint(), Uint::<1>::from_u64(0b11));
+    /// assert_eq!(b.as_uint(), Uint::<1>::from_u64(0b1));
+    /// ```
     pub fn as_uint(&self) -> Uint<LIMBS> {
         self.value
     }
 
     /// Get the degree of the field extension
+    ///
+    /// # Returns
+    ///
+    /// The degree of the field extension (type: `usize`).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use fp::_doctest_support::_doctest_f2_ext::*;
+    /// # use crypto_bigint::Uint;
+    /// # use fp::field_ops::FieldOps;
+    /// let d = F4::degree();
+    /// assert_eq!(d, 2_usize);
+    /// ```
     pub fn degree() -> usize {
         P::degree()
     }
