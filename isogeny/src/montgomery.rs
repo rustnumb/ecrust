@@ -5,12 +5,13 @@
 
 use subtle::{ConstantTimeEq, Choice, ConditionallySelectable};
 
-use fp::field_ops::FieldOps;
+use fp::field_ops::{FieldOps, FieldRandom};
 use ec::curve_montgomery::MontgomeryCurve;
 use ec::point_montgomery::KummerPoint;
 use fp::{ref_field_fns, ref_field_impl, ref_field_trait_impl};
 
 use primal::is_prime;
+use crate::isogeny_ops::IsogenyOps;
 
 #[derive(Debug, Clone, Copy)]
 pub struct PointAndDegree<F: FieldOps + Copy> {
@@ -23,7 +24,7 @@ pub struct PointAndDegree<F: FieldOps + Copy> {
 pub struct MontgomeryIsogeny<F: FieldOps + Copy> {
     pub domain: MontgomeryCurve<F>,
     pub codomain: MontgomeryCurve<F>,
-    // x-coordinate of the generator of the kernel K = <G> + degree of the isogeny
+    // x-coordinate of the generator of the kernel K = <G> & degree of the isogeny
     pub pt_deg: PointAndDegree<F>
 }
 
@@ -77,8 +78,18 @@ ref_field_impl! {
 ref_field_impl! {
     impl<F> MontgomeryIsogeny<F> {
         pub fn new(domain: MontgomeryCurve<F>, pt_deg: PointAndDegree<F>) -> Self {
-            let x_pts = kernel_rge_prime_degree(&domain, &pt_deg);
+            let (pt_deg, x_pts) = if !bool::from(pt_deg.degree_known) {
+                let degree = Self::degree(&domain, &pt_deg.pt);
+                let new_pt_deg = PointAndDegree::new_known_degree(pt_deg.pt, degree);
+                let x_pts = kernel_rge_prime_degree(&domain, &new_pt_deg);
+                (new_pt_deg, x_pts)
+            } else {
+                let x_pts = kernel_rge_prime_degree(&domain, &pt_deg);
+                (pt_deg, x_pts)
+            };
+
             let (a_codomain, b_codomain) = new_codomain(&domain, &x_pts);
+
             Self{
                 domain,
                 codomain: MontgomeryCurve::new(a_codomain, b_codomain),
@@ -86,7 +97,7 @@ ref_field_impl! {
             }
         }
 
-        pub fn degree(domain: &MontgomeryCurve<F>, pt: KummerPoint<F>) -> u64 {
+        pub fn degree(domain: &MontgomeryCurve<F>, pt: &KummerPoint<F>) -> u64 {
             todo!()
         }
 
@@ -105,11 +116,11 @@ ref_field_fns! {
         (&t1 + &t2, &t1 - &t2)
     }
 
-        // Costello-Hisil algorithm
+    // Costello-Hisil algorithm
     fn kernel_rge_prime_degree<F>(domain: &MontgomeryCurve<F>, pt_deg: &PointAndDegree<F>) -> Vec<KummerPoint<F>> {
         assert!(bool::from(pt_deg.degree_known), "Degree needs to be known!");
-        let l = pt_deg.degree as u64;
-        assert!(is_prime(l) & (l != 2));
+        let d = pt_deg.degree as u64;
+        assert!(is_prime(d) & (d != 2));
 
         let mut res = Vec::new();
         let pt = pt_deg.pt;
@@ -117,7 +128,7 @@ ref_field_fns! {
         res.push(pt.clone());
         res.push(pt.xdouble(domain));
 
-        for i in 3..=(l-1)/2 {
+        for i in 3..=(d-1)/2 {
             let new_pt = res[(i-1) as usize].xadd(&pt, &res[(i-2) as usize]);
             res.push(new_pt);
         }
@@ -139,7 +150,7 @@ ref_field_fns! {
             pi = &pi * &xi;
         }
 
-        let diff_sigmas = &sigma - &sigma_tilde;
+        let diff_sigmas = &sigma_tilde - &sigma;
         let six_diff_sigmas = &F::from_u64(6) * &diff_sigmas;
         let tmp = &six_diff_sigmas + &domain.a;
         let pi_sq = <F as FieldOps>::square(&pi);
@@ -150,13 +161,18 @@ ref_field_fns! {
         (new_a, new_b)
     }
 
-    fn evaluate<F>(x_pts: &Vec<KummerPoint<F>>, eval_pt: KummerPoint<F>) -> KummerPoint<F> {
+    fn evaluate<F>(x_pts: &Vec<KummerPoint<F>>, eval_pt: &KummerPoint<F>) -> KummerPoint<F> {
         let mut new_x = eval_pt.x.clone();
         let mut new_z = eval_pt.z.clone();
 
-        for pt in x_pts {
-            let tmp_x = &(&eval_pt.x * &pt.x) - &(&eval_pt.z * &pt.z);
-            let tmp_z = &(&eval_pt.x * &pt.z) - &(&eval_pt.z * &pt.x);
+        let u = &eval_pt.x;
+        let v = &eval_pt.z;
+
+        for pt_q in x_pts {
+            let xq = &pt_q.x;
+            let zq = &pt_q.z;
+            let tmp_x = &(u * xq) - &(v * zq);
+            let tmp_z = &(u * zq) - &(v * xq);
 
             new_x = &new_x * &<F as FieldOps>::square(&tmp_x);
             new_z = &new_z * &<F as FieldOps>::square(&tmp_z);
@@ -240,6 +256,42 @@ ref_field_trait_impl! {
 
         fn ct_ne(&self, other: &Self) -> Choice {
             !self.ct_eq(other)
+        }
+    }
+}
+
+
+// ---------------------------------------------------------------------------
+// Isogeny predicates
+// ---------------------------------------------------------------------------
+
+ref_field_trait_impl! {
+    impl<F: FieldOps + FieldRandom> IsogenyOps for MontgomeryIsogeny<F> {
+        type BaseField = F;
+        type DomainCurve = MontgomeryCurve<F>;
+        type CodomainCurve = MontgomeryCurve<F>;
+        type DomainPoint = KummerPoint<F>;
+        type CodomainPoint = KummerPoint<F>;
+
+        fn domain(&self) -> MontgomeryCurve<F> {
+            self.domain
+        }
+
+        fn codomain(&self) -> Self::CodomainCurve {
+            self.codomain
+        }
+
+        fn degree(&self) -> u64 {
+            Self::degree(&self.domain, &self.pt_deg.pt)
+        }
+
+        fn evaluate(&self, p: &Self::DomainPoint) -> Self::CodomainPoint {
+            let x_pts = kernel_rge_prime_degree(&self.domain, &self.pt_deg);
+            evaluate(&x_pts, p)
+        }
+
+        fn is_separable(&self) -> Choice {
+            todo!()
         }
     }
 }

@@ -74,10 +74,10 @@ pub trait IsogenyOps: Clone {
     >;
 
     /// Return the domain curve of the isogeny.
-    fn domain(&self) -> &Self::DomainCurve;
+    fn domain(&self) -> Self::DomainCurve;
 
     /// Return the codomain curve of the isogeny.
-    fn codomain(&self) -> &Self::CodomainCurve;
+    fn codomain(&self) -> Self::CodomainCurve;
 
     /// Return the degree of the isogeny.
     ///
@@ -202,11 +202,11 @@ where
     /// Points output by the composite are points of the codomain of `second`.
     type CodomainPoint = I2::CodomainPoint;
 
-    fn domain(&self) -> &Self::DomainCurve {
+    fn domain(&self) -> Self::DomainCurve {
         self.first.domain()
     }
 
-    fn codomain(&self) -> &Self::CodomainCurve {
+    fn codomain(&self) -> Self::CodomainCurve {
         self.second.codomain()
     }
 
