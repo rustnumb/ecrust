@@ -1,4 +1,9 @@
-# ecrust
+<h1 align="center">ecrust</h1>
+<div align="center">
+    <a href="https://github.com/rustnumb/ecrust/actions/workflows/rust.yaml"><img src="https://img.shields.io/github/check-runs/rustnumb/ecrust/main?label=tests&logo=github" alt="GitHub branch checks state"></a>
+    |
+    <a href="https://crates.io/crates/ecrust"><img src="https://img.shields.io/crates/v/ecrust.svg" alt="Crates.io"></a>
+</div>
 
 <p align="center">
   <img src="assets/ecrust_mascot_small.png" alt="ecrust mascot logo" width="420" />
@@ -25,7 +30,7 @@ isogeny        ← isogeny and kernel abstractions (work in progress)
   ↓
 ec             ← elliptic-curve models and point arithmetic
   ↓
-fp             ← finite fields: Fp, Fp^m, F2, F2^m
+fp             ← finite fields: F_p, F_{p^m}, F_2, F_{2^m}
   ↓
 crypto-bigint  ← multi-precision integers / Montgomery arithmetic
 ```
