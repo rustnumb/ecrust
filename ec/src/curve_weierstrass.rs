@@ -8,22 +8,61 @@
 //! y^2 + a_1 xy + a_3 y = x^3 + a_2 x^2 + a_4 x + a_6
 //! $$
 //!
-//! This form is valid in *any* characteristic, including characteristic $2$.
+//! This form is valid in *any* characteristic (provided the
+//! discriminant is nonzero), including characteristic $2$. This is
+//! enabled via the constructor [`WeierstrassCurve::new`].
 //!
 //! # Short Weierstrass specialisation
 //!
-//! When $\mathrm{char}(F) \ne 2, 3$ the curve can be brought to the simpler
+//! When $\mathrm{char}(F) \ne 2, 3$ the curve can be brought to the
+//! simpler
 //!
 //! $$
-//! y^2 = x^3 + ax + b \quad (a_1 = a_2 = a_3 = 0,\; a_4 = a,\; a_6 = b)
+//! y^2 = x^3 + ax + b
 //! $$
 //!
-//! via the convenience constructor [`WeierstrassCurve::new_short`].
+//! so that $a_1 = a_2 = a_3 = 0$, $a_4 = a$ and a_6 = b$. This is
+//! enabled via the constructor [`WeierstrassCurve::new_short`].
+//!
+//! # Examples
+//!
+//! ```
+//! use crypto_bigint::{Uint, const_prime_monty_params};
+//! use ec::curve_weierstrass::WeierstrassCurve;
+//! use fp::field_ops::FieldOps;
+//! use fp::fp_element::FpElement;
+//!
+//! const_prime_monty_params!(Fp19Mod, Uint<1>, "0000000000000013", 2);
+//! type F19 = FpElement<Fp19Mod, 1>;
+//!
+//! fn fp(n: u64) -> F19 {
+//!     F19::from_u64(n)
+//! }
+//!
+//! /* y^2 = x^3 + 2*x + 3 */
+//! let c = WeierstrassCurve::new_short(fp(2), fp(3));
+//! let c_too = WeierstrassCurve::new(fp(0), fp(0), fp(0), fp(2), fp(3));
+//!
+//! /* They're the same curve */
+//! assert_eq!(c, c_too);
+//!
+//! /* The a-invariants are correct */
+//! assert_eq!(c.a4, fp(2));
+//! assert_eq!(c.a6, fp(3));
+//!
+//! /* Curve is smooth */
+//! assert!(!bool::from(c.discriminant().is_zero()));
+//!
+//! /* (1,5) is a point on c */
+//! assert!(c.contains(&fp(1), &fp(5)));
+//!
+//! /* (0,0) is not a point on c */
+//! assert!(!c.contains(&fp(0), &fp(0)));
 
 use core::fmt;
 use fp::field_ops::{FieldOps, FieldRandom};
-use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 use fp::{ref_field_fns, ref_field_impl, ref_field_trait_impl};
+use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
 use crate::curve_ops::Curve;
 use crate::point_weierstrass::AffinePoint;
@@ -38,15 +77,15 @@ use crate::point_weierstrass::AffinePoint;
 /// case simply has $a_1 = a_2 = a_3 = 0$.
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub struct WeierstrassCurve<F: FieldOps> {
-    /// a-invariant
+    /// $a_1$-invariant
     pub a1: F,
-    /// a-invariant
+    /// $a_2$-invariant
     pub a2: F,
-    /// a-invariant
+    /// $a_3$-invariant
     pub a3: F,
-    /// a-invariant
+    /// $a_4$-invariant
     pub a4: F,
-    /// a-invariant
+    /// $a_6$-invariant
     pub a6: F,
 }
 
@@ -130,6 +169,7 @@ ref_field_impl! {
         // -------------------------------------------------------------------
 
         /// Returns the five $a$-invariants $[a_1, a_2, a_3, a_4, a_6]$.
+        #[allow(clippy::clone_on_copy)] // want to signal that the a_invariants are copied
         pub fn a_invariants(&self) -> [F; 5] {
             [
                 self.a1.clone(),
@@ -179,7 +219,7 @@ ref_field_impl! {
     }
 }
 
-ref_field_impl!{
+ref_field_impl! {
     impl<F: FieldOps + FieldRandom> WeierstrassCurve<F> {
         /// Sample a random affine point on this curve using the provided RNG.
         ///
@@ -230,7 +270,6 @@ ref_field_impl!{
         }
     }
 }
-
 
 // -------------------------------------------------------------------
 // Discriminant private helpers  (Silverman, §III.1)
@@ -355,7 +394,7 @@ ref_field_fns! {
 // Invariants attached to the model
 // -------------------------------------------------------------------
 
-ref_field_impl!{
+ref_field_impl! {
     impl<F: FieldOps> WeierstrassCurve<F> {
         /// Returns the invariant $b_2 = a_1^2 + 4a_2$.
         pub fn b2(&self) -> F {
@@ -390,12 +429,11 @@ ref_field_impl!{
     }
 }
 
-
 // -------------------------------------------------------------------
 // Curve predicates
 // -------------------------------------------------------------------
 
-ref_field_trait_impl!{
+ref_field_trait_impl! {
     impl<F: FieldOps + FieldRandom> Curve for WeierstrassCurve<F> {
     type BaseField = F;
     type Point = AffinePoint<F>;
@@ -429,7 +467,6 @@ ref_field_trait_impl!{
     }
 }
 }
-
 
 // ---------------------------------------------------------------------------
 // Constant-time functionalities

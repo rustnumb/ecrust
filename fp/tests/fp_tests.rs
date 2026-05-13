@@ -6,10 +6,10 @@
 //!   - NO `mod tests { }` block   (no module nesting needed)
 //!   - Trait methods require the trait to be in scope with `use`
 
-use crypto_bigint::{const_prime_monty_params, Uint};
+use crypto_bigint::{Uint, const_prime_monty_params};
 
-use fp::field_ops::FieldOps;        // brings zero/one/is_zero/invert/… into scope
-use fp::fp_element::FpElement;      // the concrete type
+use fp::field_ops::FieldOps; // brings zero/one/is_zero/invert/… into scope
+use fp::fp_element::FpElement; // the concrete type
 
 // ---------------------------------------------------------------------------
 // Define the modulus p = 19 at compile time.
@@ -17,7 +17,7 @@ use fp::fp_element::FpElement;      // the concrete type
 // const_prime_monty_params!(TypeName, UintType, hex_modulus, label)
 // ---------------------------------------------------------------------------
 //0000000000000013 -> 19 in Hexadecimal
-// 2 is a generator (primitive root) of Z/pZ 
+// 2 is a generator (primitive root) of Z/pZ
 const_prime_monty_params!(Fp19Modulus, Uint<1>, "0000000000000013", 2);
 
 type F19 = FpElement<Fp19Modulus, 1>;
@@ -89,7 +89,7 @@ fn double() {
 #[test]
 fn inv_works() {
     // 7 × 7^-1 \equiv 1  (mod 19)
-    let a   = F19::from_u64(7);
+    let a = F19::from_u64(7);
     let inv = a.invert().unwrap();
     assert_eq!((&a * &inv).as_limbs()[0], 1);
 }

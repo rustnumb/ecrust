@@ -1,5 +1,38 @@
 //! Base prime-field element $\mathbb{F}_p = \mathbb{Z} / p\mathbb{Z}$
 //! backed by `crypto-bigint`.
+//!
+//! # Overview
+//!
+//! Given an odd prime $p$ supplies $\mathbb{F}_p$ the finite field with
+//! $p$ elements.
+//!
+//! This module provides a single generic type [`FpElement<MOD, const
+//! LIMBS: usize>`](self::fp_element::FpElement).
+//!
+//! # Example
+//!
+//! ```
+//! use crypto_bigint::{const_prime_monty_params, Uint};
+//! use fp::fp_element::FpElement;
+//! use fp::field_ops::FieldOps;
+//!
+//! /*
+//! We will set up the field F_19 so note that 0000000000000013 is
+//! equal to 19 in Hexadecimal and that 2 is a generator (primitive
+//! root) of (Z/pZ)^*
+//! */
+//!
+//! const_prime_monty_params!(Fp19Modulus, Uint<1>, "0000000000000013", 2);
+//! type F19 = FpElement<Fp19Modulus, 1>;
+//!
+//! /* Some standard tests */
+//! let a = F19::from_u64(17);
+//! let b = F19::from_u64(5);
+//! assert_eq!((&a + &b).as_limbs()[0], 3);
+//! assert_eq!((&a - &b).as_limbs()[0], 12);
+//! assert_eq!((&a * &b).as_limbs()[0], 9);
+//! assert_eq!((a.invert().unwrap()).as_limbs()[0], 9);
+//! ```
 
 use core::ops::{Add, Mul, Neg, Sub};
 use std::fmt;
@@ -13,6 +46,8 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 /// An element of the prime field $\mathbb{F}_p =
 /// \mathbb{Z}/p\mathbb{Z}$, stored in Montgomery form.
+///
+/// # Note
 ///
 /// The internal value uses `crypto-bigint`'s [`ConstMontyForm`], so arithmetic
 /// is performed in Montgomery representation while the public constructors and
@@ -192,12 +227,25 @@ where
     }
 }
 
+// Manual `Hash` via the canonical (non-Montgomery) representative, so that
+// `a == b` ⇒ `hash(a) == hash(b)` independently of any internal Montgomery
+// encoding.  Matches the semantics of the derived `PartialEq` above, which
+// ultimately compares `ConstMontyForm` values (themselves bijective with
+// their canonical form).
+impl<MOD, const LIMBS: usize> core::hash::Hash for FpElement<MOD, LIMBS>
+where
+    MOD: ConstPrimeMontyParams<LIMBS>,
+{
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        self.as_uint().hash(state);
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Operator overloads
 // ---------------------------------------------------------------------------
 
-impl<'a, 'b, MOD, const LIMBS: usize> Add<&'b FpElement<MOD, LIMBS>>
-for &'a FpElement<MOD, LIMBS>
+impl<'a, 'b, MOD, const LIMBS: usize> Add<&'b FpElement<MOD, LIMBS>> for &'a FpElement<MOD, LIMBS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
 {
@@ -208,8 +256,7 @@ where
     }
 }
 
-impl<'a, 'b, MOD, const LIMBS: usize> Sub<&'b FpElement<MOD, LIMBS>>
-for &'a FpElement<MOD, LIMBS>
+impl<'a, 'b, MOD, const LIMBS: usize> Sub<&'b FpElement<MOD, LIMBS>> for &'a FpElement<MOD, LIMBS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
 {
@@ -220,9 +267,7 @@ where
     }
 }
 
-
-impl<'a, 'b, MOD, const LIMBS: usize> Mul<&'b FpElement<MOD, LIMBS>>
-for &'a FpElement<MOD, LIMBS>
+impl<'a, 'b, MOD, const LIMBS: usize> Mul<&'b FpElement<MOD, LIMBS>> for &'a FpElement<MOD, LIMBS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
 {
@@ -363,7 +408,7 @@ impl<MOD, const LIMBS: usize> FieldRandom for FpElement<MOD, LIMBS>
 where
     MOD: ConstPrimeMontyParams<LIMBS>,
 {
-    /// Sample a uniformly random element of Fp using a CSPRNG.
+    /// Sample a uniformly random element of $\mathbb{F}\_p$ using a CSPRNG.
     fn random(rng: &mut (impl rand::CryptoRng + rand::Rng)) -> Self {
         let minus_one = ConstMontyForm::<MOD, LIMBS>::ZERO - ConstMontyForm::<MOD, LIMBS>::ONE;
         let p_minus_1: Uint<LIMBS> = minus_one.retrieve();

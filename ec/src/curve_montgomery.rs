@@ -35,9 +35,9 @@
 //! scalar multiplication.
 
 use core::fmt;
-use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
-use fp::{ref_field_impl, ref_field_trait_impl};
 use fp::field_ops::{FieldOps, FieldRandom};
+use fp::{ref_field_impl, ref_field_trait_impl};
+use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
 use crate::curve_ops::Curve;
 use crate::point_montgomery::KummerPoint;
@@ -54,7 +54,6 @@ pub struct MontgomeryCurve<F: FieldOps> {
     /// The invariant $B$ in the equation of the montgomery curve
     pub b: F,
 }
-
 
 impl<F> fmt::Display for MontgomeryCurve<F>
 where
@@ -93,7 +92,7 @@ where
     }
 }
 
-ref_field_impl!{
+ref_field_impl! {
     impl<F> MontgomeryCurve<F> {
         // -------------------------------------------------------------------
         // Constructor
@@ -161,7 +160,6 @@ ref_field_impl! {
         }
     }
 }
-
 
 // -------------------------------------------------------------------
 // Curve predicates
@@ -256,7 +254,6 @@ ref_field_trait_impl! {
     }
 }
 
-
 // ---------------------------------------------------------------------------
 // Constant-time functionalities
 // ---------------------------------------------------------------------------
@@ -266,9 +263,9 @@ where
     F: FieldOps + Copy,
 {
     fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
-        Self{
-            a: F::conditional_select(& a.a, &b.a, choice),
-            b: F::conditional_select(& a.b, &b.b, choice),
+        Self {
+            a: F::conditional_select(&a.a, &b.a, choice),
+            b: F::conditional_select(&a.b, &b.b, choice),
         }
     }
 
@@ -291,5 +288,7 @@ where
         self.a.ct_eq(&other.a) & self.b.ct_eq(&other.b)
     }
 
-    fn ct_ne(&self, other: &Self) -> Choice { !self.ct_eq(other) }
+    fn ct_ne(&self, other: &Self) -> Choice {
+        !self.ct_eq(other)
+    }
 }

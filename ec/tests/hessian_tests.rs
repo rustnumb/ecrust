@@ -1,6 +1,6 @@
 //! Integration tests for generalized Hessian curves.
 
-use crypto_bigint::{Uint, const_prime_monty_params};
+use crypto_bigint::{const_prime_monty_params, Uint};
 
 use ec::curve_hessian::HessianCurve;
 use ec::curve_ops::Curve;
@@ -123,6 +123,20 @@ fn hessian_addition_is_associative_on_complete_curve() {
 }
 
 #[test]
+fn hessian_double_matches_add_self() {
+    let curve = complete_curve();
+
+    for p in all_points(&curve) {
+        assert_eq!(
+            p.double(&curve),
+            p.add(&p, &curve),
+            "[2]P mismatch for P={:?}",
+            p
+        );
+    }
+}
+
+#[test]
 fn hessian_scalar_mul_matches_repeated_addition() {
     let curve = complete_curve();
     let p = HessianPoint::from_affine(f(16), f(11));
@@ -164,6 +178,8 @@ fn hessian_weierstrass_birational_roundtrip() {
     assert!(curve.is_on_curve(&p));
 
     let wc = curve.to_weierstrass_curve_with_zeta(zeta).unwrap();
+
+    assert_eq!(jc, jw);
 
     let wp = curve
         .map_point_to_weierstrass_with_zeta(&p, zeta)

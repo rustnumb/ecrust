@@ -1,4 +1,4 @@
-use crypto_bigint::{const_prime_monty_params, Uint};
+use crypto_bigint::{Uint, const_prime_monty_params};
 
 use ec::curve_edwards::EdwardsCurve;
 use ec::curve_jacobi_intersection::JacobiIntersectionCurve;

@@ -20,7 +20,7 @@
 
 #[macro_export]
 macro_rules! jacobi_quartic_test_suite {
-    ($ec:ident, $field_ty:ty, $lift:path)  => {
+    ($ec:ident, $field_ty:ty, $lift:path) => {
         use $ec::curve_jacobi_quartic::JacobiQuarticCurve;
         use $ec::point_jacobi_quartic::JacobiQuarticPoint;
 
@@ -99,13 +99,34 @@ macro_rules! jacobi_quartic_test_suite {
             let curve = jq_curve();
             let p = jq_p();
 
-            assert_eq!(p.scalar_mul(&[0], &curve), JacobiQuarticPoint::new(jqf(0), jqf(1)));
-            assert_eq!(p.scalar_mul(&[1], &curve), JacobiQuarticPoint::new(jqf(8), jqf(94)));
-            assert_eq!(p.scalar_mul(&[2], &curve), JacobiQuarticPoint::new(jqf(92), jqf(35)));
-            assert_eq!(p.scalar_mul(&[3], &curve), JacobiQuarticPoint::new(jqf(46), jqf(37)));
-            assert_eq!(p.scalar_mul(&[5], &curve), JacobiQuarticPoint::new(jqf(89), jqf(11)));
-            assert_eq!(p.scalar_mul(&[8], &curve), JacobiQuarticPoint::new(jqf(21), jqf(50)));
-            assert_eq!(p.scalar_mul(&[16], &curve), JacobiQuarticPoint::new(jqf(93), jqf(94)));
+            assert_eq!(
+                p.scalar_mul(&[0], &curve),
+                JacobiQuarticPoint::new(jqf(0), jqf(1))
+            );
+            assert_eq!(
+                p.scalar_mul(&[1], &curve),
+                JacobiQuarticPoint::new(jqf(8), jqf(94))
+            );
+            assert_eq!(
+                p.scalar_mul(&[2], &curve),
+                JacobiQuarticPoint::new(jqf(92), jqf(35))
+            );
+            assert_eq!(
+                p.scalar_mul(&[3], &curve),
+                JacobiQuarticPoint::new(jqf(46), jqf(37))
+            );
+            assert_eq!(
+                p.scalar_mul(&[5], &curve),
+                JacobiQuarticPoint::new(jqf(89), jqf(11))
+            );
+            assert_eq!(
+                p.scalar_mul(&[8], &curve),
+                JacobiQuarticPoint::new(jqf(21), jqf(50))
+            );
+            assert_eq!(
+                p.scalar_mul(&[16], &curve),
+                JacobiQuarticPoint::new(jqf(93), jqf(94))
+            );
             assert_eq!(p.scalar_mul(&[17], &curve), jq_id());
         }
 
@@ -123,7 +144,10 @@ macro_rules! jacobi_quartic_test_suite {
             let q = jq_q();
             let r = p.double(&curve);
 
-            assert_eq!(p.add(&q, &curve).add(&r, &curve), p.add(&q.add(&r, &curve), &curve));
+            assert_eq!(
+                p.add(&q, &curve).add(&r, &curve),
+                p.add(&q.add(&r, &curve), &curve)
+            );
         }
 
         #[test]

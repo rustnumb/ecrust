@@ -63,7 +63,10 @@ macro_rules! jacobi_intersection_test_suite {
             let p = ji_p();
             let q = ji_q();
 
-            assert_eq!(p.double(&curve), JacobiIntersectionPoint::new(jif(22), jif(74), jif(89)));
+            assert_eq!(
+                p.double(&curve),
+                JacobiIntersectionPoint::new(jif(22), jif(74), jif(89))
+            );
             assert_eq!(q.double(&curve), ji_p());
         }
 
@@ -85,10 +88,22 @@ macro_rules! jacobi_intersection_test_suite {
 
             assert_eq!(p.scalar_mul(&[0], &curve), ji_id());
             assert_eq!(p.scalar_mul(&[1], &curve), ji_p());
-            assert_eq!(p.scalar_mul(&[2], &curve), JacobiIntersectionPoint::new(jif(22), jif(74), jif(89)));
-            assert_eq!(p.scalar_mul(&[3], &curve), JacobiIntersectionPoint::new(jif(52), jif(78), jif(42)));
-            assert_eq!(p.scalar_mul(&[5], &curve), JacobiIntersectionPoint::new(jif(57), jif(40), jif(88)));
-            assert_eq!(p.scalar_mul(&[8], &curve), JacobiIntersectionPoint::new(jif(44), jif(40), jif(88)));
+            assert_eq!(
+                p.scalar_mul(&[2], &curve),
+                JacobiIntersectionPoint::new(jif(22), jif(74), jif(89))
+            );
+            assert_eq!(
+                p.scalar_mul(&[3], &curve),
+                JacobiIntersectionPoint::new(jif(52), jif(78), jif(42))
+            );
+            assert_eq!(
+                p.scalar_mul(&[5], &curve),
+                JacobiIntersectionPoint::new(jif(57), jif(40), jif(88))
+            );
+            assert_eq!(
+                p.scalar_mul(&[8], &curve),
+                JacobiIntersectionPoint::new(jif(44), jif(40), jif(88))
+            );
             assert_eq!(p.scalar_mul(&[13], &curve), ji_id());
         }
 
@@ -106,7 +121,10 @@ macro_rules! jacobi_intersection_test_suite {
             let q = ji_q();
             let r = p.double(&curve);
 
-            assert_eq!(p.add(&q, &curve).add(&r, &curve), p.add(&q.add(&r, &curve), &curve));
+            assert_eq!(
+                p.add(&q, &curve).add(&r, &curve),
+                p.add(&q.add(&r, &curve), &curve)
+            );
         }
     };
 }

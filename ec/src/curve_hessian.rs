@@ -45,14 +45,14 @@
 //! - EFD, projective Hessian formulas:
 //!   <https://www.hyperelliptic.org/EFD/g1p/auto-hessian-standard.html>
 
-use core::fmt;
-use fp::field_ops::{FieldOps, FieldRandom};
-use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
-use fp::{ref_field_impl, ref_field_trait_impl};
 use crate::curve_ops::Curve;
 use crate::curve_weierstrass::WeierstrassCurve;
 use crate::point_hessian::HessianPoint;
 use crate::point_weierstrass::AffinePoint;
+use core::fmt;
+use fp::field_ops::{FieldOps, FieldRandom};
+use fp::{ref_field_impl, ref_field_trait_impl};
+use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
 /// A generalized Hessian curve
 ///
@@ -82,7 +82,7 @@ where
     }
 }
 
-ref_field_impl!{
+ref_field_impl! {
     impl<F: FieldOps + FieldRandom> HessianCurve<F> {
         /// Construct a generalized Hessian curve
         ///
@@ -176,8 +176,7 @@ ref_field_impl!{
     }
 }
 
-
-ref_field_trait_impl!{
+ref_field_trait_impl! {
     impl<F: FieldOps + FieldRandom> Curve for HessianCurve<F> {
         type BaseField = F;
         type Point = HessianPoint<F>;
@@ -220,7 +219,6 @@ ref_field_trait_impl!{
     }
 }
 
-
 impl<F> ConditionallySelectable for HessianCurve<F>
 where
     F: FieldOps + Copy,
@@ -256,8 +254,7 @@ where
     }
 }
 
-
-ref_field_impl!{
+ref_field_impl! {
     impl<F: FieldOps> HessianCurve<F> {
         /// Return the EFD Hessian parameter `delta` for the ordinary Hessian model
         ///
@@ -404,4 +401,3 @@ ref_field_impl!{
         }
     }
 }
-

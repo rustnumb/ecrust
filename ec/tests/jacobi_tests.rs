@@ -8,10 +8,8 @@ mod jacobi_intersection_vectors;
 #[path = "field_adapter.rs"]
 mod field_adapter;
 
-use field_adapter::{f, F};
+use field_adapter::{F, f};
 
 // Because the suites use #[macro_export], call them directly:
 jacobi_quartic_test_suite!(ec, F, f);
 jacobi_intersection_test_suite!(ec, F, f);
-
-

@@ -4,9 +4,12 @@
 //!
 //! ```text
 //! fp
-//! ├── field_ops          - FieldOps trait (the algebraic contract)
-//! ├── fp_element         - Base prime field Fp element
-//! └── fp_ext             - Extension prime field Elements
+//! ├── f2_element.rs
+//! ├── f2_ext.rs
+//! ├── field_ops.rs
+//! ├── fp_element.rs
+//! ├── fp_ext.rs
+//! └── lib.rs
 //! ```
 
 /// Binary base field $\mathbb{F}_2$ and its arithmetic.
@@ -19,3 +22,6 @@ pub mod field_ops;
 pub mod fp_element;
 /// Prime-field extension towers and related helper traits.
 pub mod fp_ext;
+
+#[doc(hidden)]
+pub mod _doctest_support;
