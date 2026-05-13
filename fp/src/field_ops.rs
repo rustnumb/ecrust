@@ -305,8 +305,8 @@ pub trait FieldFromRepr: FieldOps {
 /// ```
 #[macro_export]
 macro_rules! ref_field_impl {
-    (impl<$F:ident> $Ty:ty { $($body:tt)* }) => {
-        impl<$F> $Ty
+    (impl<$F:ident $(, const $C:ident : $CTy:ty)*> $Ty:ty { $($body:tt)* }) => {
+        impl<$F $(, const $C: $CTy)*> $Ty
         where
             $F: $crate::field_ops::FieldOps,
             for<'a, 'b> &'a $F: std::ops::Add<&'b $F, Output = $F>,
@@ -318,8 +318,8 @@ macro_rules! ref_field_impl {
         }
     };
 
-    (impl<$F:ident : $First:ident $(+ $Rest:ident)*> $Ty:ty { $($body:tt)* }) => {
-        impl<$F: $First $(+ $Rest)*> $Ty
+    (impl<$F:ident : $First:ident $(+ $Rest:ident)* $(, const $C:ident : $CTy:ty)*> $Ty:ty { $($body:tt)* }) => {
+        impl<$F: $First $(+ $Rest)* $(, const $C: $CTy)*> $Ty
         where
             $F: $crate::field_ops::FieldOps,
             for<'a, 'b> &'a $F: std::ops::Add<&'b $F, Output = $F>,
@@ -343,8 +343,8 @@ macro_rules! ref_field_impl {
 /// ```
 #[macro_export]
 macro_rules! ref_field_trait_impl {
-    (impl<$F:ident> $Trait:ident for $Ty:ty { $($body:tt)* }) => {
-        impl<$F> $Trait for $Ty
+    (impl<$F:ident $(, const $C:ident : $CTy:ty)*> $Trait:ident for $Ty:ty { $($body:tt)* }) => {
+        impl<$F $(, const $C: $CTy)*> $Trait for $Ty
         where
             $F: $crate::field_ops::FieldOps,
             for<'a, 'b> &'a $F: std::ops::Add<&'b $F, Output = $F>,
@@ -356,8 +356,8 @@ macro_rules! ref_field_trait_impl {
         }
     };
 
-    (impl<$F:ident : $First:ident $(+ $Rest:ident)*> $Trait:ident for $Ty:ty { $($body:tt)* }) => {
-        impl<$F: $First $(+ $Rest)*> $Trait for $Ty
+    (impl<$F:ident : $First:ident $(+ $Rest:ident)* $(, const $C:ident : $CTy:ty)*> $Trait:ident for $Ty:ty { $($body:tt)* }) => {
+        impl<$F: $First $(+ $Rest)* $(, const $C: $CTy)*> $Trait for $Ty
         where
             $F: $crate::field_ops::FieldOps,
             for<'a, 'b> &'a $F: std::ops::Add<&'b $F, Output = $F>,
@@ -382,8 +382,8 @@ macro_rules! ref_field_trait_impl {
 /// ```
 #[macro_export]
 macro_rules! ref_field_trait_impl_path {
-    (impl<$F:ident> ($Trait:path) for $Ty:ty { $($body:tt)* }) => {
-        impl<$F> $Trait for $Ty
+    (impl<$F:ident $(, const $C:ident : $CTy:ty)*> ($Trait:path) for $Ty:ty { $($body:tt)* }) => {
+        impl<$F $(, const $C: $CTy)*> $Trait for $Ty
         where
             $F: $crate::field_ops::FieldOps,
             for<'a, 'b> &'a $F: std::ops::Add<&'b $F, Output = $F>,
@@ -395,8 +395,8 @@ macro_rules! ref_field_trait_impl_path {
         }
     };
 
-    (impl<$F:ident : $First:ident $(+ $Rest:ident)*> ($Trait:path) for $Ty:ty { $($body:tt)* }) => {
-        impl<$F: $First $(+ $Rest)*> $Trait for $Ty
+    (impl<$F:ident : $First:ident $(+ $Rest:ident)* $(, const $C:ident : $CTy:ty)*> ($Trait:path) for $Ty:ty { $($body:tt)* }) => {
+        impl<$F: $First $(+ $Rest)* $(, const $C: $CTy)*> $Trait for $Ty
         where
             $F: $crate::field_ops::FieldOps,
             for<'a, 'b> &'a $F: std::ops::Add<&'b $F, Output = $F>,
@@ -420,8 +420,8 @@ macro_rules! ref_field_trait_impl_path {
 /// ```
 #[macro_export]
 macro_rules! ref_field_fn {
-    (fn $name:ident<$F:ident> ( $($args:tt)* ) -> $Ret:ty $body:block) => {
-        fn $name<$F>($($args)*) -> $Ret
+    (fn $name:ident<$F:ident $(, const $C:ident : $CTy:ty)*> ( $($args:tt)* ) -> $Ret:ty $body:block) => {
+        fn $name<$F $(, const $C: $CTy)*>($($args)*) -> $Ret
         where
             $F: $crate::field_ops::FieldOps,
             for<'a, 'b> &'a $F: std::ops::Add<&'b $F, Output = $F>,
@@ -431,8 +431,8 @@ macro_rules! ref_field_fn {
         $body
     };
 
-    (fn $name:ident<$F:ident : $First:ident $(+ $Rest:ident)*> ( $($args:tt)* ) -> $Ret:ty $body:block) => {
-        fn $name<$F: $First $(+ $Rest)*>($($args)*) -> $Ret
+    (fn $name:ident<$F:ident : $First:ident $(+ $Rest:ident)* $(, const $C:ident : $CTy:ty)*> ( $($args:tt)* ) -> $Ret:ty $body:block) => {
+        fn $name<$F: $First $(+ $Rest)* $(, const $C: $CTy)*>($($args)*) -> $Ret
         where
             $F: $crate::field_ops::FieldOps,
             for<'a, 'b> &'a $F: std::ops::Add<&'b $F, Output = $F>,
@@ -458,24 +458,24 @@ macro_rules! ref_field_fns {
 
     (
         $(#[$meta:meta])*
-        fn $name:ident<$F:ident> ( $($args:tt)* ) -> $Ret:ty $body:block
+        fn $name:ident<$F:ident $(, const $C:ident : $CTy:ty)*> ( $($args:tt)* ) -> $Ret:ty $body:block
         $($rest:tt)*
     ) => {
         $(#[$meta])*
         $crate::ref_field_fn! {
-            fn $name<$F>($($args)*) -> $Ret $body
+            fn $name<$F $(, const $C: $CTy)*>($($args)*) -> $Ret $body
         }
         $crate::ref_field_fns! { $($rest)* }
     };
 
     (
         $(#[$meta:meta])*
-        fn $name:ident<$F:ident : $First:ident $(+ $Rest:ident)*> ( $($args:tt)* ) -> $Ret:ty $body:block
+        fn $name:ident<$F:ident : $First:ident $(+ $Rest:ident)* $(, const $C:ident : $CTy:ty)*> ( $($args:tt)* ) -> $Ret:ty $body:block
         $($rest:tt)*
     ) => {
         $(#[$meta])*
         $crate::ref_field_fn! {
-            fn $name<$F: $First $(+ $Rest)*>($($args)*) -> $Ret $body
+            fn $name<$F: $First $(+ $Rest)* $(, const $C: $CTy)*>($($args)*) -> $Ret $body
         }
         $crate::ref_field_fns! { $($rest)* }
     };

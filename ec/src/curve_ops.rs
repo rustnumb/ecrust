@@ -7,6 +7,8 @@
 //! Each concrete curve type chooses its base field and its native point type
 //! through associated types.
 
+use crypto_bigint::Uint;
+use subtle::{CtOption, Choice};
 use fp::field_ops::FieldOps;
 use crate::point_ops::PointOps;
 
@@ -48,4 +50,15 @@ pub trait Curve: Sized + Clone + PartialEq + Eq {
     fn identity(&self) -> Self::Point {
         Self::Point::identity(self)
     }
+}
+
+/// Implementation of the order of an elliptic curve.
+/// This is intentionally left to the user so that he
+/// can provide the order of the elliptic curve he's working with.
+pub trait CurveOrder<const LIMBS: usize>: Curve {
+    /// Order of the elliptic curve
+    fn order(&self) -> CtOption<Uint<LIMBS>>;
+
+    /// Boolean describing whether the order is known or not
+    fn order_is_known(&self) -> Choice;
 }

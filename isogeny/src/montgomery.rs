@@ -2,7 +2,6 @@
 //!
 //! AT THE MOMENT THIS WORKS ONLY IN ODD CHARACTERISTIC!!!
 
-
 use subtle::{ConstantTimeEq, Choice, ConditionallySelectable};
 
 use fp::field_ops::{FieldOps, FieldRandom};
@@ -11,7 +10,7 @@ use ec::point_montgomery::KummerPoint;
 use fp::{ref_field_fns, ref_field_impl, ref_field_trait_impl};
 
 use primal::is_prime;
-use crate::isogeny_ops::IsogenyOps;
+use crate::isogeny_ops::{DualIsogenyOps, IsogenyOps};
 
 #[derive(Debug, Clone, Copy)]
 pub struct PointAndDegree<F: FieldOps + Copy> {
@@ -69,7 +68,7 @@ ref_field_impl! {
         }
 
         pub fn new_unknown_degree(pt: KummerPoint<F>) -> Self {
-            Self{pt, degree: 0, degree_known: Choice::from(0)}
+            Self{pt, degree: 0u64, degree_known: Choice::from(0)}
         }
     }
 }
@@ -119,7 +118,7 @@ ref_field_fns! {
     // Costello-Hisil algorithm
     fn kernel_rge_prime_degree<F>(domain: &MontgomeryCurve<F>, pt_deg: &PointAndDegree<F>) -> Vec<KummerPoint<F>> {
         assert!(bool::from(pt_deg.degree_known), "Degree needs to be known!");
-        let d = pt_deg.degree as u64;
+        let d = pt_deg.degree;
         assert!(is_prime(d) & (d != 2));
 
         let mut res = Vec::new();
@@ -128,7 +127,7 @@ ref_field_fns! {
         res.push(pt.clone());
         res.push(pt.xdouble(domain));
 
-        for i in 3..=(d-1)/2 {
+        for i in 3..= (d-1)/2 as u64 {
             let new_pt = res[(i-1) as usize].xadd(&pt, &res[(i-2) as usize]);
             res.push(new_pt);
         }
@@ -179,6 +178,10 @@ ref_field_fns! {
         }
 
         KummerPoint{x: new_x, z: new_z}
+    }
+
+    fn dual_isogeny<F>(x_pts_domain: &Vec<KummerPoint<F>>) -> KummerPoint<F> {
+        todo!()
     }
 }
 
@@ -291,6 +294,24 @@ ref_field_trait_impl! {
         }
 
         fn is_separable(&self) -> Choice {
+            let characteristic = <F as FieldOps>::characteristic()[0];
+            let degree = self.pt_deg.degree;
+            let coprimes = (degree % characteristic) != 0;
+            Choice::from(coprimes as u8)
+        }
+    }
+}
+
+
+// ---------------------------------------------------------------------------
+// Dual isogeny predicates
+// ---------------------------------------------------------------------------
+
+ref_field_trait_impl! {
+    impl<F: FieldOps + FieldRandom> DualIsogenyOps for MontgomeryIsogeny<F> {
+        type Dual = MontgomeryIsogeny<F>;
+
+        fn dual(&self) -> MontgomeryIsogeny<F> {
             todo!()
         }
     }
