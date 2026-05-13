@@ -34,7 +34,7 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 use crate::curve_montgomery::MontgomeryCurve;
 use crate::point_ops::PointOps;
 use fp::field_ops::FieldOps;
-use fp::{ref_field_impl, ref_field_trait_impl};
+use fp::{ref_field_impl, ref_field_trait_impl, ref_field_trait_impl_path};
 
 /// A point on the Kummer line of a Montgomery curve, represented by `(X : Z)`.
 ///
@@ -326,6 +326,14 @@ ref_field_trait_impl! {
         /// Scalar multiplication is naturally implemented by the Montgomery ladder.
         fn scalar_mul(&self, k: &[u64], curve: &Self::Curve) -> Self {
             KummerPoint::<F>::scalar_mul(self, k, curve)
+        }
+    }
+}
+
+ref_field_trait_impl_path! {
+    impl<F> (crate::point_ops::PointAdd) for KummerPoint<F> {
+        fn add(&self, other: &Self, curve: &Self::Curve) -> Self {
+            KummerPoint::<F>::add(self, other, curve)
         }
     }
 }

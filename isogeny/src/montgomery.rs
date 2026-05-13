@@ -4,12 +4,14 @@
 
 use subtle::{ConstantTimeEq, Choice, ConditionallySelectable};
 
+use crypto_bigint::Uint;
 use fp::field_ops::{FieldOps, FieldRandom};
+use fp::{ref_field_fns, ref_field_impl, ref_field_trait_impl};
 use ec::curve_montgomery::MontgomeryCurve;
 use ec::point_montgomery::KummerPoint;
-use fp::{ref_field_fns, ref_field_impl, ref_field_trait_impl};
 
 use primal::is_prime;
+use ec::point_order_ops::{order_from_group_order, order_in_interval};
 use crate::isogeny_ops::{DualIsogenyOps, IsogenyOps};
 
 #[derive(Debug, Clone, Copy)]
@@ -73,12 +75,36 @@ ref_field_impl! {
     }
 }
 
+/// Enum value describing which algorithm should be used to compute the degree of the isogeny
+/// (which corresponds to the order of a generator of the kernel of the isogeny)
+enum OrderAlgorithm {
+    /// Case where both the order of the group and its factorization are known.
+    KnownGroupOrder,
+    /// Case where one only knows that the order of the group lies in a given interval
+    /// (e.g. Hasse-Weil bounds).
+    IntervalOrder
+}
+
+struct KnownGroupInput<const LIMBS: usize> {
+    curve_order: Uint<LIMBS>,
+    factors: Vec<(Uint<LIMBS>, u32)>,
+}
+
+struct IntervalOrderInput<const LIMBS: usize> {
+    lower_bound: Uint<LIMBS>,
+    upper_bound: Uint<LIMBS>
+}
+
+enum OrderInput<const LIMBS: usize> {
+    KnownGroupOrder(KnownGroupInput<LIMBS>),
+    IntervalOrder(IntervalOrderInput<LIMBS>)
+}
 
 ref_field_impl! {
     impl<F> MontgomeryIsogeny<F> {
-        pub fn new(domain: MontgomeryCurve<F>, pt_deg: PointAndDegree<F>) -> Self {
+        pub fn new<const LIMBS: usize>(domain: MontgomeryCurve<F>, pt_deg: PointAndDegree<F>, input: &OrderInput<LIMBS>) -> Self {
             let (pt_deg, x_pts) = if !bool::from(pt_deg.degree_known) {
-                let degree = Self::degree(&domain, &pt_deg.pt);
+                let degree = Self::degree(&domain, &pt_deg.pt, input);
                 let new_pt_deg = PointAndDegree::new_known_degree(pt_deg.pt, degree);
                 let x_pts = kernel_rge_prime_degree(&domain, &new_pt_deg);
                 (new_pt_deg, x_pts)
@@ -96,10 +122,24 @@ ref_field_impl! {
             }
         }
 
-        pub fn degree(domain: &MontgomeryCurve<F>, pt: &KummerPoint<F>) -> u64 {
-            todo!()
-        }
+        pub fn degree<const LIMBS: usize>(
+            domain: &MontgomeryCurve<F>,
+            pt: &KummerPoint<F>,
+            input: &OrderInput<LIMBS>
+        ) -> u64
+        {
+            let deg= match input {
+                OrderInput::KnownGroupOrder(data) => {
+                    order_from_group_order(pt, domain, &data.curve_order, &data.factors)
+                },
+                OrderInput::IntervalOrder(data) => {
+                    order_in_interval(pt, domain, &data.lower_bound, &data.upper_bound)
+                }
+            };
 
+            assert!(deg.bits() <= 64);
+            deg.as_words()[0]
+        }
     }
 }
 
@@ -285,7 +325,7 @@ ref_field_trait_impl! {
         }
 
         fn degree(&self) -> u64 {
-            Self::degree(&self.domain, &self.pt_deg.pt)
+            self.pt_deg.degree
         }
 
         fn evaluate(&self, p: &Self::DomainPoint) -> Self::CodomainPoint {
