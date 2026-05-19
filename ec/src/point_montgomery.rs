@@ -71,9 +71,19 @@ ref_field_trait_impl! {
 }
 
 ref_field_trait_impl! {
-    impl<F> Eq for KummerPoint<F>
-    { }
+    impl<F> Eq for KummerPoint<F>{ }
 }
+
+impl<F> core::hash::Hash for KummerPoint<F>
+where
+    F: FieldOps + ConstantTimeEq + core::hash::Hash
+{
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        self.x.hash(state);
+        self.z.hash(state);
+    }
+}
+
 
 impl<F> fmt::Display for KummerPoint<F>
 where
